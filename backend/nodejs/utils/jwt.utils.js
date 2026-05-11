@@ -7,7 +7,7 @@ class JWTUtils {
     return jwt.sign(
       {
         id: user.id,
-        role: user.role_id, // Sửa chuẩn theo Schema DB của bro
+        role: user.roles?.role_name, // Sửa chuẩn theo Schema DB của bro
       },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "15m" },
@@ -19,6 +19,7 @@ class JWTUtils {
     return jwt.sign(
       {
         id: user.id,
+        role: user.roles?.role_name,
       },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" },

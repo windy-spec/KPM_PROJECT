@@ -155,7 +155,7 @@ class authController {
   async updateProfile(req, res) {
     try {
       const userId = req.user.id;
-      const updatedData = await authService.updateProfile(userId, req.body);
+      const updatedData = await authService.updateUserProfile(userId, req.body);
       return res.status(200).json({
         success: true,
         message: "Cập nhật thông tin thành công.",
