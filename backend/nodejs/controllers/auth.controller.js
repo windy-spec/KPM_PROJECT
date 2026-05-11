@@ -35,7 +35,11 @@ class authController {
         success: true,
         accessToken,
         refreshToken,
-        user: { username: user.username, email: user.email },
+        user: {
+          username: user.username,
+          email: user.email,
+          role: user.roles?.role_name,
+        },
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -69,12 +73,10 @@ class authController {
       const userId = req.user.id;
 
       if (!userId) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Không tìm thấy thông tin người dùng.",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Không tìm thấy thông tin người dùng.",
+        });
       }
 
       await authService.logout(userId);
@@ -89,6 +91,95 @@ class authController {
       return res
         .status(500)
         .json({ success: false, message: "Lỗi hệ thống khi đăng xuất." });
+    }
+  }
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Vui lòng nhập email" });
+      }
+      await authService.forgotPassword(email);
+      return res.status(200).json({
+        success: true,
+        message:
+          "Nếu email tồn tại, một mã OTP đã được gửi để đặt lại mật khẩu. Vui lòng kiểm tra hộp thư của bạn.",
+      });
+    } catch (error) {
+      console.error("Lỗi quên mật khẩu:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Lỗi hệ thống khi xử lý yêu cầu." });
+    }
+  }
+  async resetPassword(req, res) {
+    try {
+      const { email, otpCode, newPassword } = req.body;
+      if (!email || !otpCode || !newPassword) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Vui lòng điền đầy đủ thông tin." });
+      }
+
+      await authService.resetPassword(email, otpCode, newPassword);
+      return res.status(200).json({
+        success: true,
+        message: "Cập nhật mật khẩu thành công! Bạn có thể đăng nhập.",
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async changePassword(req, res) {
+    try {
+      const userId = req.user.id;
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Vui lòng nhập mật khẩu cũ và mới.",
+        });
+      }
+
+      await authService.changePassword(userId, oldPassword, newPassword);
+      return res
+        .status(200)
+        .json({ success: true, message: "Thay đổi mật khẩu thành công." });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async updateProfile(req, res) {
+    try {
+      const userId = req.user.id;
+      const updatedData = await authService.updateProfile(userId, req.body);
+      return res.status(200).json({
+        success: true,
+        message: "Cập nhật thông tin thành công.",
+        data: updatedData,
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async getAccessLogs(req, res) {
+    try {
+      // BẢN CHẤT BẢO MẬT: Kiểm tra nếu role trong token không phải ADMIN thì đá văng
+      // (Tùy theo tên role bro lưu trong DB, ở đây check role_name)
+      if (req.user.role !== "ADMIN") {
+        return res.status(403).json({
+          success: false,
+          message: "Truy cập bị từ chối. Chỉ dành cho Admin.",
+        });
+      }
+
+      const logs = await authService.getUsersAccessLogs();
+      return res.status(200).json({ success: true, data: logs });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 }

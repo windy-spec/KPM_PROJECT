@@ -8,11 +8,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendVerifyEmail = async (email, code) => {
+const sendVerifyEmail = async (email, code, type = "REGISTER") => {
+  let subjectText = "";
+  let greetingContext = "";
+  if (type === "FORGOT_PASSWORD") {
+    subjectText = "[KPM] Yêu cầu đặt lại mật khẩu";
+    greetingContext = `Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản trên hệ thống <strong style="color: #1e3a8a;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để tiến hành đổi mật khẩu mới:`;
+  } else {
+    // Mặc định là REGISTER
+    subjectText = "[KPM] Mã xác thực đăng ký tài khoản";
+    greetingContext = `Bạn vừa yêu cầu đăng ký tài khoản trên hệ thống <strong style="color: #1e3a8a;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để hoàn tất quá trình đăng ký:`;
+  }
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
     to: email,
-    subject: "[KPM] Mã xác thực tài khoản của bạn",
+    subject: subjectText,
     html: `
       <div style="max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; padding: 30px; border-radius: 10px; border: 1px solid #e5e7eb;">
         
@@ -23,8 +33,9 @@ const sendVerifyEmail = async (email, code) => {
 
         <div style="background-color: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
           <h2 style="color: #1f2937; font-size: 20px; margin-top: 0;">Xin chào,</h2>
+          
           <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-            Bạn vừa yêu cầu đăng ký tài khoản trên hệ thống <strong style="color: #1e3a8a;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để hoàn tất quá trình đăng ký:
+            ${greetingContext}
           </p>
 
           <div style="text-align: center; margin: 30px 0;">
@@ -37,7 +48,7 @@ const sendVerifyEmail = async (email, code) => {
           </div>
 
           <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
-            Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Tuyệt đối không chia sẻ mã OTP này cho bất kỳ ai để bảo vệ tài khoản của bạn.
+            Nếu bạn không thực hiện yêu cầu này, vui lòng đổi mật khẩu ngay hoặc liên hệ với Admin. Tuyệt đối không chia sẻ mã OTP này cho bất kỳ ai để bảo vệ tài khoản của bạn.
           </p>
         </div>
 

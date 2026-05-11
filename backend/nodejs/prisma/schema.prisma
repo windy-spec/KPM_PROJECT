@@ -245,6 +245,7 @@ model users {
   code_expires_at   DateTime?          @db.Timestamptz(6)
   refresh_token     String?            @db.Text
   created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  last_login_at    DateTime?          @db.Timestamptz(6)
   ai_chat_sessions ai_chat_sessions[]
   quotations       quotations[]
   user_profiles    user_profiles?
