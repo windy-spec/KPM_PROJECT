@@ -38,7 +38,7 @@ class authService {
           username,
           email,
           password_hash: passwordHash,
-          role_id: userRole.id, // Auto gán USER
+          role_id: userRole.id,
           verification_code: verifyCode,
           code_expires_at: expiresAt,
           user_profiles: {
