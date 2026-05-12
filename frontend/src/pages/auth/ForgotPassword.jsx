@@ -1,23 +1,113 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Factory, Mail, ShieldCheck, Lock, Send, CheckCircle2 } from 'lucide-react';
+import { Factory, Mail, Lock, Send, CheckCircle2, CircleAlert, Sparkles, BadgeCheck } from 'lucide-react';
 import { authService } from '../../services/auth.service';
+import { toast } from 'react-toastify';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Xác thực Email/OTP, 2: Đặt lại mật khẩu
   const [isOtpEnabled, setIsOtpEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+  const [countdown, setCountdown] = useState(0);
   
   // State quản lý 6 ô OTP
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const inputRefs = useRef([]); 
+  const redirectTimerRef = useRef(null);
+  const countdownTimerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     email: '',
     newPassword: '',
     confirmPassword: ''
   });
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showAuthToast = (variant, title, description) => {
+    const configs = {
+      success: {
+        wrapper: 'border-emerald-200 bg-emerald-50/95',
+        badge: 'bg-emerald-600 text-white',
+        title: 'text-emerald-950',
+        description: 'text-emerald-800',
+        icon: BadgeCheck,
+      },
+      error: {
+        wrapper: 'border-rose-200 bg-rose-50/95',
+        badge: 'bg-rose-600 text-white',
+        title: 'text-rose-950',
+        description: 'text-rose-800',
+        icon: CircleAlert,
+      },
+      info: {
+        wrapper: 'border-sky-200 bg-sky-50/95',
+        badge: 'bg-sky-600 text-white',
+        title: 'text-sky-950',
+        description: 'text-sky-800',
+        icon: Sparkles,
+      },
+    };
+
+    const config = configs[variant] || configs.info;
+    const Icon = config.icon;
+
+    toast(({ closeToast }) => (
+      <div className={`flex items-start gap-3 rounded-2xl border p-4 backdrop-blur-sm ${config.wrapper}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${config.badge}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[11px] font-black uppercase tracking-[0.24em] ${config.title}`}>
+            {title}
+          </p>
+          <p className={`mt-1 text-sm leading-relaxed ${config.description}`}>
+            {description}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={closeToast}
+          className="rounded-full p-1 text-black/40 transition-colors hover:bg-black/5 hover:text-black/70"
+        >
+          <span className="text-lg leading-none">×</span>
+        </button>
+      </div>
+    ), {
+      position: 'top-right',
+      autoClose: 3500,
+      hideProgressBar: true,
+      closeOnClick: false,
+      pauseOnHover: true,
+      draggable: true,
+      closeButton: false,
+      icon: false,
+      style: {
+        background: 'transparent',
+        boxShadow: 'none',
+        padding: 0,
+        minHeight: 'unset',
+      },
+    });
+  };
+
+  const showError = (message) => {
+    setErrorMessage(message);
+    showAuthToast('error', 'Yêu cầu chưa hợp lệ', message);
+  };
 
   // --- LOGIC XỬ LÝ OTP ---
   const handleOtpChange = (value, index) => {
@@ -43,18 +133,17 @@ const ForgotPassword = () => {
   // --- LOGIC XỬ LÝ FORM ---
   const handleSendOTP = async () => {
     if (!formData.email) {
-      alert("Vui lòng nhập email hệ thống!");
-      return;
+      return showError('Vui lòng nhập email hệ thống!');
     }
     setLoading(true);
     try {
       await authService.forgotPassword({ email: formData.email });
       setLoading(false);
       setIsOtpEnabled(true);
-      alert("Mã xác thực đã được gửi! Vui lòng kiểm tra email của bạn.");
+      setErrorMessage('');
     } catch (error) {
       setLoading(false);
-      alert(error.response?.data?.message || "Không thể gửi mã. Vui lòng kiểm tra email và thử lại.");
+      showError(error.response?.data?.message || 'Không thể gửi mã. Vui lòng kiểm tra email và thử lại.');
     }
   };
 
@@ -64,15 +153,14 @@ const ForgotPassword = () => {
     if (fullOtp.length === 6) {
       setStep(2);
     } else {
-      alert("Vui lòng nhập đủ mã xác thực!");
+      showError('Vui lòng nhập đủ mã xác thực!');
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (formData.newPassword !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không trùng khớp!");
-      return;
+      return showError('Mật khẩu xác nhận không trùng khớp!');
     }
     setLoading(true);
     try {
@@ -84,16 +172,60 @@ const ForgotPassword = () => {
         confirmPassword: formData.confirmPassword
       });
       setLoading(false);
-      alert("Mật khẩu đã được thay đổi thành công!");
-      navigate('/login');
+      setSuccessMessage('Mật khẩu đã được thay đổi thành công! Đang chuyển bạn về trang đăng nhập...');
+      setCountdown(3);
+      setShowSuccessOverlay(true);
+
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+
+      countdownTimerRef.current = setInterval(() => {
+        setCountdown((currentCountdown) => {
+          if (currentCountdown <= 1) {
+            if (countdownTimerRef.current) {
+              clearInterval(countdownTimerRef.current);
+              countdownTimerRef.current = null;
+            }
+            navigate('/login');
+            return 0;
+          }
+
+          return currentCountdown - 1;
+        });
+      }, 1000);
     } catch (error) {
       setLoading(false);
-      alert(error.response?.data?.message || "Không thể đặt lại mật khẩu. Vui lòng thử lại.");
+      showError(error.response?.data?.message || 'Không thể đặt lại mật khẩu. Vui lòng thử lại.');
     }
   };
 
   return (
     <div className="min-h-screen bg-surface flex flex-col font-sans selection:bg-primary/20">
+      {showSuccessOverlay ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-md">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-emerald-200 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.25)]">
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400" />
+            <div className="p-8 sm:p-10 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+                <CheckCircle2 className="h-10 w-10" />
+              </div>
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-700">Thành công</p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Đổi mật khẩu hoàn tất</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {successMessage}
+              </p>
+              <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                Hệ thống sẽ tự động chuyển sang đăng nhập sau {countdown} giây.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Header */}
       <header className="px-10 py-5 flex items-center bg-white border-b border-outline-variant sticky top-0 z-50">
         <div className="flex items-center gap-2">
@@ -117,6 +249,12 @@ const ForgotPassword = () => {
           {step === 1 ? (
             /* --- BƯỚC 1: NHẬP EMAIL & CỤM OTP TỔNG --- */
             <form onSubmit={handleVerifyOTP} className="flex flex-col gap-8">
+              {errorMessage ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {errorMessage}
+                </div>
+              ) : null}
+
               {/* Field Email */}
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black uppercase text-on-surface-variant tracking-widest ml-1">Email đăng ký</label>
@@ -183,6 +321,12 @@ const ForgotPassword = () => {
           ) : (
             /* --- BƯỚC 2: NHẬP MẬT KHẨU MỚI --- */
             <form onSubmit={handleResetPassword} className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {errorMessage ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {errorMessage}
+                </div>
+              ) : null}
+
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black uppercase text-on-surface-variant tracking-widest ml-1">Mật khẩu mới</label>
                 <div className="relative">

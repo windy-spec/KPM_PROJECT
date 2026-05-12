@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import MainLayout from './components/layout/MainLayout';
 import Home from './pages/client/Home';
 import Login from './pages/auth/Login';
@@ -7,36 +8,58 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Profile from './pages/profile/Profile';
 
+const routeMap = [
+  {
+    path: '/',
+    element: (
+      <MainLayout>
+        <Home />
+      </MainLayout>
+    ),
+  },
+  { path: '/login', element: <Login /> },
+  { path: '/register', element: <Register /> },
+  { path: '/forgot-password', element: <ForgotPassword /> },
+  {
+    path: '/profile',
+    element: (
+      <MainLayout>
+        <Profile />
+      </MainLayout>
+    ),
+  },
+];
+
+function AppRoutes() {
+  const location = useLocation();
+
+  return (
+    <div className="page-transition-shell">
+      <Routes location={location} key={location.pathname}>
+        {routeMap.map(({ path, element }) => (
+          <Route key={path} path={path} element={element} />
+        ))}
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   return (
     <Router>
-      <Routes>
-        {/* Route cho Trang Chủ */}
-        <Route 
-          path="/" 
-          element={
-            <MainLayout>
-              <Home />
-            </MainLayout>
-          } 
-        />
-
-        {/* Route cho Đăng Nhập */}
-        <Route path="/login" element={<Login />} />
-        {/* Route cho Đăng Ký */}
-        <Route path="/register" element={<Register />} />
-        {/* Route cho Quên mật khẩu */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        {/* Route cho Profile */}
-        <Route
-          path="/profile"
-          element={
-            <MainLayout>
-              <Profile />
-            </MainLayout>
-          }
-        />
-      </Routes>
+      <AppRoutes />
+      <ToastContainer
+        position="top-right"
+        autoClose={3800}
+        hideProgressBar
+        newestOnTop
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </Router>
   );
 }
