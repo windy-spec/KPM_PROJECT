@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  /* KPM BRAND COLORS */
+  
+  /* Màu chính (Teal/Xanh mòng két) */
+  --color-primary: #006565;
+  --color-primary-container: #008080;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #e3fffe;
+
+  /* Màu phụ (Màu xanh đá/Xám lạnh) */
+  --color-secondary: #446464;
+  --color-secondary-container: #c6e9e9;
+  --color-on-secondary-container: #4a6a6a;
+
+  /* Màu nền và bề mặt (Surface) */
+  --color-background: #f8fafa;
+  --color-surface: #f8fafa;
+  --color-surface-container: #eceeee;
+  --color-surface-variant: #e1e3e3;
+  
+  /* Màu bổ trợ */
+  --color-outline: #6e7979;
+  --color-outline-variant: #bdc9c8;
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #3e4949;
+  --color-error: #ba1a1a;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui;
+}
