@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Portal from '../../components/common/Portal';
 import { Link, useNavigate } from 'react-router-dom';
 import { Factory, Mail, Lock, Eye, EyeOff, UserPlus, Phone, User, ShieldCheck, CheckCircle2, ArrowRight, Send, CircleAlert, Sparkles, BadgeCheck } from 'lucide-react';
 import { authService } from '../../services/auth.service';
-import Portal from '../../components/common/Portal';
 import { toast } from 'react-toastify';
 
 const Register = () => {
@@ -395,28 +395,28 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col font-sans selection:bg-primary/20">
-      {showSuccessOverlay ? (
+      {showSuccessOverlay && (
         <Portal>
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-md">
             <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-emerald-200 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.25)]">
               <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400" />
-            <div className="p-8 sm:p-10 text-center">
-              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
-                <CheckCircle2 className="h-10 w-10" />
+              <div className="p-8 sm:p-10 text-center">
+                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+                  <CheckCircle2 className="h-10 w-10" />
+                </div>
+                <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-700">Thành công</p>
+                <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Đăng ký hoàn tất</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {successMessage}
+                </p>
+                <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                  Hệ thống sẽ tự động chuyển sang đăng nhập sau {countdown} giây.
+                </div>
               </div>
-              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-700">Thành công</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900">Đăng ký hoàn tất</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                {successMessage}
-              </p>
-              <div className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                Hệ thống sẽ tự động chuyển sang đăng nhập sau {countdown} giây.
-              </div>
-            </div>
             </div>
           </div>
         </Portal>
-      ) : null}
+      )}
 
       {!isOnline ? (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800">
