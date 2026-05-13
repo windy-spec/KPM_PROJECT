@@ -92,6 +92,43 @@ class authService {
 
     return { user, accessToken, refreshToken };
   }
+
+  async getCurrentUser(userId) {
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      include: {
+        user_profiles: true,
+        roles: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("Người dùng không tồn tại");
+    }
+
+    return {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.roles?.role_name || null,
+        isActive: user.is_active,
+        isVerified: user.is_verified,
+        lastLoginAt: user.last_login_at,
+      },
+      profile: user.user_profiles
+        ? {
+            firstName: user.user_profiles.first_name,
+            middleName: user.user_profiles.middle_name,
+            lastName: user.user_profiles.last_name,
+            phoneNumber: user.user_profiles.phone_number,
+            address: user.user_profiles.address,
+            zaloNumber: user.user_profiles.zalo_number,
+          }
+        : null,
+    };
+  }
+
   async verifyOTP(email, code) {
     // 1. Tìm user theo email
     const user = await prisma.users.findUnique({
@@ -175,9 +212,19 @@ class authService {
       zaloNumber,
     } = profileData;
 
-    return await prisma.user_profiles.update({
+    return await prisma.user_profiles.upsert({
       where: { user_id: userId },
-      data: {
+      create: {
+        user_id: userId,
+        first_name: firstName,
+        middle_name: middleName,
+        last_name: lastName,
+        phone_number: phoneNumber,
+        address: address,
+        zalo_number: zaloNumber,
+        updated_at: new Date(),
+      },
+      update: {
         first_name: firstName,
         middle_name: middleName,
         last_name: lastName,
@@ -188,6 +235,7 @@ class authService {
       },
     });
   }
+  
   async getUsersAccessLogs() {
     return await prisma.users.findMany({
       select: {

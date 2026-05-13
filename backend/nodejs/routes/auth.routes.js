@@ -13,6 +13,7 @@ router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);
 
 // 2. CÁC ROUTE BẮT BUỘC CÓ TOKEN (PRIVATE)
+router.get("/me", authMiddleware, authController.getCurrentUser);
 router.post("/logout", authMiddleware, authController.logout);
 router.put("/change-password", authMiddleware, authController.changePassword);
 router.put("/profile", authMiddleware, authController.updateProfile);

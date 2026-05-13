@@ -39,10 +39,29 @@ class authController {
           username: user.username,
           email: user.email,
           role: user.roles?.role_name,
+          firstName: user.user_profiles?.first_name,
+          middleName: user.user_profiles?.middle_name,
+          lastName: user.user_profiles?.last_name,
+          phoneNumber: user.user_profiles?.phone_number,
+          address: user.user_profiles?.address,
+          zaloNumber: user.user_profiles?.zalo_number,
         },
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async getCurrentUser(req, res) {
+    try {
+      const userId = req.user.id;
+      const currentUser = await authService.getCurrentUser(userId);
+
+      return res.status(200).json({
+        success: true,
+        data: currentUser,
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
     }
   }
   async verifyOTP(req, res) {
