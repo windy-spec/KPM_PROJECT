@@ -143,13 +143,28 @@ model product_images {
   products    products? @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
+
+model product_categories {
+  id            String     @id @default(uuid()) @db.Uuid
+  category_code String     @unique @db.VarChar(50)
+  category_name String     @db.VarChar(255)
+  description   String?
+  created_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  
+  products      products[]
+}
+
+
 model products {
-  id             String           @id @default(uuid()) @db.Uuid
-  product_code   String           @unique @db.VarChar(50)
-  product_name   String           @db.VarChar(255)
-  default_specs  Json?
-  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
-  product_images product_images[]
+  id                 String              @id @default(uuid()) @db.Uuid
+  category_id        String?             @db.Uuid
+  product_code       String              @unique @db.VarChar(50)
+  product_name       String              @db.VarChar(255)
+  default_specs      Json?
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  
+  product_images     product_images[]
+  product_categories product_categories? @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
 }
 
 model quotation_attachments {
@@ -250,4 +265,24 @@ model users {
   quotations        quotations[]
   user_profiles     user_profiles?
   roles             roles?             @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+}
+
+model import_batches {
+  id                  String                @id @default(uuid()) @db.Uuid
+  batch_type          String                @db.VarChar(50) // VD: "EXCEL_PRODUCT", "EXCEL_CATEGORY"
+  status              String                @default("PENDING") @db.VarChar(50) // PENDING, APPROVED, REJECTED, EXPIRED
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  
+  product_imports_tmp product_imports_tmp[]
+}
+
+model product_imports_tmp {
+  id                String         @id @default(uuid()) @db.Uuid
+  batch_id          String         @db.Uuid
+  raw_data          String         @db.Text // Lưu toàn bộ dữ liệu 1 dòng Excel
+  validation_status String         @db.VarChar(20) // Trạng thái: "VALID" hoặc "INVALID"
+  validation_errors Json?          // Lưu cục JSON báo lỗi
+  created_at        DateTime?      @default(now()) @db.Timestamptz(6)
+  
+  import_batches    import_batches @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
