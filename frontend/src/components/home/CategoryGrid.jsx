@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Portal from '../common/Portal';
 import { DoorOpen, LayoutGrid, Layers, Construction, Home, Box, X, ArrowRight } from 'lucide-react';
 
 const CategoryCard = ({ icon: Icon, title, onClick }) => (
@@ -84,13 +85,14 @@ const CategoryGrid = () => {
 
       {/* Modal hiện nổi*/}
       {activeCategory && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-on-surface/60 backdrop-blur-md transition-opacity"
-            onClick={() => setActiveCategory(null)}
-          ></div>
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div 
+              className="absolute inset-0 bg-on-surface/60 backdrop-blur-md transition-opacity"
+              onClick={() => setActiveCategory(null)}
+            ></div>
 
-          <div className="relative bg-white w-full max-w-lg rounded-3xl p-10 shadow-2xl border border-outline-variant animate-in fade-in zoom-in duration-300">
+            <div className="relative bg-white w-full max-w-lg rounded-3xl p-10 shadow-2xl border border-outline-variant animate-in fade-in zoom-in duration-300">
             <button 
               onClick={() => setActiveCategory(null)}
               className="absolute top-6 right-6 p-2 hover:bg-surface rounded-full transition-colors cursor-pointer"
@@ -130,8 +132,9 @@ const CategoryGrid = () => {
                 Liên hệ kỹ thuật & Báo giá
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
     </section>
   );

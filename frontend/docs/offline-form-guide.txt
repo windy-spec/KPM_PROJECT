@@ -1,0 +1,122 @@
+Hướng dẫn thực dụng: Nhận diện offline + lưu form tạm để người dùng thử lại an toàn
+
+Mục tiêu
+- Khi người dùng điền form rồi mất mạng (hoặc đóng tab), giữ tạm dữ liệu để họ có thể gửi lại mà không phải nhập lại toàn bộ.
+- Cảnh báo trạng thái mạng, vô hiệu hoá/ghi hàng đợi submit khi offline, cho phép retry tự động hoặc thủ công khi có mạng.
+- Tránh rủi ro bảo mật (không lưu mật khẩu không mã hoá, giới hạn thời gian lưu, xóa khi hoàn tất).
+
+Tóm tắt chiến lược thực dụng
+1. Phát hiện trạng thái mạng: dùng `navigator.onLine` và lắng nghe event `window.addEventListener('online'|'offline')`.
+2. Lưu draft: lưu local với `sessionStorage` (theo tab) hoặc `localStorage`/IndexedDB cho lưu trữ lâu dài hoặc nhiều bản nháp.
+   - `sessionStorage` an toàn hơn cho draft ngắn hạn (đóng tab là mất) — phù hợp khi không muốn lưu qua các cửa sổ khác.
+   - `localStorage` tiện cho chuyển tab, nhưng dễ bị truy cập bởi JS khác; hạn chế dùng cho dữ liệu nhạy cảm.
+   - IndexedDB: chọn khi form lớn, nhiều file, hoặc cần queue phức tạp.
+3. Quy tắc lưu: lưu tất cả các trường không nhạy cảm; KHÔNG lưu mật khẩu/trường nhạy cảm ở dạng thuần (nếu cần, mã hóa bằng Web Crypto API).
+4. Submit khi offline: hai lựa chọn:
+   - Block submit và yêu cầu người dùng chờ kết nối (hiện banner/offline toast). Lý tưởng cho thao tác nhạy cảm.
+   - Queue submit: lưu vào queue (localStorage/IndexedDB) và tự gửi lại khi online (auto-retry + backoff). Dùng cho các action idempotent hoặc có server-side dedup.
+5. UX: hiển thị banner "Offline" rõ ràng, thông báo "Dữ liệu đã lưu tạm" + nút "Gửi lại"; nếu auto-retry, show progress/toast.
+6. Bảo mật & Hệ thống: xóa draft sau khi submit thành công; thêm TTL (ví dụ 24h) cho draft; với PII yêu cầu mã hoá khi lưu.
+
+Mẫu code React (thực dụng, dùng sessionStorage + online events)
+
+// Hook nhỏ: useOfflineDraft.js
+
+function useOfflineDraft(key, initialValue) {
+  const [value, setValue] = React.useState(() => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      return raw ? JSON.parse(raw) : initialValue;
+    } catch { return initialValue; }
+  });
+
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }, [key, value]);
+
+  const clear = () => { sessionStorage.removeItem(key); setValue(initialValue); };
+
+  return [value, setValue, clear];
+}
+
+Sử dụng trong component form:
+
+- Khi mount: load draft => set vào state form.
+- Khi user nhập: cập nhật state và hook sẽ persist tự động.
+- Khi submit:
+  - Nếu (!navigator.onLine) => thông báo "Bạn đang offline, dữ liệu đã được giữ tạm. Khi có mạng bấm gửi lại." và lưu draft (đã có).
+  - Nếu (navigator.onLine) => gửi request; nếu lỗi mạng xuất hiện giữa chừng, chuyển sang chế độ offline xử lý như trên.
+
+Ví dụ bộ xử lý submit:
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!navigator.onLine) {
+    // show banner/toast
+    return;
+  }
+
+  try {
+    await api.post('/some-endpoint', formState);
+    clearDraft(); // xóa sessionStorage
+    // show success
+  } catch (err) {
+    // nếu là lỗi mạng, lưu draft và báo cho user
+    // nếu là lỗi validation, show field errors
+  }
+}
+
+Tự động retry khi online (simple):
+
+useEffect(() => {
+  const onOnline = () => {
+    // kiểm tra có draft chưa gửi => tự gửi hoặc hiện nút Retry
+    // nếu auto-send: call submitDraft() với backoff & dedup checks
+  };
+  window.addEventListener('online', onOnline);
+  return () => window.removeEventListener('online', onOnline);
+}, []);
+
+Queue + retry nâng cao (IndexedDB)
+- Lưu một queue item: { id, payload, url, method, attempts, createdAt }
+- Khi online, process queue: lấy item đầu, send, nếu success => xóa, nếu fail mạng => break (đợi online), nếu fail server validation => mark error + notify user.
+- Retry với exponential backoff (1s, 2s, 4s...) cho attempt <= N.
+- Với requests không idempotent (ví dụ tạo tài nguyên), server cần hỗ trợ dedup bằng requestId client-generated.
+
+UI Best Practices
+- Luôn show banner hoặc nhỏ góc màn hình: "Bạn đang offline — bản nháp đã lưu tạm." cùng nút "Gửi lại".
+- Không tự submit mật khẩu nhạy cảm khi auto-retry; thay vào đó yêu cầu user nhập lại mật khẩu trước khi gửi.
+- Cho phép user delete draft.
+- Thông báo TTL và khi draft hết hạn.
+
+Bảo mật
+- Không lưu mật khẩu/plain secrets in localStorage/sessionStorage.
+- Nếu bắt buộc lưu tạm password, dùng Web Crypto API để mã hoá với khóa ngắn hạn, chỉ lưu ciphertext, và xóa khi submit/timeout.
+- Xác thực server-side vẫn cần kiểm tra duplicate/nonce để tránh double-create.
+
+Tùy chọn tiến tới PWA
+- Service Worker + Background Sync: cho phép queue gửi trên background khi mạng trở lại, tốt cho PWA.
+- Workbox có helpers cho background sync.
+
+Kiểm thử
+- Thử offline bằng DevTools -> Offline.
+- Đóng tab/khởi động lại trình duyệt để kiểm tra tính bền của draft (sessionStorage vs localStorage).
+- Kiểm tra xóa sau submit và TTL.
+
+Kiểm tra nhanh (checklist triển khai)
+- [ ] Lắng nghe online/offline và hiển thị banner
+- [ ] Lưu draft (sessionStorage) khi form thay đổi
+- [ ] Block hoặc queue submit khi offline
+- [ ] Retry xử lý khi online
+- [ ] Xóa draft sau submit thành công
+- [ ] TTL + expiry clear
+- [ ] Không lưu mật khẩu không mã hoá
+- [ ] Tests: DevTools Offline, đóng tab, reload
+
+Nếu bạn muốn, tôi có thể:
+- 1) Thêm file hook mẫu `useOfflineDraft.js` vào `frontend/src/hooks/` và ví dụ cách tích hợp vào `Register.jsx`.
+- 2) Hoàn thiện phiên bản queue + IndexedDB (có code mẫu).
+
+Bạn muốn tiếp theo là thêm code mẫu (hook + tích hợp vào `Register`) hay chỉ cần file hướng dẫn này để đọc?
