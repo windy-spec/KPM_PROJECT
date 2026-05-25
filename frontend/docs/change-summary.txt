@@ -1,0 +1,35 @@
+Tóm Tắt Thay Đổi Frontend KPM
+=============================
+
+Ngày: 2026-05-25
+
+Những gì đã thay đổi
+--------------------
+1. AIFloatingButton
+- Bọc nút AI nổi bằng component Portal có sẵn để nó mount vào `document.body`.
+- Sửa lỗi hành vi portal trên trang chủ.
+- Nút này hiện chỉ được render từ `MainLayout`, tránh render trùng ở `Home`.
+
+2. Navigation menu
+- Đã nối mục "Tất cả sản phẩm" sang route `/products`.
+- Thay các link dropdown chết (`#`) bằng link router trỏ về trang sản phẩm.
+
+3. Tối ưu frontend
+- Bỏ render trùng `AIFloatingButton` ở `Home`.
+- Đưa dữ liệu sản phẩm tĩnh ra ngoài render của `ProductList`.
+- Đưa dữ liệu mặc định của bộ lọc ra ngoài render của `SidebarFilter`.
+
+4. Dọn dẹp trang Register
+- Bỏ state trung gian cho độ mạnh mật khẩu và tính trực tiếp từ `formData`.
+- Khôi phục dữ liệu nháp bằng lazy initialization của state thay vì dùng effect khi mount.
+- Giữ cơ chế lưu nháp trong `sessionStorage` theo một đường ghi đơn giản hơn.
+
+Kiểm tra
+--------
+- Đã chạy kiểm tra lỗi tĩnh trên các file đã chỉnh.
+- Không có lỗi cú pháp nào được báo ở các file frontend đã chạm.
+
+Ghi chú
+-------
+- Frontend hiện vẫn dùng dữ liệu mock ở một số trang, tạm thời là chủ ý.
+- Hướng tối ưu tiếp theo là nối các trang đó với dữ liệu backend thật khi API sẵn sàng.

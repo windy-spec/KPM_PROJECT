@@ -1,5 +1,5 @@
 import React from 'react';
-import ProductCard from '../common/ProductCard';
+import ProductHomeCard from '../common/ProductHomeCard';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const FeaturedProducts = ({ products }) => {
@@ -28,7 +28,7 @@ const FeaturedProducts = ({ products }) => {
       {/* Danh sách Grid sản phẩm */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {products.map((item) => (
-          <ProductCard key={item.id} product={item} />
+          <ProductHomeCard key={item.id} product={item} />
         ))}
       </div>
       

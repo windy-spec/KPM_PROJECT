@@ -5,6 +5,27 @@ import { Factory, Mail, Lock, Eye, EyeOff, UserPlus, Phone, User, ShieldCheck, C
 import { authService } from '../../services/auth.service';
 import { toast } from 'react-toastify';
 
+const DRAFT_STORAGE_KEY = 'kpm-register-draft';
+
+const getSavedDraft = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const savedDraft = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+
+  if (!savedDraft) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedDraft);
+  } catch {
+    sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    return null;
+  }
+};
+
 const Register = () => {
   const navigate = useNavigate();
   const [isRegistered, setIsRegistered] = useState(false); // Chuyển đổi giữa Form và Verify
@@ -16,21 +37,19 @@ const Register = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [strength, setStrength] = useState(0);
-  const [strengthConfirm, setStrengthConfirm] = useState(0);
 
   // State OTP
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const inputRefs = useRef([]);
   const redirectTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
-  const draftStorageKey = 'kpm-register-draft';
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     lastName: '', middleName: '', firstName: '',
     email: '', phoneNumber: '', username: '',
-    password: '', confirmPassword: ''
-  });
+    password: '', confirmPassword: '',
+    ...getSavedDraft(),
+  }));
 
   // --- LOGIC OTP ---
   const handleOtpChange = (value, index) => {
@@ -57,32 +76,11 @@ const Register = () => {
     return score;
   };
 
-  useEffect(() => {
-    setStrength(calculateStrength(formData.password));
-  }, [formData.password]);
+  const strength = calculateStrength(formData.password);
+  const strengthConfirm = calculateStrength(formData.confirmPassword);
 
   useEffect(() => {
-    setStrengthConfirm(calculateStrength(formData.confirmPassword));
-  }, [formData.confirmPassword]);
-
-  useEffect(() => {
-    const savedDraft = sessionStorage.getItem(draftStorageKey);
-
-    if (savedDraft) {
-      try {
-        const parsedDraft = JSON.parse(savedDraft);
-        setFormData((currentFormData) => ({
-          ...currentFormData,
-          ...parsedDraft,
-        }));
-      } catch {
-        sessionStorage.removeItem(draftStorageKey);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    sessionStorage.setItem(draftStorageKey, JSON.stringify(formData));
+    sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
   }, [formData]);
 
   useEffect(() => {
@@ -338,7 +336,7 @@ const Register = () => {
         clearInterval(countdownTimerRef.current);
       }
 
-      sessionStorage.removeItem(draftStorageKey);
+      sessionStorage.removeItem(DRAFT_STORAGE_KEY);
 
       countdownTimerRef.current = setInterval(() => {
         setCountdown((currentCountdown) => {

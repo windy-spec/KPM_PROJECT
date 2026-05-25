@@ -7,6 +7,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Profile from './pages/profile/Profile';
+import ProductList from './pages/product/ProductList';
 
 const routeMap = [
   {
@@ -28,7 +29,16 @@ const routeMap = [
       </MainLayout>
     ),
   },
+  {
+    path: '/products',
+    element: (
+      <MainLayout>
+        <ProductList />
+      </MainLayout>
+    ),
+  },
 ];
+
 
 function AppRoutes() {
   const location = useLocation();
