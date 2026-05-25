@@ -1,0 +1,146 @@
+HƯỚNG DẪN CODE — Từ Cơ Bản đến Nâng Cao (Tiếng Việt)
+
+Mục đích
+- Tài liệu ngắn gọn giải thích các khái niệm lập trình theo trình tự: từ phần cơ bản nhất tới các mẫu nâng cao và vì sao chúng được dùng.
+- Dành cho kỹ sư muốn có cái nhìn thực tế, nhanh và dễ áp dụng cho frontend/backend của dự án này.
+
+1) Khái niệm cơ bản: Code là gì và tại sao chúng ta viết nó
+- Code là tập hợp hướng dẫn cho máy tính thực hiện tác vụ.
+- Viết code để tự động hóa, kiểm tra, xử lý và hiển thị dữ liệu.
+- Ngôn ngữ khác nhau phục vụ mục đích khác nhau (ví dụ JavaScript cho frontend, Node.js cho backend).
+
+2) Các khối xây dựng nguyên thủy
+- Biến (variables): lưu chuỗi, số, boolean.
+- Hàm (functions): đóng gói logic có thể tái sử dụng.
+- Luồng điều khiển (if/else, vòng lặp, switch).
+Vì sao dùng: giúp chia nhỏ vấn đề và tái sử dụng logic.
+
+3) Cấu trúc dữ liệu
+- Mảng và object trong JS: lưu danh sách và cặp key-value.
+- Dùng mảng cho danh sách có thứ tự; object cho dữ liệu có nhãn.
+Vì sao: chọn cấu trúc phù hợp giúp code ngắn gọn và nhanh hơn.
+
+4) Tách module và tổ chức file
+- Chia code thành module/file để mỗi file có trách nhiệm rõ ràng.
+- Ví dụ: client API trong `services/`, UI trong `components/`, trang trong `pages/`.
+Vì sao: dễ đọc, dễ test, dễ tái sử dụng và giảm xung đột khi làm chung.
+
+5) Kiểm soát phiên bản (Git)
+- Dùng Git để lưu lịch sử, tạo nhánh, review diff và mở PR.
+- Commit từng thay đổi nhỏ, có ý nghĩa.
+Vì sao: hợp tác, hồi phục mã nguồn, và theo dõi lịch sử.
+
+6) HTTP & API (frontend giao tiếp backend thế nào)
+- Frontend gọi API bằng `fetch` hoặc thư viện như `axios` (qua `apiClient`).
+- Luồng điển hình: người dùng tác động -> component gọi service -> service gọi API -> backend trả dữ liệu -> component render lại.
+Vì sao: tách riêng logic giao diện và logic mạng giúp code sạch hơn.
+
+7) React cơ bản (mô hình component)
+- Component: khối UI có thể tái sử dụng (hàm hoặc class). Nhận `props`, có thể có `state`.
+- Props: dữ liệu truyền từ component cha xuống con.
+- State: dữ liệu nội bộ khiến component render lại khi thay đổi.
+Vì sao: component hóa giúp UI dễ hiểu và tái dùng.
+
+8) JSX và render
+- JSX là cú pháp nhìn giống HTML trong JS; React biên dịch JSX thành lời gọi JS.
+- React render tree component vào một DOM root (xem `main.jsx`).
+Vì sao: cách khai báo (declarative) giúp cập nhật giao diện đơn giản hơn.
+
+9) Giao tiếp giữa các component
+- Cha -> Con: truyền `props`.
+- Con -> Cha: gọi callback props.
+- Trạng thái chia sẻ: Context hoặc state manager.
+Vì sao: luồng dữ liệu rõ ràng tránh side-effect bất ngờ.
+
+10) Quản lý state
+- State cục bộ: `useState` cho trường hợp đơn giản.
+- State phức tạp/đo lường: `useMemo`, `useCallback` để tối ưu.
+- State chia sẻ: React Context hoặc thư viện như Redux/Zustand.
+Vì sao: chọn công cụ đơn giản nhất đủ giải quyết vấn đề.
+
+11) Định tuyến (react-router)
+- Khai báo mapping URL -> component trong `App.jsx`.
+- Guard (ví dụ `RoleGuard`) kiểm tra phân quyền trước khi render route.
+Vì sao: giữ cấu trúc URL rõ ràng, hỗ trợ back/forward và deep link.
+
+12) Form và validate
+- Form lưu dữ liệu trong state component.
+- Validate ở client để cải thiện UX, nhưng luôn phải validate ở server để bảo mật.
+Vì sao: trải nghiệm người dùng tốt hơn và đảm bảo toàn vẹn dữ liệu.
+
+13) Side-effects và lifecycle
+- `useEffect` xử lý side-effects: gọi API, đăng ký event, timer.
+- Luôn cleanup để tránh rò rỉ tài nguyên.
+Vì sao: giữ component có hành vi dự đoán được và tiết kiệm tài nguyên.
+
+14) Modal và Portal
+- Portal render UI ra ngoài cây DOM của component (thường là `document.body`).
+- Dùng cho modal, tooltip, widget nổi để tránh vấn đề z-index và overflow.
+Vì sao: đảm bảo overlay luôn hiển thị trên cùng.
+
+15) Cách viết style
+- Utility-first (Tailwind): ghép class tiện lợi.
+- CSS Modules hoặc styled-components để scope style.
+Vì sao: style dễ dự đoán, dễ thay theme.
+
+16) Công cụ build và dev server
+- Vite: dev server nhanh, hot-reload.
+- `npm run dev` để chạy môi trường phát triển.
+Vì sao: phản hồi nhanh khi phát triển và build tối ưu cho production.
+
+17) Test (nên test gì)
+- Unit test cho hàm thuần.
+- Integration test cho tương tác component.
+- E2E test cho flow người dùng.
+Vì sao: tránh lỗi khi thay đổi và làm rõ hành vi mong đợi.
+
+18) Tối ưu hiệu năng
+- Tránh render thừa (dùng keys, memoization).
+- Lazy-load component nặng và ảnh.
+- Debounce input tốn kém (ví dụ search).
+Vì sao: UX mượt mà và giảm chi phí host.
+
+19) Bảo mật cơ bản
+- Không tin dữ liệu từ client: validate trên server.
+- Bảo vệ route bằng token và kiểm tra quyền.
+- Không để secrets xuất hiện trong mã frontend.
+Vì sao: bảo vệ dữ liệu và hệ thống.
+
+20) Triển khai (deployment)
+- Build production: `npm run build`.
+- Serve static assets qua CDN/webserver; backend chạy API server.
+- Dùng env vars để cấu hình môi trường.
+Vì sao: phân phối nhanh và cấu hình an toàn.
+
+21) Chủ đề nâng cao (khi nào học)
+- State machines (XState) cho luồng phức tạp.
+- GraphQL cho truy vấn linh hoạt theo client.
+- Micro-frontends khi dự án lớn nhiều team.
+- Observability: logging, metrics, tracing.
+Vì sao: mở rộng, tối ưu, và dễ duy trì ở quy mô lớn.
+
+22) Qui ước trong repo này (ghi chú nhanh)
+- `components/` — các khối UI tái sử dụng.
+- `pages/` — trang theo route.
+- `services/` — wrapper gọi API.
+- `components/common/Portal.jsx` — dùng cho modal và UI nổi.
+- `frontend/docs/` — ghi chú và hướng dẫn dự án.
+
+23) Cách khám phá codebase
+- Bắt đầu từ `main.jsx` -> `App.jsx` -> trang cần đọc.
+- Tìm các gọi API trong `services/`, theo sang backend để hiểu contract.
+- Chạy dev server và kiểm thử các flow trên trình duyệt.
+
+24) Mẹo thực hành
+- Đọc file nhỏ trước, trace props/state.
+- Dùng React DevTools để xem cây component và state.
+- Dùng `console.log` hoặc UI tạm thời để quan sát runtime.
+
+25) Bước tiếp theo bạn có thể yêu cầu
+- Hướng dẫn sâu hơn về React Hooks và patterns.
+- Ví dụ từng bước tạo trang mới kèm API flow.
+- Checklist chuẩn bị production và triển khai.
+
+---
+
+File đã được lưu tại `frontend/docs/code guide - from easy to complex.txt` (đã chuyển sang tiếng Việt).

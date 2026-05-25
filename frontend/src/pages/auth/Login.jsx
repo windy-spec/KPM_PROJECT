@@ -14,13 +14,12 @@ const Login = () => {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [formData, setFormData] = useState({ username: '', password: '' });
-  const countdownTimerRef = useRef(null);
+  const timeoutRefs = useRef([]);
 
   useEffect(() => {
     return () => {
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
+      (timeoutRefs.current || []).forEach((id) => clearTimeout(id));
+      timeoutRefs.current = [];
     };
   }, []);
 
@@ -53,32 +52,44 @@ const Login = () => {
 
       const { accessToken, refreshToken, user } = response.data;
 
+      try {
+        const normalizedRole =
+          user?.role ||
+          user?.roles?.role_name ||
+          (Array.isArray(user?.roles) && (user.roles[0]?.role_name || user.roles[0]?.name)) ||
+          '';
+
+        if (normalizedRole) {
+          // ensure `role` key exists and is a simple string for RoleGuard checks
+          // do not mutate unexpected shapes beyond this small normalization
+          // (frontend-only, safe)
+          user.role = normalizedRole;
+        }
+      } catch (e) {
+        // ignore normalization errors; we'll still store what backend returned
+      }
+
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
+
+      const destination = user && String(user.role || '').toUpperCase() === 'ADMIN' ? '/admin/dashboard' : '/';
 
       setSuccessMessage('Đăng nhập thành công! Đang chuyển bạn về trang chủ...');
       setCountdown(2);
       setShowSuccessOverlay(true);
 
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
-      }
-
-      countdownTimerRef.current = setInterval(() => {
-        setCountdown((currentCountdown) => {
-          if (currentCountdown <= 1) {
-            if (countdownTimerRef.current) {
-              clearInterval(countdownTimerRef.current);
-              countdownTimerRef.current = null;
-            }
-            navigate('/');
-            return 0;
-          }
-
-          return currentCountdown - 1;
-        });
-      }, 1000);
+      // clear prior timeouts and schedule two timeouts to update countdown and navigate
+      (timeoutRefs.current || []).forEach((id) => clearTimeout(id));
+      timeoutRefs.current = [];
+      timeoutRefs.current.push(setTimeout(() => setCountdown(1), 1000));
+      timeoutRefs.current.push(
+        setTimeout(() => {
+          setCountdown(0);
+          timeoutRefs.current = [];
+          navigate(destination);
+        }, 2000)
+      );
     } catch (error) {
       const message = error?.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
 

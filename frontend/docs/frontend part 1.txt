@@ -1,0 +1,218 @@
+FRONTEND PART 1
+
+Mục tiêu của tài liệu này
+- Giải thích frontend theo cách đơn giản, dễ đọc lại.
+- Cho bạn hiểu: app chạy từ đâu, dữ liệu đi như thế nào, component hoạt động ra sao, và muốn thêm tính năng thì phải làm gì.
+- Tập trung vào phần frontend hiện tại của dự án KPM, không nói lý thuyết quá xa.
+
+1. Frontend là gì trong dự án này
+- Frontend là phần giao diện mà người dùng nhìn thấy trong trình duyệt.
+- Trong dự án này, frontend được viết bằng React + Vite.
+- React chia giao diện thành nhiều component nhỏ, sau đó ghép lại thành các trang lớn.
+- Vite là công cụ giúp chạy app nhanh khi dev và build ra bản production.
+
+Hiểu đơn giản:
+- HTML là khung nhà.
+- CSS là cách trang trí.
+- JavaScript là phần làm cho nhà đó có thể tương tác.
+- React giúp chia ngôi nhà thành nhiều phòng nhỏ để quản lý dễ hơn.
+
+2. App bắt đầu từ đâu
+- File chạy đầu tiên là frontend/src/main.jsx.
+- File này lấy component App rồi render vào phần tử root trong HTML.
+- Nói ngắn gọn: main.jsx là cổng vào của toàn bộ frontend.
+
+Luồng chạy cơ bản:
+- Trình duyệt mở index.html.
+- index.html có 1 div id=root.
+- main.jsx tìm div đó và gắn React App vào.
+- Sau đó toàn bộ giao diện sẽ được render từ App.
+
+3. App.jsx làm gì
+- App.jsx là bộ điều phối chính của toàn frontend.
+- Nó khai báo các route bằng react-router-dom.
+- Mỗi route tương ứng với một trang hoặc một màn hình.
+- Ví dụ:
+  - / là trang chủ
+  - /login là trang đăng nhập
+  - /products là danh sách sản phẩm
+  - /admin là khu quản trị
+
+Bạn có thể hiểu App.jsx như bản đồ đường đi của website.
+- Người dùng vào URL nào thì App sẽ chọn component tương ứng để hiển thị.
+- Một số trang được bọc bởi MainLayout để có chung header/footer.
+- Một số trang như login thì tách riêng để giao diện sạch hơn.
+
+4. Component là gì
+- Component là một phần giao diện độc lập.
+- Mỗi component nhận props, tự render UI, và có thể có state riêng.
+
+Ví dụ đơn giản:
+- Button là một component.
+- Navbar là một component.
+- AIFloatingButton là một component.
+- Trang Home cũng là một component, nhưng lớn hơn.
+
+Cách nghĩ dễ nhất:
+- Component nhỏ giống viên gạch.
+- Page giống căn phòng.
+- App là toàn bộ ngôi nhà.
+
+5. Props và state
+- Props là dữ liệu truyền từ cha xuống con.
+- State là dữ liệu nằm bên trong component và có thể thay đổi theo thời gian.
+
+Ví dụ:
+- Một nút có thể nhận props như text, onClick, variant.
+- Một form có state để lưu giá trị nhập vào.
+- Khi state đổi, React sẽ render lại giao diện cần thiết.
+
+Hiểu đơn giản:
+- Props giống “người ngoài đưa thông tin vào”.
+- State giống “trí nhớ bên trong của component”.
+
+6. Dữ liệu đi như thế nào
+- Giao diện thường không tự có dữ liệu.
+- Nó sẽ gọi API qua service để lấy dữ liệu từ backend.
+- Trong dự án này, các file ở frontend/src/services/ là nơi gọi API.
+
+Luồng chuẩn:
+- Component hiển thị nút hoặc form.
+- Người dùng bấm hoặc nhập.
+- Component gọi service.
+- Service gửi request lên backend.
+- Backend trả dữ liệu về.
+- Component nhận dữ liệu và render lại.
+
+Ví dụ thực tế:
+- Trang admin sản phẩm gọi adminService.getProducts().
+- Trang danh mục gọi adminService.getCategories().
+- Form đăng nhập gọi authService.login().
+
+7. Vì sao phải tách service riêng
+- Nếu gọi API trực tiếp trong mọi component thì code sẽ rối.
+- Tách service giúp code gọn hơn và dễ sửa hơn.
+- Khi endpoint đổi, thường chỉ cần sửa trong service thay vì sửa nhiều file giao diện.
+
+Lợi ích chính:
+- Dễ bảo trì.
+- Dễ đọc.
+- Dễ tái sử dụng.
+- Ít lặp code.
+
+8. Layout là gì
+- Layout là khung giao diện dùng chung cho nhiều trang.
+- Ví dụ MainLayout có thể chứa navbar, footer, sidebar, khoảng đệm chung.
+- Các trang con chỉ cần đặt nội dung vào bên trong layout đó.
+
+Cách nghĩ:
+- Layout là cái “khung sườn”.
+- Page là “nội dung đặt vào khung đó”.
+
+9. Portal là gì và tại sao cần nó
+- Portal là cách render một component ra ngoài vị trí bình thường của nó trong cây DOM.
+- Trong dự án này, Portal được dùng cho modal và một số UI nổi.
+
+Vì sao cần Portal:
+- Modal có thể bị che bởi overflow hoặc z-index của layout.
+- Render ra body giúp modal luôn nổi lên trên.
+- Cách này ổn định hơn khi giao diện phức tạp.
+
+Cách hiểu đơn giản:
+- Bình thường component đứng trong phòng của nó.
+- Portal giống như đưa nó ra sân trước để mọi người đều nhìn thấy.
+
+File liên quan:
+- frontend/src/components/common/Portal.jsx
+
+10. AIFloatingButton hoạt động thế nào
+- AIFloatingButton là một nút nổi ở góc màn hình.
+- Nó được bọc bằng Portal nên không bị layout chặn.
+- Component này hiển thị một bong bóng giới thiệu và một nút tròn AI.
+
+Luồng hoạt động hiện tại:
+- Component render một khối cố định ở bottom-right.
+- Bong bóng chào mời hiện phía trên nút.
+- Nút chính có icon Bot.
+- Khi bạn muốn mở rộng thêm tương tác, thường sẽ thêm state để bật/tắt tooltip hoặc mở panel chat.
+
+Nói đơn giản:
+- Đây là một thành phần UI nổi độc lập.
+- Nó không phải một trang.
+- Nó chỉ “treo” trên toàn ứng dụng để người dùng thấy ở mọi nơi.
+
+11. Cách một page thường được tạo
+Nếu muốn thêm một trang mới, thường làm theo các bước này:
+- Tạo file page trong frontend/src/pages/.
+- Nếu cần nhiều phần con, tạo component trong frontend/src/components/.
+- Nếu cần gọi dữ liệu, viết hàm trong frontend/src/services/.
+- Khai báo route mới trong App.jsx.
+- Nếu trang cần bảo vệ quyền, bọc bằng RoleGuard.
+
+Cách làm dễ nhớ:
+- Page để ráp toàn cảnh.
+- Component để chia nhỏ giao diện.
+- Service để nói chuyện với backend.
+- Route để mở trang đó ra.
+
+12. Cách một form hoạt động
+Form trong React thường có 3 bước:
+- Khởi tạo state cho dữ liệu form.
+- Gắn state đó vào input bằng value và onChange.
+- Khi bấm Lưu, gửi state hiện tại lên service/backend.
+
+Ví dụ dễ hiểu:
+- Bạn nhập tên sản phẩm vào ô input.
+- onChange cập nhật state.
+- Khi bấm Lưu, component lấy state đó và gửi đi.
+
+13. Cách hiểu admin dashboard hiện tại
+- Admin dashboard không phải là nhiều trang rời cho từng mục.
+- Nó là một trang lớn, bên trong đổi panel theo sidebar.
+
+Luồng điều hướng admin hiện tại:
+- Đăng nhập admin.
+- Vào /admin/dashboard.
+- Sidebar đổi activePanel.
+- Panel chính đổi nội dung tương ứng.
+
+14. Cách đọc code frontend cho dễ
+Nếu bạn mới đọc frontend, hãy đi theo thứ tự này:
+- Xem main.jsx để biết app được mount ở đâu.
+- Xem App.jsx để biết route nào mở trang nào.
+- Xem services để biết dữ liệu lấy từ đâu.
+- Xem page để biết trang đó ghép từ component nào.
+- Xem component nhỏ để hiểu từng khối UI hoạt động ra sao.
+
+Đừng đọc từ file quá nhỏ rồi đoán toàn bộ app.
+- Hãy đi từ ngoài vào trong.
+- Từ route -> page -> component -> service.
+
+15. Muốn thêm tính năng mới thì làm gì
+Một quy trình đơn giản:
+- Xác định tính năng nằm ở trang nào.
+- Xác định có cần API hay không.
+- Nếu có API, thêm hàm vào service.
+- Nếu cần UI mới, tạo component mới.
+- Nếu cần route mới, khai báo trong App.jsx.
+- Nếu cần modal, cân nhắc dùng Portal.
+
+16. Ghi nhớ ngắn gọn
+- main.jsx: nơi app bắt đầu.
+- App.jsx: nơi khai báo đường đi.
+- Page: màn hình lớn.
+- Component: khối nhỏ dùng lại được.
+- Service: nơi gọi backend.
+- State: dữ liệu bên trong component.
+- Props: dữ liệu truyền vào component.
+- Portal: cách đưa modal/nút nổi ra ngoài layout để hiển thị đúng.
+
+17. Kết luận
+- Frontend trong dự án này được tổ chức theo kiểu React component + route + service.
+- Nếu nắm được 3 lớp chính là route, component, service thì sẽ đọc code dễ hơn rất nhiều.
+- Nếu muốn, phần tiếp theo có thể viết sâu hơn theo từng chủ đề riêng như:
+  - React hoạt động như thế nào
+  - Route và layout trong dự án này
+  - Form và modal nên hiểu ra sao
+  - Portal là gì và khi nào nên dùng
+  - Luồng dữ liệu từ frontend sang backend
