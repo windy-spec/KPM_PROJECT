@@ -43,7 +43,6 @@ router.post(
   adminMiddleware,
   importController.approveBatch,
 );
-<<<<<<< HEAD
 // API 6: Tải file Excel chứa các dòng dữ liệu bị lỗi (INVALID)
 router.get(
   "/batch/:batchId/export-errors",
@@ -51,7 +50,4 @@ router.get(
   adminMiddleware,
   importController.exportErrors,
 );
-=======
-
->>>>>>> 756f4146627e46c847a0208a7ea65331a79c4693
 module.exports = router;
