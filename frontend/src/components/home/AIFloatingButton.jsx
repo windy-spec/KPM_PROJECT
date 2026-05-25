@@ -1,9 +1,11 @@
 import React from 'react';
 import { Bot, Sparkles, X } from 'lucide-react';
+import Portal from '../common/Portal';
 
 const AIFloatingButton = () => {
   return (
-    <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end gap-4">
+    <Portal>
+      <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end gap-4">
       {/* Tin nhắn chào mời từ AI (Tooltip) */}
       <div className="bg-white border border-primary/20 shadow-2xl p-4 rounded-2xl max-w-[240px] relative animate-bounce flex flex-col gap-2">
         <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase">
@@ -21,7 +23,8 @@ const AIFloatingButton = () => {
       <button className="w-16 h-16 bg-primary rounded-full shadow-[0_0_20px_rgba(0,101,101,0.4)] flex items-center justify-center group hover:scale-110 transition-all active:scale-95 border-4 border-white">
         <Bot className="w-8 h-8 text-on-primary group-hover:rotate-12 transition-transform" />
       </button>
-    </div>
+      </div>
+    </Portal>
   );
 };
 
