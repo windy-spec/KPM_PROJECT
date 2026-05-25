@@ -42,7 +42,8 @@ class ImportService {
           "Vui lòng chọn đúng mã danh mục có sẵn trong danh sách xổ xuống!",
       };
 
-      for (let i = 2; i <= 500; i++) {
+      // ĐÃ SỬA: Bắt đầu gắn Dropdown từ dòng số 5 (vì dòng 1,2,3,4 là Title và Header)
+      for (let i = 5; i <= 500; i++) {
         worksheet.getCell(`C${i}`).dataValidation = dropdownValidation;
       }
     }
@@ -59,10 +60,12 @@ class ImportService {
 
     // Sử dụng header: 1 để đọc theo mảng, sau đó tự map index
     const rows = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
-    if (rows.length <= 1) throw new Error("File Excel không có dữ liệu!");
 
-    // Loại bỏ dòng Header (dòng đầu tiên) và map lại các dòng dữ liệu
-    const dataRows = rows.slice(1).map((row) => ({
+    // ĐÃ SỬA: Nếu file chỉ có 4 dòng đầu (chưa có data ở dòng 5) thì báo lỗi
+    if (rows.length <= 4) throw new Error("File Excel không có dữ liệu!");
+
+    // ĐÃ SỬA: Loại bỏ 4 dòng đầu (index 0,1,2,3), map data từ dòng số 5 (index 4)
+    const dataRows = rows.slice(4).map((row) => ({
       product_code: (row[0] || "").toString().trim(),
       product_name: (row[1] || "").toString().trim(),
       category_code: (row[2] || "").toString().trim(),
@@ -131,6 +134,16 @@ class ImportService {
         }
       }
 
+      if (row.default_specs) {
+        try {
+          JSON.parse(row.default_specs);
+        } catch (e) {
+          validation_errors.default_specs =
+            "Cú pháp thông số kỹ thuật không phải định dạng JSON hợp lệ";
+          is_invalid = true;
+        }
+      }
+
       recordsToInsert.push({
         batch_id: batch.id,
         raw_data: JSON.stringify({ ...row, category_id: mapped_category_id }),
@@ -144,7 +157,7 @@ class ImportService {
   }
 
   // ==========================================
-  // GIAI ĐOẠN 4: REVIEW & APPROVE (CÁC HÀM BỊ THIẾU NÃY ĐÂY BRO)
+  // GIAI ĐOẠN 4: REVIEW & APPROVE
   // ==========================================
 
   // TASK-11BE: LẤY CHI TIẾT LÔ ĐỆM ĐỂ LÊN BẢNG REVIEW
@@ -254,6 +267,89 @@ class ImportService {
         data: { status: "APPROVED" },
       });
     });
+  }
+  // ==========================================
+  // TASK-17BE: XUẤT FILE EXCEL CHỨA CÁC DÒNG LỖI (INVALID)
+  // ==========================================
+  async exportInvalidRows(batchId) {
+    const batch = await prisma.import_batches.findUnique({
+      where: { id: batchId },
+      include: {
+        product_imports_tmp: {
+          where: { validation_status: "INVALID" },
+          orderBy: { created_at: "asc" },
+        },
+      },
+    });
+
+    if (!batch) throw new Error("Lô nhập không tồn tại!");
+    if (batch.product_imports_tmp.length === 0)
+      throw new Error("Lô này không có dòng dữ liệu nào bị lỗi để xuất!");
+
+    // 1. Mở lại đúng cái form Template xịn của KPM
+    const workbook = new ExcelJS.Workbook();
+    const templatePath = path.join(
+      __dirname,
+      "../templates/KPM_Import_Product.xlsx",
+    );
+    await workbook.xlsx.readFile(templatePath);
+    const worksheet = workbook.worksheets[0];
+    try {
+      const logoPath = path.join(__dirname, "../templates/logo.png");
+      const logoId = workbook.addImage({
+        filename: logoPath,
+        extension: "png", // Nếu logo của bro là đuôi .jpg thì đổi chữ này thành 'jpeg' nhé
+      });
+
+      // Chèn logo vào khu vực ô A1 đến A3 (Cột A).
+      worksheet.addImage(logoId, "A1:A3");
+    } catch (err) {
+      console.log(
+        "Cảnh báo: Không tìm thấy file logo.png trong thư mục templates!",
+      );
+    }
+    // 2. Chèn thêm Header cho "Cột Lỗi" vào ô G4 (Cột số 7, Dòng 4)
+    const errorHeaderCell = worksheet.getCell("G4");
+    errorHeaderCell.value =
+      "🚨 CHI TIẾT LỖI (SỬA XONG CÓ THỂ UP LẠI NGUYÊN FILE NÀY)";
+    errorHeaderCell.font = { bold: true, color: { argb: "FFFFFF" } };
+    errorHeaderCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "C00000" }, // Màu đỏ báo lỗi
+    };
+
+    // Căn chỉnh độ rộng cột G
+    worksheet.getColumn("G").width = 50;
+    worksheet.getColumn("G").alignment = { wrapText: true, vertical: "middle" };
+
+    // 3. Đổ dữ liệu lỗi vào từ dòng số 5 trở đi
+    let currentRow = 5;
+    batch.product_imports_tmp.forEach((item) => {
+      const rowData = JSON.parse(item.raw_data);
+      const errors = item.validation_errors;
+
+      let errorString = "";
+      if (errors) {
+        errorString = Object.values(errors)
+          .map((err) => `• ${err}`)
+          .join("\n");
+      }
+
+      // Ghi đè data vào đúng các cột A, B, C, D, E, F, G
+      worksheet.getRow(currentRow).values = [
+        rowData.product_code,
+        rowData.product_name,
+        rowData.category_code,
+        rowData.default_specs,
+        rowData.primary_image_url,
+        rowData.other_image_urls,
+        errorString,
+      ];
+      currentRow++;
+    });
+
+    return workbook;
   }
 }
 

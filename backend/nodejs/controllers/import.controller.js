@@ -75,12 +75,33 @@ class ImportController {
     try {
       const { batchId } = req.params;
       await importService.approveBatch(batchId);
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "Duyệt lô hàng thành công! Dữ liệu đã được ghi nhận.",
-        });
+      res.status(200).json({
+        success: true,
+        message: "Duyệt lô hàng thành công! Dữ liệu đã được ghi nhận.",
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  // 6. Xuất file Excel chứa danh sách các dòng bị lỗi
+  async exportErrors(req, res) {
+    try {
+      const { batchId } = req.params;
+      const workbook = await importService.exportInvalidRows(batchId);
+
+      // Cấu hình để trình duyệt tải file Excel về
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      // Đặt tên file có đính kèm mã lô để Admin dễ phân biệt
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="KPM_San_Pham_Loi_${batchId.split("-")[0]}.xlsx"`,
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
