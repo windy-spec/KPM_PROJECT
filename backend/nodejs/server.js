@@ -12,6 +12,7 @@ const materialRoutes = require("./routes/material.routes.js");
 const authRoutes = require("./routes/auth.routes.js");
 const productRoutes = require("./routes/product.routes.js");
 const categoryRoutes = require("./routes/category.routes.js");
+const importRoutes = require("./routes/import.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -20,6 +21,7 @@ app.use("/api/materials", materialRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/imports", importRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");
