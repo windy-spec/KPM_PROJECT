@@ -268,6 +268,7 @@ class ImportService {
       });
     });
   }
+
   // ==========================================
   // TASK-17BE: XUẤT FILE EXCEL CHỨA CÁC DÒNG LỖI (INVALID)
   // ==========================================
@@ -294,11 +295,12 @@ class ImportService {
     );
     await workbook.xlsx.readFile(templatePath);
     const worksheet = workbook.worksheets[0];
+
     try {
       const logoPath = path.join(__dirname, "../templates/logo.png");
       const logoId = workbook.addImage({
         filename: logoPath,
-        extension: "png", // Nếu logo của bro là đuôi .jpg thì đổi chữ này thành 'jpeg' nhé
+        extension: "png",
       });
 
       // Chèn logo vào khu vực ô A1 đến A3 (Cột A).
@@ -308,6 +310,7 @@ class ImportService {
         "Cảnh báo: Không tìm thấy file logo.png trong thư mục templates!",
       );
     }
+
     // 2. Chèn thêm Header cho "Cột Lỗi" vào ô G4 (Cột số 7, Dòng 4)
     const errorHeaderCell = worksheet.getCell("G4");
     errorHeaderCell.value =

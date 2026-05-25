@@ -8,6 +8,12 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Profile from './pages/profile/Profile';
 import ProductList from './pages/product/ProductList';
+import AdminDashboard from './pages/admin/Dashboard';
+import ManageProducts from './pages/admin/ManageProducts';
+import ManageCategories from './pages/admin/ManageCategories';
+import ManageOrders from './pages/admin/ManageOrders';
+import ManageCustomers from './pages/admin/ManageCustomers';
+import RoleGuard from './components/auth/RoleGuard';
 
 const routeMap = [
   {
@@ -35,6 +41,54 @@ const routeMap = [
       <MainLayout>
         <ProductList />
       </MainLayout>
+    ),
+  },
+  {
+    path: '/admin',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <AdminDashboard />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: '/admin/dashboard',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <AdminDashboard />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: '/admin/products',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <ManageProducts />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: '/admin/categories',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <ManageCategories />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: '/admin/orders',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <ManageOrders />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: '/admin/customers',
+    element: (
+      <RoleGuard allowedRoles={['ADMIN']}>
+        <ManageCustomers />
+      </RoleGuard>
     ),
   },
 ];
