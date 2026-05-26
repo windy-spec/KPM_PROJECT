@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-
+// Khởi chạy các tác vụ chạy ngầm (Cron Jobs)
+require("./cron/importCleanup.cron");
 const app = express();
 
 // CREATE PORT OR GATES HERE (Thêm fallback 5000 nếu env chưa kịp nhận)

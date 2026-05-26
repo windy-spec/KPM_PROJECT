@@ -108,6 +108,19 @@ class ImportController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+  // 7. Xóa vật lý lô nhập liệu
+  async deleteBatch(req, res) {
+    try {
+      const { batchId } = req.params;
+      await importService.deleteBatch(batchId);
+      res.status(200).json({
+        success: true,
+        message: "Đã xóa vĩnh viễn lô hàng và dữ liệu đệm!",
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new ImportController();
