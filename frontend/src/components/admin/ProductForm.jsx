@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Portal from '../common/Portal';
-import { Tag } from 'lucide-react';
+import { ImagePlus, Tag, X } from 'lucide-react';
 
 const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
   const [form, setForm] = useState({
@@ -10,6 +10,8 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
     default_specs: '',
     ...initial,
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initial.image || '');
 
   useEffect(() => {
     setForm((current) => ({
@@ -22,7 +24,26 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
             ? JSON.stringify(initial.default_specs, null, 2)
             : '',
     }));
+    setImagePreview(initial.image || '');
+    setImageFile(null);
   }, [initial]);
+
+  useEffect(() => {
+    if (!imageFile) return undefined;
+
+    const objectUrl = URL.createObjectURL(imageFile);
+    setImagePreview(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [imageFile]);
+
+  const previewLabel = useMemo(() => {
+    if (imageFile) return imageFile.name;
+    if (initial.image) return 'Ảnh hiện tại';
+    return 'Chưa chọn ảnh';
+  }, [imageFile, initial.image]);
+
+  const isEditing = Boolean(initial.id);
 
   return (
     <Portal>
@@ -41,6 +62,56 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
           </div>
 
           <div className="space-y-4 px-6 py-5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Ảnh sản phẩm
+              </label>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[160px_1fr]">
+                <div className="flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-outline-variant/60 bg-surface-container/20">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Xem trước ảnh sản phẩm" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-center text-on-surface-variant/60">
+                      <ImagePlus className="h-8 w-8" />
+                      <span className="text-xs font-semibold">Chưa có ảnh</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-sm font-black uppercase tracking-[0.12em] text-primary hover:bg-primary/10 transition-colors">
+                    <ImagePlus className="h-4 w-4" />
+                    Chọn ảnh sản phẩm
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+
+                  <div className="rounded-xl border border-outline-variant/60 bg-white px-4 py-3 text-xs text-on-surface-variant/75">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">{previewLabel}</span>
+                      {imageFile ? (
+                        <button
+                          type="button"
+                          onClick={() => setImageFile(null)}
+                          className="inline-flex items-center gap-1 rounded-full border border-outline-variant/50 px-2 py-1 font-bold hover:bg-surface-container"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Xóa chọn
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-on-surface-variant/60">
+                      Ảnh sẽ được upload riêng sau khi lưu sản phẩm xong. Bạn có thể chọn JPG/PNG/WebP.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
@@ -50,8 +121,18 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
                   value={form.product_code || ''}
                   onChange={(e) => setForm({ ...form, product_code: e.target.value })}
                   placeholder="VD: SP-001"
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                  readOnly={isEditing}
+                  className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${
+                    isEditing
+                      ? 'border-outline-variant/60 bg-surface-container/40 text-on-surface-variant cursor-not-allowed'
+                      : 'border-outline-variant/60 bg-surface-container/20 focus:border-primary'
+                  }`}
                 />
+                {isEditing ? (
+                  <p className="text-[11px] text-on-surface-variant/60">
+                    Mã sản phẩm được giữ cố định khi sửa.
+                  </p>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -112,7 +193,7 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
             </button>
             <button
               type="button"
-              onClick={() => onSave(form)}
+              onClick={() => onSave(form, imageFile)}
               className="rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-primary/90 transition-colors"
             >
               Lưu sản phẩm

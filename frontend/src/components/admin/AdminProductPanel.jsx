@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import adminService from '../../services/admin.service';
 import Portal from '../common/Portal';
+import { showSuccess, showError } from '../../utils/notify';
+import ConfirmModal from '../common/ConfirmModal';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,6 +16,7 @@ import {
   Upload,
 } from 'lucide-react';
 import ProductForm from './ProductForm';
+import ImportBatchReviewModal from './ImportBatchReviewModal';
 
 const defaultTrendItems = [
   { name: 'Sắt hộp mạ kẽm (Hòa Phát)', price: '22.500đ/kg', action: 'Sửa giá bán lẻ' },
@@ -60,7 +63,14 @@ const AdminProductPanel = () => {
   const [importFile, setImportFile] = useState(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState('');
-  const [importResult, setImportResult] = useState(null);
+  const [batchReview, setBatchReview] = useState(null);
+  const [batchReviewLoading, setBatchReviewLoading] = useState(false);
+  const [batchReviewActionLoading, setBatchReviewActionLoading] = useState(false);
+  const [showBatchReviewModal, setShowBatchReviewModal] = useState(false);
+  const [batchReviewError, setBatchReviewError] = useState('');
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showConfirmReject, setShowConfirmReject] = useState(false);
 
   const load = async ({ page: pageOverride = page, searchOverride = q, categoryOverride = category } = {}) => {
     setLoading(true);
@@ -102,7 +112,19 @@ const AdminProductPanel = () => {
   };
 
   const handleEdit = (it) => {
-    setEditing(it);
+    setEditing({
+      ...it,
+      product_code: it.code || it.product_code || '',
+      product_name: it.name || it.product_name || '',
+      category_id: it.categoryId || it.category_id || '',
+      default_specs:
+        typeof it.specs === 'string'
+          ? it.specs
+          : it.specs
+            ? JSON.stringify(it.specs, null, 2)
+            : '',
+      image: it.image || '',
+    });
     setShowForm(true);
   };
 
@@ -126,21 +148,40 @@ const AdminProductPanel = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'kpm-product-import-template.xlsx';
+      const contentDisposition = response.headers?.['content-disposition'] || '';
+      const filenameMatch = contentDisposition.match(/filename\s*=\s*"?([^";]+)"?/i);
+      link.download = filenameMatch?.[1] || 'KPM_Import_Product.xlsx';
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (e) {
-      alert('Không tải được file mẫu: ' + (e?.response?.data?.message || e.message || e));
+      showError('Không tải được file mẫu: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
   const handleOpenImportModal = () => {
     setImportError('');
-    setImportResult(null);
     setImportFile(null);
     setShowImportModal(true);
+  };
+
+  const openBatchReview = async (batchId) => {
+    if (!batchId) return;
+
+    setBatchReviewLoading(true);
+    setBatchReviewError('');
+    setShowBatchReviewModal(true);
+
+    try {
+      const response = await adminService.getImportBatch(batchId);
+      setBatchReview(response.data?.data || response.data || null);
+    } catch (e) {
+      setBatchReview(null);
+      setBatchReviewError(e?.response?.data?.message || e.message || 'Không tải được chi tiết batch');
+    } finally {
+      setBatchReviewLoading(false);
+    }
   };
 
   const handleUploadImport = async () => {
@@ -153,22 +194,85 @@ const AdminProductPanel = () => {
     setImportError('');
     try {
       const response = await adminService.uploadImportFile(importFile);
-      setImportResult(response.data || null);
       setShowImportModal(false);
       setImportFile(null);
-      if (response.data?.batchId) {
-        alert(`Upload thành công. batchId: ${response.data.batchId}`);
-      } else {
-        alert('Upload thành công.');
-      }
+      const batchId = response.data?.data?.batchId || response.data?.batchId;
+      showSuccess('Upload file thành công. Mở màn hình review.');
+      await openBatchReview(batchId);
     } catch (e) {
-      setImportError(e?.response?.data?.message || e.message || 'Upload thất bại');
+      const msg = e?.response?.data?.message || e.message || 'Upload thất bại';
+      setImportError(msg);
+      showError(msg);
     } finally {
       setImportLoading(false);
     }
   };
 
-  const handleSave = async (form) => {
+  const handleRejectBatch = async () => {
+    // Trigger confirmation modal
+    setShowConfirmReject(true);
+  };
+
+  const confirmRejectBatch = async () => {
+    const batchId = batchReview?.batch_id || batchReview?.batchId || batchReview?.id;
+    if (!batchId) return;
+
+    setShowConfirmReject(false);
+    setBatchReviewActionLoading(true);
+    try {
+      await adminService.rejectImportBatch(batchId);
+      setShowBatchReviewModal(false);
+      setBatchReview(null);
+      await load();
+      showSuccess('Đã reject batch thành công.');
+    } catch (e) {
+      showError('Reject thất bại: ' + (e?.response?.data?.message || e.message || e));
+    } finally {
+      setBatchReviewActionLoading(false);
+    }
+  };
+
+  const handleApproveBatch = async () => {
+    const batchId = batchReview?.batch_id || batchReview?.batchId || batchReview?.id;
+    if (!batchId) return;
+
+    setBatchReviewActionLoading(true);
+    try {
+      await adminService.approveImportBatch(batchId);
+      setShowBatchReviewModal(false);
+      setBatchReview(null);
+      await load();
+      showSuccess('Đã approve batch thành công. Dữ liệu hợp lệ đã được lưu vào database.');
+    } catch (e) {
+      showError('Approve thất bại: ' + (e?.response?.data?.message || e.message || e));
+    } finally {
+      setBatchReviewActionLoading(false);
+    }
+  };
+
+  const handleExportInvalidRows = async () => {
+    const batchId = batchReview?.batch_id || batchReview?.batchId || batchReview?.id;
+    if (!batchId) return;
+
+    try {
+      const response = await adminService.exportInvalidImportRows(batchId);
+      const blob = new Blob([response.data], {
+        type: response.headers?.['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `KPM_Invalid_Rows_${String(batchId).slice(0, 8)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      showError('Không tải được file lỗi: ' + (e?.response?.data?.message || e.message || e));
+    }
+  };
+
+  const handleSave = async (form, imageFile) => {
     try {
       const payload = {
         category_id: form.category_id,
@@ -177,12 +281,22 @@ const AdminProductPanel = () => {
         default_specs: parseDefaultSpecs(form.default_specs),
       };
 
-      if (editing && editing.id) await adminService.updateProduct(editing.id, payload);
-      else await adminService.createProduct(payload);
+      const saveResponse = editing && editing.id
+        ? await adminService.updateProduct(editing.id, payload)
+        : await adminService.createProduct(payload);
+
+      const savedProduct = saveResponse.data?.data || saveResponse.data || null;
+      const productId = savedProduct?.id || savedProduct?._id || editing?.id;
+
+      if (productId && imageFile) {
+        await adminService.uploadProductImage(productId, imageFile, true);
+      }
+
       setShowForm(false);
       await load();
+      showSuccess(editing && editing.id ? 'Cập nhật sản phẩm thành công.' : 'Tạo sản phẩm thành công.');
     } catch (e) {
-      alert('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
+      showError('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
@@ -355,10 +469,9 @@ const AdminProductPanel = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={async () => {
-                          if (!confirm('Xác nhận xoá sản phẩm này?')) return;
-                          await adminService.deleteProduct(it.id);
-                          await load();
+                        onClick={() => {
+                          setPendingDelete(it);
+                          setShowConfirmDelete(true);
                         }}
                         className="rounded-lg border border-outline-variant/60 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
                       >
@@ -465,11 +578,9 @@ const AdminProductPanel = () => {
                   </div>
                 ) : null}
 
-                {importResult?.batchId ? (
-                  <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-700">
-                    Upload đã sẵn sàng. batchId: <span className="font-black">{importResult.batchId}</span>
-                  </div>
-                ) : null}
+                <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700">
+                  Sau khi upload xong, hệ thống sẽ mở màn hình review batch để bạn xem riêng 2 phần valid và invalid.
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4">
@@ -544,6 +655,61 @@ const AdminProductPanel = () => {
           </div>
         </div>
       </div>
+
+      {showBatchReviewModal ? (
+        <ImportBatchReviewModal
+          batch={batchReview}
+          loading={batchReviewLoading}
+          actionLoading={batchReviewActionLoading}
+          onClose={() => {
+            setShowBatchReviewModal(false);
+            setBatchReview(null);
+            setBatchReviewError('');
+          }}
+          onReject={handleRejectBatch}
+          onApprove={handleApproveBatch}
+          onExportInvalid={handleExportInvalidRows}
+        />
+      ) : null}
+
+      <ConfirmModal
+        open={showConfirmReject}
+        title="Xác nhận reject batch"
+        message="Reject sẽ hủy batch và xóa toàn bộ dữ liệu tạm. Bạn chắc chắn muốn tiếp tục?"
+        confirmText="Reject"
+        cancelText="Hủy"
+        onConfirm={confirmRejectBatch}
+        onCancel={() => setShowConfirmReject(false)}
+      />
+
+      <ConfirmModal
+        open={showConfirmDelete}
+        title="Xác nhận xoá"
+        message={pendingDelete ? `Xác nhận xoá sản phẩm "${pendingDelete.name || pendingDelete.product_name || pendingDelete.code || 'sản phẩm'}"?` : 'Xác nhận xoá?' }
+        confirmText="Xoá"
+        cancelText="Hủy"
+        onConfirm={async () => {
+          if (!pendingDelete) return setShowConfirmDelete(false);
+          try {
+            await adminService.deleteProduct(pendingDelete.id);
+            setShowConfirmDelete(false);
+            setPendingDelete(null);
+            await load();
+            showSuccess('Xoá sản phẩm thành công.');
+          } catch (e) {
+            showError('Xoá thất bại: ' + (e?.response?.data?.message || e.message || e));
+          }
+        }}
+        onCancel={() => { setShowConfirmDelete(false); setPendingDelete(null); }}
+      />
+
+      {batchReviewError ? (
+        <Portal>
+          <div className="fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-lg">
+            {batchReviewError}
+          </div>
+        </Portal>
+      ) : null}
 
       {showForm && (
         <ProductForm

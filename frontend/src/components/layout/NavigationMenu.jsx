@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Drill, Hammer, LayoutPanelLeft, Ruler, Settings } from 'lucide-react';
 
 const NavigationMenu = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 0);
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const menuItems = [
     { title: 'Tất cả sản phẩm', icon: LayoutPanelLeft, hasSub: true, to: '/products' },
     { title: 'Dịch vụ gia công', icon: Hammer, hasSub: true },
@@ -12,7 +23,11 @@ const NavigationMenu = () => {
   ];
 
   return (
-    <div className="w-full bg-white border-b border-outline-variant hidden md:block">
+    <div
+      className={`w-full bg-white hidden md:block transition-all duration-200 ${
+        isScrolled ? 'border-b border-transparent shadow-none' : 'border-b border-outline-variant'
+      }`}
+    >
       <div className="max-w-[1280px] mx-auto px-5">
         <ul className="flex items-center gap-2">
           {menuItems.map((item, index) => (

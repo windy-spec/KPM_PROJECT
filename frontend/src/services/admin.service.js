@@ -35,6 +35,18 @@ const adminService = {
     return apiClient.delete(`/products/${id}`);
   },
 
+  uploadProductImage(id, imageFile, isPrimary = true) {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('isPrimary', String(isPrimary));
+
+    return apiClient.post(`/products/${id}/images`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
   createCategory(data) {
     return apiClient.post('/categories', data);
   },
@@ -49,6 +61,7 @@ const adminService = {
 
   downloadImportTemplate() {
     return apiClient.get('/imports/template', {
+      params: { t: Date.now() },
       responseType: 'blob',
     });
   },
@@ -61,6 +74,24 @@ const adminService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    });
+  },
+
+  getImportBatch(batchId) {
+    return apiClient.get(`/imports/batch/${batchId}`);
+  },
+
+  rejectImportBatch(batchId) {
+    return apiClient.post(`/imports/batch/${batchId}/reject`);
+  },
+
+  approveImportBatch(batchId) {
+    return apiClient.post(`/imports/batch/${batchId}/approve`);
+  },
+
+  exportInvalidImportRows(batchId) {
+    return apiClient.get(`/imports/batch/${batchId}/export-errors`, {
+      responseType: 'blob',
     });
   },
 };
