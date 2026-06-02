@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import adminService from '../../services/admin.service';
 import Portal from '../../components/common/Portal';
+import { showSuccess, showError } from '../../utils/notify';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,6 +29,8 @@ const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
     description: '',
     ...initial,
   });
+
+  const isEditing = Boolean(initial.id);
 
   useEffect(() => {
     setForm((current) => ({ ...current, ...initial }));
@@ -57,8 +61,18 @@ const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
                 value={form.category_code || ''}
                 onChange={(e) => setForm({ ...form, category_code: e.target.value })}
                 placeholder="VD: CAT-001"
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                readOnly={isEditing}
+                className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${
+                  isEditing
+                    ? 'border-outline-variant/60 bg-surface-container/40 text-on-surface-variant cursor-not-allowed'
+                    : 'border-outline-variant/60 bg-surface-container/20 focus:border-primary'
+                }`}
               />
+              {isEditing ? (
+                <p className="text-[11px] text-on-surface-variant/60">
+                  Mã danh mục được giữ cố định khi sửa.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -75,12 +89,12 @@ const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
 
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Mô tả
+                Chú thích
               </label>
               <textarea
                 value={form.description || ''}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Mô tả ngắn về danh mục..."
+                placeholder="Chú thích ngắn về danh mục..."
                 rows={4}
                 className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
               />
@@ -118,6 +132,8 @@ const ManageCategories = () => {
   const pageSize = 6;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -172,18 +188,31 @@ const ManageCategories = () => {
   };
 
   const handleEdit = (item) => {
-    setEditing(item);
+    setEditing({
+      ...item,
+      category_code: item.code || item.category_code || '',
+      category_name: item.name || item.category_name || '',
+      description: item.description === '-' ? '' : item.description || '',
+    });
     setShowForm(true);
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Xác nhận xoá danh mục này?')) return;
+    const target = items.find((it) => (it.id || it._id) === id || it.id === id);
+    setPendingDelete(target || { id });
+    setShowConfirmDelete(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!pendingDelete) return setShowConfirmDelete(false);
     try {
-      await adminService.deleteCategory(id);
+      await adminService.deleteCategory(pendingDelete.id);
+      setShowConfirmDelete(false);
+      setPendingDelete(null);
       await load();
+      showSuccess('Xoá danh mục thành công.');
     } catch (e) {
-      alert('Xoá thất bại: ' + (e?.response?.data?.message || e.message || e));
+      showError('Xoá thất bại: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
@@ -203,8 +232,9 @@ const ManageCategories = () => {
 
       setShowForm(false);
       await load();
+      showSuccess(editing?.id ? 'Cập nhật danh mục thành công.' : 'Tạo danh mục thành công.');
     } catch (e) {
-      alert('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
+      showError('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
@@ -401,6 +431,15 @@ const ManageCategories = () => {
           onSave={handleSave}
         />
       )}
+      <ConfirmModal
+        open={showConfirmDelete}
+        title="Xác nhận xoá"
+        message={pendingDelete ? `Xác nhận xoá danh mục "${pendingDelete.name || pendingDelete.category_name || pendingDelete.code || 'danh mục'}"?` : 'Xác nhận xoá?'}
+        confirmText="Xoá"
+        cancelText="Hủy"
+        onConfirm={confirmDelete}
+        onCancel={() => { setShowConfirmDelete(false); setPendingDelete(null); }}
+      />
     </div>
   );
 };

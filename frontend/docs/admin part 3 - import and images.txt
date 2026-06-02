@@ -1,0 +1,26 @@
+Admin - Phần 3: Import & quản lý ảnh
+
+1) Overview import flow
+- Upload file Excel (.xlsx) -> backend tạo import_batch và product_imports_tmp.
+- Frontend nhận batchId và mở modal review.
+- Review: tách thành VALID / INVALID.
+- Approve: backend chèn dữ liệu hợp lệ vào `products` và `product_images`.
+- Reject: hủy batch, xóa dữ liệu tạm.
+
+2) Lưu ý dữ liệu
+- Dùng các trường thực tế: `product_code`, `product_name`, `category_id`, `default_specs`.
+- `default_specs` có thể là JSON hoặc chuỗi; frontend gửi nguyên dạng đã parse khi có JSON.
+
+3) Ảnh sản phẩm
+- Ảnh được upload qua endpoint POST `/products/:id/images` sau khi product được tạo.
+- Thông thường upload là FormData với key `image` và cờ `isPrimary`.
+- Frontend nên hiển thị preview trước khi upload và gửi ảnh sau khi tạo/ cập nhật product.
+
+4) UX nhanh
+- Sau upload file: tự động mở màn hình review.
+- Cho phép export invalid rows để sửa offline.
+- Thông báo thành công/ lỗi (toast) cho các thao tác: upload, approve, reject, export.
+
+5) Kiểm thử
+- Test với file mẫu backend cung cấp.
+- Test các trường invalid (mã trùng, thiếu category, JSON sai định dạng)."
