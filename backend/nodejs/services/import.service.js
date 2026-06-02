@@ -338,7 +338,6 @@ class ImportService {
           .map((err) => `• ${err}`)
           .join("\n");
       }
-
       // Ghi đè data vào đúng các cột A, B, C, D, E, F, G
       worksheet.getRow(currentRow).values = [
         rowData.product_code,
@@ -353,6 +352,26 @@ class ImportService {
     });
 
     return workbook;
+  }
+  // ==========================================
+  // TASK-18BE: XÓA VẬT LÝ LÔ HÀNG (DÀNH CHO ADMIN DỌN RÁC)
+  // ==========================================
+  async deleteBatch(batchId) {
+    const batch = await prisma.import_batches.findUnique({
+      where: { id: batchId },
+    });
+    if (!batch) throw new Error("Lô nhập không tồn tại!");
+
+    // Dùng Transaction để chém sạch rễ (dữ liệu đệm) lẫn ngọn (lô cha)
+    return await prisma.$transaction(async (tx) => {
+      await tx.product_imports_tmp.deleteMany({
+        where: { batch_id: batchId },
+      });
+
+      return await tx.import_batches.delete({
+        where: { id: batchId },
+      });
+    });
   }
 }
 

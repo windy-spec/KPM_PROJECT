@@ -50,4 +50,10 @@ router.get(
   adminMiddleware,
   importController.exportErrors,
 );
+router.delete(
+  "/batch/:batchId",
+  authMiddleware,
+  adminMiddleware,
+  importController.deleteBatch,
+);
 module.exports = router;
