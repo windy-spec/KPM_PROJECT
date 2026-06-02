@@ -2,10 +2,11 @@ const express = require("express");
 const router = express.Router();
 const quotationController = require("../controllers/quotation.controller");
 
-// Ở đây tôi tạm thời chưa bọc authMiddleware để bro dễ test trên Postman.
-// Sau này ráp vào app thật, nếu cần bảo mật thì bro kẹp authMiddleware vào nhé.
-
-// API 1: Tính toán và tạo báo giá mới
-router.post("/calculate", quotationController.calculateQuotation);
-
+// Các API Quản lý Báo giá
+router.get("/", quotationController.getAll);
+router.get("/:id", quotationController.getById);
+router.put("/:id/status", quotationController.updateStatus);
+router.post("/:id/attachments", quotationController.addAttachment); // API lưu link bản vẽ
+router.delete("/:id", quotationController.delete);
+router.post("/calculate", quotationController.calculateBulk);
 module.exports = router;
