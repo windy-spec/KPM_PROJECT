@@ -162,7 +162,7 @@ const ImportBatchReviewModal = ({
 
           <div className="flex flex-col gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="text-xs text-on-surface-variant/70">
-              Approve sẽ lưu toàn bộ dòng valid vào database. Reject sẽ hủy batch và xóa toàn bộ dữ liệu tạm.
+              Approve sẽ lưu toàn bộ dòng valid vào database. Hủy batch sẽ vô hiệu hóa batch này và xóa toàn bộ dữ liệu tạm.
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-3">
@@ -181,10 +181,10 @@ const ImportBatchReviewModal = ({
                 type="button"
                 onClick={onReject}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/60 bg-white px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-60"
               >
                 <Trash2 className="h-4 w-4" />
-                Reject batch
+                Hủy batch
               </button>
 
               <button

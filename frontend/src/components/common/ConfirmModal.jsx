@@ -6,7 +6,7 @@ const ConfirmModal = ({ open, title = 'Xác nhận', message = 'Bạn chắc ch�
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
         <div className="w-full max-w-md overflow-hidden rounded-[20px] border border-outline-variant/60 bg-white shadow-lg">
           <div className="border-b border-outline-variant/50 px-6 py-4">
             <h3 className="text-sm font-black uppercase tracking-[0.12em]">{title}</h3>
