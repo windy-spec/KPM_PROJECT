@@ -205,24 +205,32 @@ class ImportService {
   }
 
   // TASK-15BE: CHỐT DUYỆT - ĐẨY DATA VÀO DATABASE CHÍNH
+  // TASK-15BE: CHỐT DUYỆT - ĐẨY DATA VÀO DATABASE CHÍNH & GIỮ LẠI LỖI
   async approveBatch(batchId) {
     const batch = await prisma.import_batches.findUnique({
       where: { id: batchId },
       include: {
-        product_imports_tmp: { where: { validation_status: "VALID" } },
+        product_imports_tmp: true, // Lấy tất cả dòng (cả VALID và INVALID)
       },
     });
 
     if (!batch) throw new Error("Lô nhập không tồn tại!");
     if (batch.status !== "PENDING")
       throw new Error("Lô này đã được xử lý trước đó!");
-    if (batch.product_imports_tmp.length === 0)
-      throw new Error("Không có dòng nào hợp lệ trong lô này để duyệt!");
+
+    const validRows = batch.product_imports_tmp.filter(
+      (r) => r.validation_status === "VALID",
+    );
+
+    if (validRows.length === 0)
+      throw new Error("Không có dòng nào hợp lệ (VALID) để duyệt!");
 
     return await prisma.$transaction(async (tx) => {
-      for (const item of batch.product_imports_tmp) {
+      // 1. Lặp qua các dòng hợp lệ để tạo Sản phẩm
+      for (const item of validRows) {
         const rowData = JSON.parse(item.raw_data);
 
+        // Tạo sản phẩm mới
         const newProduct = await tx.products.create({
           data: {
             product_code: rowData.product_code,
@@ -234,6 +242,7 @@ class ImportService {
           },
         });
 
+        // Xử lý ảnh sản phẩm
         let imageRecords = [];
         if (rowData.primary_image_url) {
           imageRecords.push({
@@ -242,7 +251,6 @@ class ImportService {
             is_primary: true,
           });
         }
-
         if (rowData.other_image_urls) {
           const urls = rowData.other_image_urls
             .split(",")
@@ -256,12 +264,21 @@ class ImportService {
             });
           });
         }
-
         if (imageRecords.length > 0) {
           await tx.product_images.createMany({ data: imageRecords });
         }
       }
 
+      // 2. XÓA CÁC DÒNG HỢP LỆ (VALID) KHỎI BẢNG ĐỆM
+      // Các dòng INVALID vẫn còn nguyên vì chúng ta không động đến chúng
+      await tx.product_imports_tmp.deleteMany({
+        where: {
+          batch_id: batchId,
+          validation_status: "VALID",
+        },
+      });
+
+      // 3. ĐỔI TRẠNG THÁI LÔ THÀNH APPROVED
       return await tx.import_batches.update({
         where: { id: batchId },
         data: { status: "APPROVED" },

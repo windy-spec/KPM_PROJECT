@@ -10,10 +10,12 @@ cron.schedule("0 0 * * *", async () => {
     const oneMonthAgo = new Date();
     oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
 
-    // 2. Tìm ID của các lô được tạo trước mốc 30 ngày
+    // 2. TÌM LÔ RÁC (Chỉ lấy những lô PENDING bị treo hoặc đã REJECTED)
     const oldBatches = await prisma.import_batches.findMany({
       where: {
         created_at: { lt: oneMonthAgo },
+        // THÊM DÒNG NÀY: Tuyệt đối không đụng vào lô APPROVED
+        status: { in: ["PENDING", "REJECTED"] },
       },
       select: { id: true },
     });
@@ -22,7 +24,7 @@ cron.schedule("0 0 * * *", async () => {
       const batchIds = oldBatches.map((b) => b.id);
 
       await prisma.$transaction(async (tx) => {
-        // Xóa sạch chi tiết đệm
+        // Xóa sạch chi tiết đệm của các lô rác
         await tx.product_imports_tmp.deleteMany({
           where: { batch_id: { in: batchIds } },
         });
@@ -34,7 +36,7 @@ cron.schedule("0 0 * * *", async () => {
       });
 
       console.log(
-        `[CRON-JOB] Đã dọn dẹp thành công ${batchIds.length} lô dữ liệu quá hạn 1 tháng.`,
+        `[CRON-JOB] Đã dọn dẹp thành công ${batchIds.length} lô dữ liệu rác quá hạn 1 tháng.`,
       );
     } else {
       console.log("[CRON-JOB] DB sạch sẽ, không có lô cũ nào cần dọn.");
