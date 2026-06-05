@@ -1,63 +1,83 @@
+// seed4_quotes.js
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const categoriesData = [
-  // Nhóm Cửa & Cổng (CUA)
-  { category_code: "DM-CUA-C2C", category_name: "Cửa cổng sắt 2 cánh", description: "Cổng mở quay 2 cánh" },
-  { category_code: "DM-CUA-C4C", category_name: "Cửa cổng sắt 4 cánh", description: "Cổng xếp gấp 4 cánh" },
-  { category_code: "DM-CUA-LUA", category_name: "Cửa cổng lùa / trượt", description: "Cổng lùa ngang" },
-  { category_code: "DM-CUA-KDL", category_name: "Cửa kéo Đài Loan", description: "Cửa kéo có lá hoặc không lá" },
-  { category_code: "DM-CUA-CUON", category_name: "Cửa cuốn", description: "Cửa cuốn khe thoáng, tấm liền" },
-  { category_code: "DM-CUA-DI", category_name: "Cửa đi sắt kính", description: "Cửa phòng, cửa chính pano kính" },
-
-  // Nhóm Hàng rào (HR)
-  { category_code: "DM-HR-CNC", category_name: "Hàng rào cắt CNC", description: "Thép tấm cắt laser/plasma" },
-  { category_code: "DM-HR-SMT", category_name: "Hàng rào sắt mỹ thuật", description: "Rèn, uốn thủ công, bông gang" },
-  { category_code: "DM-HR-CHONG", category_name: "Hàng rào chông", description: "Chông chống trộm 3 chĩa, chông lá" },
-  { category_code: "DM-HR-THEP", category_name: "Hàng rào lưới thép", description: "Lưới B40, rào thép hàn công trình" },
-
-  // Nhóm Lan can & Ban công (LC)
-  { category_code: "DM-LC-BC", category_name: "Lan can ban công sắt", description: "Ban công sắt hộp, uốn mỹ thuật" },
-  { category_code: "DM-LC-CNC", category_name: "Lan can ban công CNC", description: "Lan can thép tấm cắt hoa văn" },
-
-  // Nhóm Cửa sổ (CS)
-  { category_code: "DM-CS-MO", category_name: "Cửa sổ sắt", description: "Khung cánh cửa sổ mở quay/lùa" },
-  { category_code: "DM-CS-BV", category_name: "Khung bảo vệ cửa sổ", description: "Song sắt, hoa sắt chống trộm" },
-  { category_code: "DM-CS-GIENG", category_name: "Khung bảo vệ giếng trời", description: "Khung lấy sáng, lưới giếng trời" },
-
-  // Nhóm Cầu thang (CT)
-  { category_code: "DM-CT-BO", category_name: "Cầu thang sắt nguyên bộ", description: "Cầu thang xoắn, xương cá" },
-  { category_code: "DM-CT-LC", category_name: "Lan can tay vịn cầu thang", description: "Lan can sắt uốn, tay vịn gỗ/sắt" },
-
-  // Nhóm Nội thất (NT)
-  { category_code: "DM-NT-BAN", category_name: "Bàn khung sắt", description: "Bàn trà, bàn ăn, bàn làm việc" },
-  { category_code: "DM-NT-GHE", category_name: "Ghế sắt nghệ thuật", description: "Ghế cafe, xích đu, ghế công viên" },
-  { category_code: "DM-NT-GIUONG", category_name: "Giường sắt", description: "Giường sắt rèn, giường hộp" },
-
-  // Nhóm Gia dụng & Phụ kiện (GD / PK)
-{ category_code: "DM-GD-KE", category_name: "Kệ sắt trang trí", description: "Kệ tivi, kệ sách, kệ trồng cây" },
-  { category_code: "DM-GD-MOC", category_name: "Móc treo / Giá đỡ", description: "Móc treo quần áo, giá đỡ chậu hoa" },
-  { category_code: "DM-PK-DUC", category_name: "Phụ kiện sắt đúc", description: "Bông gang, chông đúc, lá sắt lẻ" },
-  { category_code: "DM-PK-MAI", category_name: "Mái che / Mái hiên", description: "Khung mái kính, poly lấy sáng" }
-];
-
 async function main() {
-  console.log("⏳ Đang nạp 24 Danh mục vào Database...");
-  
-  // Dùng createMany với skipDuplicates để nếu chạy lại file này 2 lần cũng không bị lỗi trùng lặp
-  const result = await prisma.product_categories.createMany({
-    data: categoriesData,
-    skipDuplicates: true, 
-  });
+  console.log("--- BẮT ĐẦU NẠP QUOTATION (BÁO GIÁ MẪU) ---");
 
-  console.log(`✅ Thành công! Đã nạp ${result.count} danh mục mới.`);
+  // Lấy ngẫu nhiên vài vật tư, độ dày, và sơn để ráp báo giá
+  const materials = await prisma.materials.findMany({ take: 20 });
+  const thicknessList = await prisma.material_thickness.findMany({ take: 50 });
+  const paints = await prisma.paint_types.findMany({ take: 20 });
+
+  if (!materials.length || !thicknessList.length || !paints.length) {
+    console.log("Vui lòng chạy file seed 1, 2, 3 trước khi chạy file này!");
+    return;
+  }
+
+  // Khởi tạo 5 Quotation (Mỗi quotation có khoảng 4-5 items -> Khoảng 25 quotation_specs)
+   for (let i = 1; i <= 5; i++) {
+    const quote = await prisma.quotations.create({
+      data: {
+        total_quoted_price: 0, // Sẽ update sau
+        status: i % 2 === 0 ? "approved" : "draft",
+        // ĐÃ XÓA DÒNG `note` Ở ĐÂY VÌ BẢNG QUOTATIONS KHÔNG CÓ CỘT NÀY
+      },
+    });
+
+    let totalPrice = 0;
+
+    for (let j = 1; j <= 5; j++) {
+      const mat = materials[Math.floor(Math.random() * materials.length)];
+      // Lấy độ dày thuộc đúng material này
+      const thick = await prisma.material_thickness.findFirst({
+        where: { material_id: mat.id },
+      });
+      const paint = paints[Math.floor(Math.random() * paints.length)];
+
+      if (!thick) continue;
+
+      // Giả lập kích thước Dài x Rộng ngẫu nhiên
+      const width = Math.floor(Math.random() * 3000) + 800; // 800mm - 3800mm
+      const height = Math.floor(Math.random() * 2500) + 1200; // 1200mm - 3700mm
+      const area = (width / 1000) * (height / 1000); // Đổi ra m2
+
+      const materialCost =
+        parseFloat(mat.base_price) * parseFloat(thick.price_multiplier);
+      const paintCost = parseFloat(paint.price_per_sqm) * area;
+      const snapshotPrice = materialCost + paintCost + 350000 * area; // Thêm 350k/m2 tiền nhân công
+
+      await prisma.quotation_specs.create({
+        data: {
+          quotation_id: quote.id,
+          material_id: mat.id,
+          thickness_id: thick.id,
+          paint_id: paint.id,
+          dimensions: {
+            width_mm: width,
+            height_mm: height,
+            area_sqm: area.toFixed(2),
+            design_pattern: "Bản vẽ Cửa Cổng CNC đính kèm",
+            extras: "Đã bao gồm ổ khóa và bản lề cối",
+          },
+          snapshot_price: snapshotPrice,
+          note: `Hạng mục thi công số ${j} (Bảo hành 12 tháng)`, // <- Cột note nằm ở bảng Specs này là chuẩn xác rồi
+        },
+      });
+      totalPrice += snapshotPrice;
+    }
+
+    // Cập nhật lại tổng tiền cho báo giá
+    await prisma.quotations.update({
+      where: { id: quote.id },
+      data: { total_quoted_price: totalPrice },
+    });
+  }
+
+  console.log(`✅ Đã nạp thành công các Báo giá mẫu và Specs chi tiết.`);
+  console.log("--- HOÀN TẤT SEED 4 ---");
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Lỗi khi nạp dữ liệu:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => console.error(e))
+  .finally(async () => await prisma.$disconnect());
