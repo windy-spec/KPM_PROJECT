@@ -1,117 +1,182 @@
 const prisma = require("../models/prisma");
 
 class QuotationService {
-  // ==========================================
-  // LÕI TÍNH GIÁ: BÓC TÁCH VÀ TẠO BÁO GIÁ
-  // ==========================================
-  async calculateAndCreateQuotation(payload) {
-    const {
-      user_id,
-      session_id,
-      product_id, // Truyền vào để biết khách chọn mẫu nào
-      width,
-      height,
-      material_id,
-      thickness_id,
-      paint_id,
-      note,
-    } = payload;
-
-    // BƯỚC 1: TÍNH DIỆN TÍCH (Area)
-    if (!width || !height || width <= 0 || height <= 0) {
-      throw new Error("Kích thước chiều rộng và chiều cao phải lớn hơn 0!");
-    }
-    const area = parseFloat(width) * parseFloat(height);
-
-    // BƯỚC 2: BÓC TÁCH TIỀN VẬT TƯ (Material)
-    if (!material_id) throw new Error("Bắt buộc phải chọn Vật tư!");
-
-    const material = await prisma.materials.findUnique({
-      where: { id: material_id },
+  // 1. LẤY DANH SÁCH BÁO GIÁ (Dành cho Admin/Sale xem tổng quan)
+  async getAllQuotations() {
+    return await prisma.quotations.findMany({
+      include: {
+        users: { select: { username: true, email: true } },
+      },
+      orderBy: { created_at: "desc" },
     });
-    if (!material) throw new Error("Không tìm thấy vật tư trong hệ thống!");
+  }
 
-    let multiplier = 1.0;
-    if (thickness_id) {
-      const thickness = await prisma.material_thickness.findUnique({
-        where: { id: thickness_id },
-      });
-      if (!thickness || thickness.material_id !== material_id) {
-        throw new Error("Độ dày này không khớp với vật tư đã chọn!");
+  // 2. XEM CHI TIẾT 1 BÁO GIÁ (Lôi hết ngóc ngách data ra làm Hóa đơn)
+  async getQuotationById(id) {
+    const quotation = await prisma.quotations.findUnique({
+      where: { id },
+      include: {
+        users: { select: { username: true, email: true, user_profiles: true } },
+        quotation_specs: {
+          // Lôi chi tiết bóc tách vật tư
+          include: {
+            materials: true,
+            material_thickness: true,
+            paint_types: true,
+          },
+        },
+        quotation_attachments: true, // Lôi danh sách file/bản vẽ đính kèm
+        orders: true, // Check xem báo giá này đã biến thành đơn hàng xưởng chưa
+      },
+    });
+    if (!quotation) throw new Error("Không tìm thấy báo giá này!");
+    return quotation;
+  }
+
+  // 3. CẬP NHẬT TRẠNG THÁI (VD: Từ "draft" sang "approved" hoặc "cancelled")
+  async updateStatus(id, status) {
+    const validStatuses = ["draft", "approved", "cancelled"];
+    if (!validStatuses.includes(status)) {
+      throw new Error("Trạng thái không hợp lệ!");
+    }
+
+    await this.getQuotationById(id); // Check xem có tồn tại không
+
+    return await prisma.quotations.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  // 4. THÊM FILE ĐÍNH KÈM (Lưu Link bản vẽ từ FE gửi xuống)
+  async addAttachment(quotation_id, data) {
+    const { file_name, file_url } = data;
+    if (!file_name || !file_url)
+      throw new Error("Tên file và URL không được trống!");
+
+    await this.getQuotationById(quotation_id); // Đảm bảo báo giá có thật
+
+    return await prisma.quotation_attachments.create({
+      data: {
+        quotation_id,
+        file_name,
+        file_url,
+      },
+    });
+  }
+
+  // 5. XÓA BÁO GIÁ (Cẩn thận khóa ngoại Restrict từ bảng Orders)
+  async deleteQuotation(id) {
+    await this.getQuotationById(id);
+
+    try {
+      // Prisma tự động Cascade: Xóa báo giá là bay luôn specs và attachments
+      return await prisma.quotations.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error.code === "P2003" ||
+        (error.message && error.message.includes("RESTRICT"))
+      ) {
+        throw new Error(
+          "Không thể xóa Báo giá này vì nó đã được chuyển thành Đơn hàng sản xuất!",
+        );
       }
-      multiplier = parseFloat(thickness.price_multiplier);
+      throw error;
     }
-    // Công thức: Diện tích x Giá gốc x Hệ số độ dày
-    const materialCost = area * parseFloat(material.base_price) * multiplier;
+  }
+  // CỖ MÁY TÍNH GIÁ HÀNG LOẠT (PRICING ENGINE - BULK CALCULATE)
+  async calculateBulk(data) {
+    const { user_id, session_id, items } = data; // items là một mảng (Array) các sản phẩm
 
-    // BƯỚC 3: BÓC TÁCH TIỀN SƠN (Paint) - Tùy chọn có hoặc không
-    let paintCost = 0;
-    if (paint_id) {
-      const paint = await prisma.paint_types.findUnique({
-        where: { id: paint_id },
-      });
-      if (!paint) throw new Error("Không tìm thấy loại sơn trong hệ thống!");
-      paintCost = area * parseFloat(paint.price_per_sqm);
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      throw new Error("Danh sách sản phẩm trống!");
     }
 
-    // BƯỚC 4: BÓC TÁCH TIỀN NHÂN CÔNG (Labor)
-    // Để đơn giản, ta lấy 1 mức giá nhân công chung (hoặc sau này bro có thể truyền labor_rate_id vào)
-    let laborCost = 0;
+    let total_quoted_price = 0;
+    const quotation_specs_data = [];
+
+    // Lấy đơn giá nhân công mặc định (Ví dụ lấy cái đầu tiên trong DB)
     const laborRate = await prisma.labor_rates.findFirst();
-    if (laborRate) {
-      laborCost = area * parseFloat(laborRate.rate_amount);
+    const labor_price_per_sqm = laborRate
+      ? parseFloat(laborRate.rate_amount)
+      : 0;
+
+    // Vòng lặp bóc tách từng món trong giỏ hàng
+    for (const item of items) {
+      const {
+        product_id,
+        width,
+        height,
+        material_id,
+        thickness_id,
+        paint_id,
+        note,
+      } = item;
+
+      const area = parseFloat(width) * parseFloat(height);
+
+      // Truy vấn DB lấy giá gốc của 3 nguyên liệu
+      const [material, thickness, paint] = await Promise.all([
+        prisma.materials.findUnique({ where: { id: material_id } }),
+        prisma.material_thickness.findUnique({ where: { id: thickness_id } }),
+        prisma.paint_types.findUnique({ where: { id: paint_id } }),
+      ]);
+
+      if (!material || !thickness || !paint) {
+        throw new Error(
+          "Vật tư, Độ dày hoặc Loại sơn không tồn tại trong hệ thống!",
+        );
+      }
+
+      // Công thức lõi
+      const material_cost =
+        parseFloat(material.base_price) *
+        parseFloat(thickness.price_multiplier) *
+        area;
+      const paint_cost = parseFloat(paint.price_per_sqm) * area;
+      const labor_cost = labor_price_per_sqm * area;
+
+      const snapshot_price = material_cost + paint_cost + labor_cost;
+
+      // Cộng dồn vào tổng tiền của cả đơn
+      total_quoted_price += snapshot_price;
+
+      // Đẩy vào mảng specs để chuẩn bị lưu DB
+      quotation_specs_data.push({
+        material_id,
+        thickness_id,
+        paint_id,
+        dimensions: {
+          product_id,
+          width: parseFloat(width),
+          height: parseFloat(height),
+          area,
+          breakdown_costs: {
+            material: material_cost,
+            paint: paint_cost,
+            labor: labor_cost,
+          },
+        },
+        snapshot_price,
+        note,
+      });
     }
 
-    // BƯỚC 5: TỔNG HỢP VÀ CHỐT GIÁ (Snapshot Price)
-    const totalSnapshotPrice = materialCost + paintCost + laborCost;
-
-    // XÀI TRANSACTION ĐỂ LƯU ĐỒNG THỜI VÀO 2 BẢNG QUOTATION VÀ QUOTATION_SPECS
-    return await prisma.$transaction(async (tx) => {
-      // 1. Tạo Báo giá tổng (Vỏ bọc ngoài)
-      const newQuotation = await tx.quotations.create({
-        data: {
-          user_id: user_id || null,
-          session_id: session_id || null,
-          total_quoted_price: totalSnapshotPrice,
-          status: "draft", // Vừa tính ra thì ở trạng thái Nháp
-        },
-      });
-
-      // 2. Nhét các thông tin bóc tách vào JSON để linh hoạt lưu trữ
-      const dimensionsJson = {
-        product_id: product_id || null,
-        width: parseFloat(width),
-        height: parseFloat(height),
-        area: area,
-        breakdown_costs: {
-          material: materialCost,
-          paint: paintCost,
-          labor: laborCost,
-        },
-      };
-
-      // 3. Tạo Chi tiết báo giá (Lưu vết Snapshot)
-      await tx.quotation_specs.create({
-        data: {
-          quotation_id: newQuotation.id,
-          material_id: material_id,
-          thickness_id: thickness_id || null,
-          paint_id: paint_id || null,
-          dimensions: dimensionsJson, // JSON cân mọi loại dữ liệu
-          snapshot_price: totalSnapshotPrice, // CHỐT CỨNG GIÁ TẠI ĐÂY
-          note: note || null,
-        },
-      });
-
-      // Trả kết quả mượt mà ra cho Controller
-      return {
-        quotation_id: newQuotation.id,
+    // Sau khi tính xong tất cả, tạo 1 Báo Giá duy nhất bao trọn mảng Specs
+    return await prisma.quotations.create({
+      data: {
+        user_id: user_id || null,
+        session_id: session_id || null,
+        total_quoted_price,
         status: "draft",
-        specs: dimensionsJson,
-        total_price: totalSnapshotPrice,
-      };
+        quotation_specs: {
+          create: quotation_specs_data,
+        },
+      },
+      include: {
+        quotation_specs: true, // Trả về chi tiết để FE hiển thị luôn
+      },
     });
   }
 }
-
 module.exports = new QuotationService();

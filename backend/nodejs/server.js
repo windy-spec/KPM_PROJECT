@@ -19,6 +19,7 @@ const materialTypeRoutes = require("./routes/material_type.routes.js");
 const materialUnitRoutes = require("./routes/material_unit.routes.js");
 const materialThicknessRoutes = require("./routes/material_thickness.routes.js");
 const paint_typeRoutes = require("./routes/paint_type.routes.js");
+const laborRoutes = require("./routes/labor.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -33,6 +34,7 @@ app.use("/api/material-types", materialTypeRoutes);
 app.use("/api/material-units", materialUnitRoutes);
 app.use("/api/material-thickness", materialThicknessRoutes);
 app.use("/api/paint-types", paint_typeRoutes);
+app.use("/api/labor", laborRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");
