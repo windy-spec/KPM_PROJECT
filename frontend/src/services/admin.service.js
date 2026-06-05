@@ -16,8 +16,122 @@ const adminService = {
     return apiClient.get('/materials', { params });
   },
 
+  getMaterialTypes() {
+    return apiClient.get('/material-types');
+  },
+
+  getMaterialUnits() {
+    return apiClient.get('/material-units');
+  },
+
+  createMaterial(data) {
+    return apiClient.post('/materials', data);
+  },
+
+  updateMaterial(id, data) {
+    return apiClient.put(`/materials/${id}`, data);
+  },
+
+  deleteMaterial(id) {
+    return apiClient.delete(`/materials/${id}`);
+  },
+
   getCategories(params) {
     return apiClient.get('/categories', { params });
+  },
+
+  /* Material thickness (settings) */
+  getMaterialThickness(params) {
+    return apiClient.get('/material-thickness', { params });
+  },
+
+  createMaterialThickness(data) {
+    return apiClient.post('/material-thickness', data);
+  },
+
+  updateMaterialThickness(id, data) {
+    return apiClient.put(`/material-thickness/${id}`, data);
+  },
+
+  deleteMaterialThickness(id) {
+    return apiClient.delete(`/material-thickness/${id}`);
+  },
+
+  /* Paint types (settings) */
+  getPaintTypes() {
+    return apiClient.get('/paint-types');
+  },
+
+  /* Quotations */
+  calculateQuotation(payload) {
+    // payload: { items: [...] }
+    return apiClient.post('/quotations/calculate', payload);
+  },
+  /* Quotations management */
+  getQuotations(params) {
+    return apiClient.get('/quotations', { params });
+  },
+
+  getQuotation(id) {
+    return apiClient.get(`/quotations/${id}`);
+  },
+
+  updateQuotationStatus(id, data) {
+    return apiClient.put(`/quotations/${id}`, data);
+  },
+
+  createQuotationAttachment(id, data) {
+    return apiClient.post(`/quotations/${id}/attachments`, data);
+  },
+
+  createPaintType(data) {
+    return apiClient.post('/paint-types', data);
+  },
+
+  updatePaintType(id, data) {
+    return apiClient.put(`/paint-types/${id}`, data);
+  },
+
+  deletePaintType(id) {
+    return apiClient.delete(`/paint-types/${id}`);
+  },
+
+  /* Labor pricing (categories, models, rates) */
+  getLaborCategories() {
+    return apiClient.get('/labor/categories');
+  },
+
+  createLaborCategory(data) {
+    return apiClient.post('/labor/categories', data);
+  },
+
+  deleteLaborCategory(id) {
+    return apiClient.delete(`/labor/categories/${id}`);
+  },
+
+  getLaborModels() {
+    return apiClient.get('/labor/models');
+  },
+
+  createLaborModel(data) {
+    return apiClient.post('/labor/models', data);
+  },
+
+  deleteLaborModel(id) {
+    return apiClient.delete(`/labor/models/${id}`);
+  },
+
+  getLaborRates() {
+    return apiClient.get('/labor/rates');
+  },
+
+  // setRate is upsert: body should contain { category_id, model_id, price }
+  setLaborRate(data) {
+    return apiClient.post('/labor/rates', data);
+  },
+
+  deleteLaborRate(id) {
+    return apiClient.delete(`/labor/rates/${id}`);
   },
 
   getAccessLogs() {

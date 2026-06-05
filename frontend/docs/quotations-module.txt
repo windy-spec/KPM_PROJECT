@@ -1,0 +1,71 @@
+BRD - Quotation Grid & Quotation Detail (UI + Code Explanation)
+
+Mục tiêu
+- Màn hình 2 (Quotation Grid): danh sách báo giá để Admin/Sale theo dõi trạng thái, mở chi tiết hoặc double-click để xem.
+- Màn hình 3 (Quotation Detail): xem chi tiết bảng bóc tách, upload bản vẽ lên cloud và lưu attachment, và chốt/hủy báo giá.
+
+Files added
+- `frontend/src/pages/quotations/QuotationList.jsx` — danh sách (Data-Grid) lấy từ `GET /api/quotations`.
+- `frontend/src/pages/quotations/QuotationDetail.jsx` — chi tiết báo giá, upload file & action panel, `GET /api/quotations/:id`.
+- `frontend/src/services/admin.service.js` — thêm các method: `getQuotations`, `getQuotation`, `updateQuotationStatus`, `createQuotationAttachment`.
+- `frontend/src/pages/admin/Dashboard.jsx` — đã đăng ký 2 panel mới: `quotations` và `quotation_detail`.
+- `frontend/src/components/admin/AdminSidebar.jsx` — đã thêm mục sidebar `Danh sách Báo giá` (panel: `quotations`).
+
+1) Quotation Grid (QuotationList.jsx)
+- load(): gọi `adminService.getQuotations({page:1, limit:200})`, lưu kết quả vào `rows`.
+- Hiển thị các cột: `Mã` (shortened id), `Ngày tạo`, `Tổng tiền` (format VNĐ), `Trạng thái` (badge màu), `Hành động`.
+- Badge màu theo trạng thái: `draft`=amber, `approved`=teal, `cancelled`=rose.
+- Hành động: nút `Xem` gọi `onOpen(id)` (do Dashboard truyền vào) — Dashboard lưu `id` vào `localStorage` và chuyển `activePanel` sang `quotation_detail`.
+- Double-click dòng cũng mở chi tiết (shortcut UX).
+
+2) Quotation Detail (QuotationDetail.jsx)
+- Lấy `id` từ `quotationIdProp` hoặc `localStorage.activeQuotationId`.
+- load(): gọi `adminService.getQuotation(id)` và lưu vào `data`.
+- Hóa đơn chi tiết: component render `data.dimensions.breakdown_costs` hoặc `data.breakdown_costs` nếu backend trả tên khác.
+  - Mỗi item hiển thị `name` và `amount` (format VNĐ).
+  - Tổng hiển thị `data.total_amount` hoặc `data.total`.
+
+3) Upload Bản vẽ (Attachments)
+- FE sử dụng function `uploadToCloud(file)` để upload trực tiếp lên dịch vụ Cloud (Cloudinary or other).
+- Implementation hiện tại: `uploadToCloud` expects `window.CLOUDINARY_UPLOAD_URL` to be set to the unsigned upload endpoint (e.g., `https://api.cloudinary.com/v1_1/<cloud>/auto/upload`) and optional `window.CLOUDINARY_UPLOAD_PRESET`.
+- Sau khi upload trả về `fileUrl` (secure_url), FE gọi `adminService.createQuotationAttachment(id, { name: file.name, file_url: fileUrl })` để lưu record vào BE.
+- FE không gửi file nặng trực tiếp tới BE — BE chỉ lưu metadata (name + URL).
+
+4) Action Panel (Chốt đơn)
+- Nếu `data.status === 'draft'`: hiện 2 nút `CHỐT ĐƠN` (calls `updateQuotationStatus(id, { status: 'approved' })`) và `HỦY BÁO GIÁ` (status: 'cancelled').
+- Sau cập nhật trạng thái, FE gọi `load()` để refresh data and UI.
+- Nếu status đã `approved` hoặc `cancelled`: 2 nút không hiển thị, không cho chỉnh lại.
+
+5) Integration với Admin Dashboard
+- Dashboard đã được chỉnh để render `QuotationList` when `activePanel === 'quotations'` and `QuotationDetail` when `activePanel === 'quotation_detail'`.
+- Navigation flow: QuotationList → onOpen(id) → Dashboard sets `activePanel='quotation_detail'` and stores id in `localStorage`. QuotationDetail reads id from `localStorage`.
+  - Note: This is a lightweight mechanism to pass selected id between panels without an app-wide store. If you prefer, we can later refactor to use React Context or a central store.
+
+6) API contract assumptions
+- `GET /api/quotations` returns { data: [ { id, created_at, total_amount, status, ... } ] }
+- `GET /api/quotations/:id` returns { data: { id, created_at, total_amount, status, dimensions: { breakdown_costs: [...] }, attachments: [...] } }
+- `PUT /api/quotations/:id` accepts partial update like { status: 'approved' }
+- `POST /api/quotations/:id/attachments` accepts { name, file_url }
+
+7) Error handling & UX
+- All network calls wrapped in try/catch and show `showError(...)` with backend message when possible.
+- Buttons are disabled during loading/uploading to avoid duplicate requests.
+
+8) How to configure Cloudinary (example)
+- Set in browser console or app bootstrap:
+  - `window.CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/<cloud_name>/auto/upload'`
+  - `window.CLOUDINARY_UPLOAD_PRESET = '<your_unsigned_preset>'` (if required)
+- Or replace `uploadToCloud` implementation with your chosen cloud SDK (Firebase SDK, AWS S3 presigned upload, etc.).
+
+9) Next steps / improvements
+- Replace localStorage id pass with React Context or URL-based routing for better UX and deep-linking.
+- Add progress bar for uploads and support multiple files.
+- Add pagination/filtering/sorting for Quotation Grid.
+- Add server-side search by customer, status, date range.
+
+If you want, I can now:
+- Add the sidebar icon label if missing, or
+- Implement direct Cloudinary config in env and test an upload (you need to provide credentials or preset), or
+- Swap localStorage id passing with React Context.
+
+*** END ***

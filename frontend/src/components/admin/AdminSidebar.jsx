@@ -17,31 +17,25 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 
 const navGroups = [
-      {
-        label: 'Quản trị kinh doanh',
-        items: [
-          { label: 'Tổng quan doanh số', icon: LayoutDashboard, panel: 'overview' },
-          // point sidebar to dashboard with query so panel stays integrated
-          { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
-          { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
-          { label: 'Quản lý đơn hàng', icon: ShoppingCart, path: '/admin/orders' },
-          { label: 'Danh sách khách hàng', icon: Users, path: '/admin/customers' },
-        ],
-      },
-      {
-        label: 'Vận hành',
-        items: [
-          { label: 'Lịch thi công', icon: CalendarDays },
-          { label: 'Báo cáo định kỳ', icon: FileText },
-        ],
-      },
-      {
-        label: 'Hệ thống',
-        items: [
-          { label: 'Quản lý tài khoản', icon: Users },
-          { label: 'Cài đặt chung', icon: Settings },
-        ],
-      },
+  {
+    label: 'Quản trị kinh doanh',
+    items: [
+      { label: 'Tổng quan doanh số', icon: LayoutDashboard, panel: 'overview' },
+      // point sidebar to dashboard with query so panel stays integrated
+      { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
+      { label: 'Lập báo giá', icon: ShoppingCart, panel: 'pricing' },
+      { label: 'Danh sách Báo giá', icon: FileText, panel: 'quotations' },
+      { label: 'Quản lý vật tư', icon: Boxes, panel: 'materials' },
+      { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
+      { label: 'Quản lý đơn hàng', icon: ShoppingCart, path: '/admin/orders' },
+    ],
+  },
+  {
+    label: 'Hệ thống',
+    items: [
+      { label: 'Cấu hình', icon: Settings, panel: 'settings' },
+    ],
+  },
 ];
 
 const AdminSidebar = ({ activePanel = 'overview', onPanelChange = () => {} }) => {
