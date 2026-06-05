@@ -59,38 +59,6 @@ const routeMap = [
       </RoleGuard>
     ),
   },
-  {
-    path: '/admin/products',
-    element: (
-      <RoleGuard allowedRoles={['ADMIN']}>
-        <ManageProducts />
-      </RoleGuard>
-    ),
-  },
-  {
-    path: '/admin/categories',
-    element: (
-      <RoleGuard allowedRoles={['ADMIN']}>
-        <ManageCategories />
-      </RoleGuard>
-    ),
-  },
-  {
-    path: '/admin/orders',
-    element: (
-      <RoleGuard allowedRoles={['ADMIN']}>
-        <ManageOrders />
-      </RoleGuard>
-    ),
-  },
-  {
-    path: '/admin/customers',
-    element: (
-      <RoleGuard allowedRoles={['ADMIN']}>
-        <ManageCustomers />
-      </RoleGuard>
-    ),
-  },
 ];
 
 

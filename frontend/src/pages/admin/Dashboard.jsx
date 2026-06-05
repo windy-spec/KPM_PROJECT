@@ -23,6 +23,11 @@ import AdminSidebar from '../../components/admin/AdminSidebar';
 import AdminTopbar from '../../components/admin/AdminTopbar';
 import AdminProductPanel from '../../components/admin/AdminProductPanel';
 import ManageCategories from './ManageCategories';
+import ManageMaterials from './ManageMaterials';
+import ManageSettings from './ManageSettings';
+import PricingForm from '../quotations/PricingForm';
+import QuotationList from '../quotations/QuotationList';
+import QuotationDetail from '../quotations/QuotationDetail';
 
 const weeklyRevenue = [
   { name: 'Thứ 2', doanhThu: 120 },
@@ -278,6 +283,37 @@ const Dashboard = () => {
             {activePanel === 'categories' && (
               <section>
                 <ManageCategories />
+              </section>
+            )}
+
+            {activePanel === 'materials' && (
+              <section>
+                <ManageMaterials />
+              </section>
+            )}
+
+            {activePanel === 'settings' && (
+              <section>
+                {/* Lazy load or direct import is fine here */}
+                <ManageSettings />
+              </section>
+            )}
+
+            {activePanel === 'pricing' && (
+              <section>
+                <PricingForm />
+              </section>
+            )}
+
+            {activePanel === 'quotations' && (
+              <section>
+                <QuotationList onOpen={(id)=>{ setActivePanel('quotation_detail'); localStorage.setItem('activeQuotationId', id); }} />
+              </section>
+            )}
+
+            {activePanel === 'quotation_detail' && (
+              <section>
+                <QuotationDetail onBack={()=>{ setActivePanel('quotations'); localStorage.removeItem('activeQuotationId'); }} />
               </section>
             )}
           </main>

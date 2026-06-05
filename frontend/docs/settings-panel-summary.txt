@@ -1,0 +1,75 @@
+BRD - CẤU HÌNH HỆ SỐ ĐỘ DÀY & ĐƠN GIÁ SƠN
+
+Mục tiêu
+- Thêm panel "Cấu hình" trong Admin Dashboard với hai tab: Hệ số Độ dày và Đơn giá Sơn. Mục tiêu là giữ giao diện đồng bộ với các panel admin hiện có (spacing, button, modal, table styles).
+
+Tổng quan file & luồng chính (để bạn học)
+- `frontend/src/pages/admin/ManageSettings.jsx` — điểm vào chính của panel. File chứa:
+  - `TabNav`: điều khiển 2 tab (thickness / paint).
+  - `ThicknessRow` / `PaintRow`: render một hàng bảng với nút Sửa / Xoá theo style của `ManageMaterials.jsx`.
+  - `ThicknessForm` / `PaintForm`: modal tạo/cập nhật (dùng `Portal`), styled giống modal trong `ManageMaterials.jsx` để đồng nhất.
+  - State chính: `thicknessList`, `paintList`, `materials` (danh sách vật tư cho dropdown), modal flags & pending delete items.
+  - `loadAll()` — gọi 3 API song song (materials, material-thickness, paint-types) bằng `Promise.all`, sau đó lưu vào state.
+  - `handleThSave`, `handlePaintSave` — gộp logic tạo & cập nhật (nếu có `editing.id` gọi PUT, không thì POST). Sau khi thành công gọi `loadAll()` để refresh dữ liệu.
+  - `confirmThDelete`, `confirmPaintDelete` — xoá và refresh; hiển thị lỗi hiện từ `e.response.data.message` nếu backend trả lỗi (ví dụ duplicate-key hoặc ràng buộc).
+
+- `frontend/src/services/admin.service.js` — wrapper API được gọi từ `ManageSettings.jsx`:
+  - `getMaterialThickness()`, `createMaterialThickness(data)`, `updateMaterialThickness(id, data)`, `deleteMaterialThickness(id)`
+  - `getPaintTypes()`, `createPaintType(data)`, `updatePaintType(id, data)`, `deletePaintType(id)`
+  - `getMaterials({page,limit})` — dùng để lấy danh sách vật tư cho dropdown.
+
+Chi tiết luồng dữ liệu (step-by-step)
+1) Khi component mount: `useEffect` gọi `loadAll()`
+   - `loadAll()` thực hiện `Promise.all([getMaterials, getMaterialThickness, getPaintTypes])`.
+   - Kết quả gán vào `materials`, `thicknessList`, `paintList`.
+2) Thêm hoặc sửa:
+   - Người dùng click "Thêm" hoặc "Sửa" → open modal (`ThicknessForm` / `PaintForm`) với `initial` (nếu sửa).
+   - Modal kiểm tra validate FE (multiplier > 0, price >= 0) trước cho phép bấm Lưu.
+   - Gửi `POST` (tạo) hoặc `PUT` (cập nhật). Nếu thành công: thông báo `showSuccess`, đóng modal và gọi `loadAll()` để reload.
+   - Nếu backend trả lỗi (ví dụ duplicate code), modal không xử lý riêng mà `handleThSave` / `handlePaintSave` bắt lỗi và gọi `showError(e.response.data.message || e.message)` để hiển thị nguyên văn message backend — bạn sẽ thấy lý do lỗi trực tiếp.
+3) Xoá:
+   - Người dùng click Xoá → mở `ConfirmModal` → gọi `deleteMaterialThickness(id)` hoặc `deletePaintType(id)` → reload và show success/error.
+
+Validation quan trọng ở FE
+- Hệ số độ dày (`price_multiplier`): phải > 0 (form disabled nếu <= 0 hoặc rỗng).
+- Đơn giá sơn (`price_per_sqm`): phải >= 0.
+- Dropdown vật tư: bắt buộc chọn vật tư khi thêm hệ số.
+
+Styling & UX
+- Mình đã sửa để dùng cùng visual language với `ManageMaterials.jsx`:
+  - Bảng dùng các lớp `min-w-[...]`, header uppercase, rows với `divide-y`.
+  - Modal dùng cỡ, border, shadow và buttons giống `MaterialModal`.
+  - Buttons: rounded-xl / rounded-lg, `bg-primary` cho hành động chính, `border-outline-variant` cho nút phụ.
+
+Lỗi & thông báo
+- Mọi lỗi network / validation backend sẽ được chuyển tiếp tới `showError(...)` để hiện toast; duplicate-key hoặc ràng buộc unique sẽ xuất message backend.
+
+File liên quan
+- UI: `frontend/src/pages/admin/ManageSettings.jsx` (chính)
+- Service: `frontend/src/services/admin.service.js` (endpoints)
+- Sidebar: `frontend/src/components/admin/AdminSidebar.jsx` (đã thêm panel `settings`)
+- Panel render: `frontend/src/pages/admin/Dashboard.jsx` (đã import & render `ManageSettings`)
+
+Màn hình 3: Bảng giá Nhân công (Labor Rates) — implementation notes
+- Vị trí: `frontend/src/pages/admin/ManageSettings.jsx` (tab `labor`).
+- API endpoints (backend):
+  - `GET /api/labor/categories` → trả về danh sách `labor_categories` (fields: `id`, `category_name`).
+  - `GET /api/labor/models` → trả về `labor_pricing_models` (fields: `id`, `model_name`).
+  - `GET /api/labor/rates` → trả về `labor_rates` (fields include `id`, `category_id`, `model_id`, `rate_amount`).
+  - `POST /api/labor/rates` → upsert rate, body `{ category_id, model_id, rate_amount }`.
+
+Luồng FE (tóm tắt để bạn học)
+1) Khi vào tab `Bảng giá Nhân công`, component đã lấy sẵn `labCategories`, `labModels` và `labRates` trong `loadAll()` (được gọi khi mount hoặc khi reload).
+2) Giao diện là một ma trận: hàng là `Loại thợ`, cột là `Mô hình tính giá`.
+3) Mỗi ô là một `input[type=number]` cho phép staging (lưu tạm) giá mới. Mọi thay đổi được lưu trong `labEdits` (object staging) chứ không gửi ngay tới server.
+4) Admin chỉnh xong có 2 nút ở trên: `Huỷ thay đổi` (bỏ staging) và `Lưu cập nhật`.
+5) Khi click `Lưu cập nhật`, FE sẽ bắt buộc bật `ConfirmModal` với cảnh báo (tựa đề: "Lưu ý: Thay đổi đơn giá nhân công") — nội dung cảnh báo giải thích: thay giá sẽ áp dụng ngay cho báo giá mới.
+6) Nếu Admin xác nhận, FE sẽ gửi hàng loạt request `POST /api/labor/rates` (upsert) cho từng ô đã chỉnh (chỉ gửi những ô giá thay đổi so với giá hiện có). Sau khi hoàn tất, FE reload dữ liệu (`loadAll()`) và thông báo thành công/ lỗi.
+
+Validation & safety
+- FE chỉ cho nhập số >= 0 cho mỗi ô.
+- FE so sánh staged value với giá hiện có để tránh gửi request thừa.
+- Mọi lỗi server (ví dụ validation) sẽ được show qua `showError(e.response.data.message)` để bạn thấy message gốc.
+
+Vấn đề mở rộng
+- Nếu bảng lớn (nhiều loại thợ × nhiều mô hình), có thể cần paging hoặc lazy-loading; hiện implementation tải toàn bộ danh sách.
