@@ -36,6 +36,28 @@ const adminService = {
     return apiClient.delete(`/materials/${id}`);
   },
 
+  /* Material Types Additions */
+  createMaterialType(data) {
+    return apiClient.post('/material-types', data);
+  },
+  updateMaterialType(id, data) {
+    return apiClient.put(`/material-types/${id}`, data);
+  },
+  deleteMaterialType(id) {
+    return apiClient.delete(`/material-types/${id}`);
+  },
+
+  /* Material Units Additions */
+  createMaterialUnit(data) {
+    return apiClient.post('/material-units', data);
+  },
+  updateMaterialUnit(id, data) {
+    return apiClient.put(`/material-units/${id}`, data);
+  },
+  deleteMaterialUnit(id) {
+    return apiClient.delete(`/material-units/${id}`);
+  },
+
   getCategories(params) {
     return apiClient.get('/categories', { params });
   },
@@ -58,8 +80,8 @@ const adminService = {
   },
 
   /* Paint types (settings) */
-  getPaintTypes() {
-    return apiClient.get('/paint-types');
+  getPaintTypes(params) {
+    return apiClient.get('/paint-types', { params });
   },
 
   /* Quotations */
