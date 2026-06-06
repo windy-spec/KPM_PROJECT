@@ -31,7 +31,8 @@ import QuotationList from '../quotations/QuotationList';
 import QuotationDetail from '../quotations/QuotationDetail';
 import ManageMaterialTypes from '../../components/admin/ManageMaterialTypes';
 import ManageMaterialUnits from '../../components/admin/ManageMaterialUnits';
-
+import ManageInvalidBatches from './ManageInvalidBatches';
+import ManageOrders from './ManageOrders';
 const weeklyRevenue = [
   { name: 'Thứ 2', doanhThu: 120 },
   { name: 'Thứ 3', doanhThu: 240 },
@@ -346,6 +347,19 @@ const Dashboard = () => {
                 <QuotationDetail onBack={()=>{ setActivePanel('quotations'); localStorage.removeItem('activeQuotationId'); }} />
               </section>
             )}
+
+            {activePanel === 'invalid_batches' && (
+              <section>
+                <ManageInvalidBatches />
+              </section>
+            )}
+
+            {activePanel === 'orders' &&(
+              <section>
+                <ManageOrders />
+              </section>
+            )}
+
           </main>
         </div>
       </div>

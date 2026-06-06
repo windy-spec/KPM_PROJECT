@@ -230,6 +230,23 @@ const adminService = {
       responseType: 'blob',
     });
   },
+  getImportBatches(params) {
+    return apiClient.get('/imports/batches', { params });
+  },
+
+  getImportBatchDetails(batchId) {
+    return apiClient.get(`/imports/batch/${batchId}`);
+  },
+
+  deleteImportBatch(batchId) {
+    return apiClient.delete(`/imports/batch/${batchId}`);
+  },
+  
+  exportInvalidBatchErrors(batchId) {
+    return apiClient.get(`/imports/batch/${batchId}/export-errors`, {
+      responseType: 'blob'
+    });
+  }
 };
 
 export default adminService;
