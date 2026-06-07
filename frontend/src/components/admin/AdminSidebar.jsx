@@ -13,7 +13,8 @@ import {
   Boxes,
   Layers,
   Ruler,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
@@ -74,6 +75,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
         { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
         { label: 'Invalid batches', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản lý đơn hàng', icon: ShoppingCart, panel: 'orders' },
+        { label: 'Quản lý user', icon: User, panel: 'users'}
       ],
     },
     {

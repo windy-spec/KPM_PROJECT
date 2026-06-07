@@ -246,7 +246,19 @@ const adminService = {
     return apiClient.get(`/imports/batch/${batchId}/export-errors`, {
       responseType: 'blob'
     });
-  }
+  },
+
+  getUsersForAdmin(params) {
+    return apiClient.get('/auth/admin/users', { params });
+  },
+
+  adminUpdateUser(id, data) {
+    return apiClient.put(`/auth/admin/users/${id}`, data);
+  },
+
+  getUsersAccessLogs() {
+    return apiClient.get('/auth/admin/access-logs');
+  },
 };
 
 export default adminService;

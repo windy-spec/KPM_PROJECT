@@ -204,13 +204,20 @@ class authController {
   async getAllUsers(req, res) {
     try {
       const result = await authService.getAllUsersForAdmin(req.query);
+
       return res.status(200).json({
         success: true,
         data: result.users,
         pagination: result.pagination,
       });
     } catch (error) {
-      return res.status(500).json({ success: false, message: error.message });
+      console.error("GET USERS ERROR:");
+      console.error(error);
+
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
     }
   }
 

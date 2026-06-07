@@ -33,6 +33,8 @@ import ManageMaterialTypes from '../../components/admin/ManageMaterialTypes';
 import ManageMaterialUnits from '../../components/admin/ManageMaterialUnits';
 import ManageInvalidBatches from './ManageInvalidBatches';
 import ManageOrders from './ManageOrders';
+import ManageUsers from './ManageUsers';
+
 const weeklyRevenue = [
   { name: 'Thứ 2', doanhThu: 120 },
   { name: 'Thứ 3', doanhThu: 240 },
@@ -357,6 +359,12 @@ const Dashboard = () => {
             {activePanel === 'orders' &&(
               <section>
                 <ManageOrders />
+              </section>
+            )}
+
+            {activePanel === 'users' &&(
+              <section>
+                <ManageUsers />
               </section>
             )}
 
