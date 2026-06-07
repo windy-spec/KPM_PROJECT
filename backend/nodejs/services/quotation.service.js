@@ -6,6 +6,14 @@ class QuotationService {
     return await prisma.quotations.findMany({
       include: {
         users: { select: { username: true, email: true } },
+        // Thêm đoạn này để kéo luôn thông số vật tư ra cho danh sách
+        quotation_specs: {
+          include: {
+            materials: true,
+            material_thickness: true,
+            paint_types: true,
+          },
+        },
       },
       orderBy: { created_at: "desc" },
     });
@@ -180,58 +188,56 @@ class QuotationService {
   }
   // CỖ MÁY TÍNH GIÁ REAL-TIME CHO FRONTEND (Không lưu DB)
   async calculateRealtime(data) {
-    const { product_id, width, height, material_id, thickness_id, paint_id } =
-      data;
+    const {
+      product_id,
+      width,
+      height,
+      material_id,
+      thickness_id,
+      paint_id,
+      labor_category_id,
+      labor_model_id,
+    } = data;
 
-    if (!width || !height || !material_id || !thickness_id || !paint_id) {
-      throw new Error(
-        "Vui lòng cung cấp đủ thông số (Kích thước, Vật tư, Độ dày, Sơn)!",
-      );
-    }
+    // 1. Tính diện tích
+    const area = (parseFloat(width) / 1000) * (parseFloat(height) / 1000);
 
-    const area = (parseFloat(width) / 1000) * (parseFloat(height) / 1000); // Đổi mm ra m2
-
-    // Truy vấn song song dữ liệu để tính giá
+    // 2. Lấy dữ liệu từ DB (tất cả các bảng liên quan đến giá)
     const [material, thickness, paint, product, laborRate] = await Promise.all([
       prisma.materials.findUnique({ where: { id: material_id } }),
       prisma.material_thickness.findUnique({ where: { id: thickness_id } }),
       prisma.paint_types.findUnique({ where: { id: paint_id } }),
-      product_id
-        ? prisma.products.findUnique({ where: { id: product_id } })
-        : null,
-      prisma.labor_rates.findFirst(), // Lấy đơn giá thợ mặc định
+      prisma.products.findUnique({ where: { id: product_id } }),
+      prisma.labor_rates.findFirst({
+        // Lấy đơn giá theo loại thợ và mô hình
+        where: { category_id: labor_category_id, model_id: labor_model_id },
+      }),
     ]);
 
-    if (!material || !thickness || !paint) {
-      throw new Error("Thông số Vật tư, Độ dày hoặc Sơn không hợp lệ!");
-    }
-
-    // 1. Tính chi phí lõi
-    const material_cost =
+    // 3. Công thức tính chi tiết
+    const base_product_price = product?.price_adjustment || 0; // Tiền sản phẩm gốc
+    const material_price =
       parseFloat(material.base_price) *
       parseFloat(thickness.price_multiplier) *
-      area;
-    const paint_cost = parseFloat(paint.price_per_sqm) * area;
-    const labor_cost = laborRate ? parseFloat(laborRate.rate_amount) * area : 0;
-
-    // 2. Cộng thêm giá tùy chỉnh của chủ xưởng (Cost-plus pricing)
-    const price_adjustment =
-      product && product.price_adjustment
-        ? parseFloat(product.price_adjustment)
-        : 0;
+      area; // Tiền vật tư
+    const labor_price = laborRate
+      ? parseFloat(laborRate.rate_amount) * area
+      : 0; // Tiền nhân công
+    const paint_price = parseFloat(paint.price_per_sqm) * area; // Tiền sơn
 
     const total_price =
-      material_cost + paint_cost + labor_cost + price_adjustment;
+      base_product_price + material_price + labor_price + paint_price;
 
     return {
       area: area.toFixed(2),
-      breakdown: {
-        material_cost,
-        paint_cost,
-        labor_cost,
-        price_adjustment,
-      },
-      total_price,
+      breakdown_costs: [
+        // TRẢ VỀ MẢNG NÀY ĐỂ FE HIỂN THỊ
+        { name: "Sản phẩm gốc", amount: base_product_price },
+        { name: "Vật tư (Vật liệu + Độ dày)", amount: material_price },
+        { name: "Nhân công gia công", amount: labor_price },
+        { name: "Công sơn tĩnh điện", amount: paint_price },
+      ],
+      total_amount: total_price,
     };
   }
   // LƯU CẤU HÌNH YÊU THÍCH CỦA KHÁCH HÀNG (Lưu vào DB với status 'favorite')
