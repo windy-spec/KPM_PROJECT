@@ -20,16 +20,10 @@ router.put("/profile", authMiddleware, authController.updateProfile);
 
 // 3. ROUTE QUẢN LÝ (ADMIN ONLY)
 router.get("/admin/access-logs", authMiddleware, authController.getAccessLogs);
-router.get(
-  "/admin/users",
-  authMiddleware,
-  adminMiddleware,
-  authController.getAllUsers,
-);
+router.get("/admin/users", authMiddleware, authController.getAllUsers);
 router.put(
   "/admin/users/:id",
   authMiddleware,
-  adminMiddleware,
   authController.updateUserByAdmin,
 );
 module.exports = router;
