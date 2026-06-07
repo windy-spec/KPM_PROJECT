@@ -8,12 +8,10 @@ import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Profile from './pages/profile/Profile';
 import ProductList from './pages/product/ProductList';
-import AdminDashboard from './pages/admin/Dashboard';
-import ManageProducts from './pages/admin/ManageProducts';
-import ManageCategories from './pages/admin/ManageCategories';
-import ManageOrders from './pages/admin/ManageOrders';
+import AdminDashboard from './pages/admin/Dashboard';;
 import ManageCustomers from './pages/admin/ManageCustomers';
 import RoleGuard from './components/auth/RoleGuard';
+import PublicGuard from './components/auth/PublicGuard';
 
 const routeMap = [
   {
@@ -24,9 +22,30 @@ const routeMap = [
       </MainLayout>
     ),
   },
-  { path: '/login', element: <Login /> },
-  { path: '/register', element: <Register /> },
-  { path: '/forgot-password', element: <ForgotPassword /> },
+  { 
+    path: '/login', 
+    element: (
+      <PublicGuard>
+        <Login />
+      </PublicGuard>
+    ) 
+  },
+  { 
+    path: '/register', 
+    element: (
+      <PublicGuard>
+        <Register />
+      </PublicGuard>
+    ) 
+  },
+  { 
+    path: '/forgot-password', 
+    element: (
+      <PublicGuard>
+        <ForgotPassword />
+      </PublicGuard>
+    ) 
+  },
   {
     path: '/profile',
     element: (

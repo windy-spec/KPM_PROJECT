@@ -4,6 +4,9 @@ import Portal from "../../components/common/Portal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { showError, showSuccess } from "../../utils/notify";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
+import Pagination from "../../components/common/Pagination";
+
+const ITEMS_PER_PAGE = 6;
 
 function TabNav({ tabs, active, onChange }) {
   return (
@@ -318,6 +321,10 @@ const PaintForm = ({ initial = {}, onCancel, onSave }) => {
 const ManageSettings = () => {
   const [tab, setTab] = useState("thickness");
 
+  // State quản lý trang cho từng tab
+  const [thPage, setThPage] = useState(1);
+  const [paintPage, setPaintPage] = useState(1);
+
   // labor pricing
   const [labCategories, setLabCategories] = useState([]);
   const [labModels, setLabModels] = useState([]);
@@ -345,6 +352,32 @@ const ManageSettings = () => {
   const [paintEditing, setPaintEditing] = useState(null);
   const [paintPendingDelete, setPaintPendingDelete] = useState(null);
   const [paintConfirmOpen, setPaintConfirmOpen] = useState(false);
+
+  // Phân trang Client-side sử dụng useMemo để tối ưu hiệu năng
+  const paginatedThicknessList = useMemo(() => {
+    const startIndex = (thPage - 1) * ITEMS_PER_PAGE;
+    return thicknessList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [thicknessList, thPage]);
+
+  const totalThPages = useMemo(() => {
+    return Math.ceil(thicknessList.length / ITEMS_PER_PAGE);
+  }, [thicknessList]);
+
+  const paginatedPaintList = useMemo(() => {
+    const startIndex = (paintPage - 1) * ITEMS_PER_PAGE;
+    return paintList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [paintList, paintPage]);
+
+  const totalPaintPages = useMemo(() => {
+    return Math.ceil(paintList.length / ITEMS_PER_PAGE);
+  }, [paintList]);
+
+  // Reset trang về 1 khi chuyển đổi giữa các tab
+  const handleTabChange = (nextTab) => {
+    setTab(nextTab);
+    setThPage(1);
+    setPaintPage(1);
+  };
 
   const loadAll = async () => {
     try {
@@ -442,6 +475,12 @@ const ManageSettings = () => {
       await adminService.deleteMaterialThickness(thPendingDelete.id);
       setThConfirmOpen(false);
       setThPendingDelete(null);
+
+      // Nếu xóa item cuối cùng của trang hiện tại, lùi lại 1 trang
+      if (paginatedThicknessList.length === 1 && thPage > 1) {
+        setThPage((prev) => prev - 1);
+      }
+
       await loadAll();
       showSuccess("Xoá thành công");
     } catch (e) {
@@ -455,6 +494,12 @@ const ManageSettings = () => {
       await adminService.deletePaintType(paintPendingDelete.id);
       setPaintConfirmOpen(false);
       setPaintPendingDelete(null);
+
+      // Nếu xóa item cuối cùng của trang hiện tại, lùi lại 1 trang
+      if (paginatedPaintList.length === 1 && paintPage > 1) {
+        setPaintPage((prev) => prev - 1);
+      }
+
       await loadAll();
       showSuccess("Xoá thành công");
     } catch (e) {
@@ -546,7 +591,7 @@ const ManageSettings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/25 text-sm">
-                  {thicknessList.map((t) => (
+                  {paginatedThicknessList.map((t) => (
                     <ThicknessRow
                       key={t.id}
                       item={t}
@@ -573,6 +618,11 @@ const ManageSettings = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={thPage}
+              totalPages={totalThPages}
+              onPageChange={setThPage}
+            />
           </div>
         )}
 
@@ -604,7 +654,7 @@ const ManageSettings = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/25 text-sm">
-                  {paintList.map((p) => (
+                  {paginatedPaintList.map((p) => (
                     <PaintRow
                       key={p.id}
                       item={p}
@@ -631,6 +681,11 @@ const ManageSettings = () => {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              currentPage={paintPage}
+              totalPages={totalPaintPages}
+              onPageChange={setPaintPage}
+            />
           </div>
         )}
         {tab === "labor" && (

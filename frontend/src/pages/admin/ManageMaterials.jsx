@@ -4,6 +4,7 @@ import adminService from '../../services/admin.service';
 import Portal from '../../components/common/Portal';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { showError, showSuccess } from '../../utils/notify';
+import Pagination from '../../components/common/Pagination';
 
 const formatMoney = new Intl.NumberFormat('vi-VN');
 
@@ -194,15 +195,19 @@ const ManageMaterials = () => {
   const [items, setItems] = useState([]);
   const [materialTypes, setMaterialTypes] = useState([]);
   const [materialUnits, setMaterialUnits] = useState([]);
+
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
@@ -468,27 +473,17 @@ const ManageMaterials = () => {
           <div className="text-xs font-semibold text-on-surface-variant/70">
             Dữ liệu được lấy trực tiếp từ backend: materials, material_types, material_units.
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors disabled:opacity-40"
-              disabled={page === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button type="button" className="h-9 w-9 rounded-lg bg-primary text-white font-black">{page}</button>
-            <button type="button" className="h-9 px-3 rounded-lg border border-outline-variant/60 text-xs font-bold hover:bg-surface-container">
-              / {totalPages}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors disabled:opacity-40"
-              disabled={page >= totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="p-4 border-t border-outline-variant/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface/10">
+            <p className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-wider">
+              Trang {Math.min(page, totalPages)} / {totalPages} (Tổng cộng {filteredItems.length} kết quả)
+            </p>
+            <div className="flex items-center overflow-x-auto max-w-full">
+              <Pagination 
+                currentPage={page} 
+                totalPages={totalPages} 
+                onPageChange={(p) => setPage(p)} 
+              />
+            </div>
           </div>
         </div>
       </div>

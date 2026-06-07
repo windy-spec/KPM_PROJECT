@@ -22,12 +22,16 @@ const RoleGuard = ({ allowedRoles = [], children }) => {
   const currentRole = String(currentUser?.role || '').toUpperCase();
   const normalizedAllowedRoles = allowedRoles.map((role) => String(role).toUpperCase());
 
+  // 1. Nếu chưa đăng nhập -> Đá về /login
   if (!accessToken) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  // 2. Nếu đã đăng nhập nhưng SAI ROLE (Ví dụ: USER thường cố vào trang ADMIN)
   if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(currentRole)) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    // Nếu là ADMIN thì về trang admin, ngược lại (USER) thì về trang chủ client
+    const defaultRedirect = currentRole === 'ADMIN' ? '/admin/dashboard' : '/';
+    return <Navigate to={defaultRedirect} replace />;
   }
 
   return children;

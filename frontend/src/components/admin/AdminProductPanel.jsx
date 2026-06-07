@@ -27,13 +27,6 @@ const defaultWarnings = [
   { name: 'Kính 10mm cường lực', remaining: 'Còn 5m²', note: 'Liên quan đến 4 đơn hàng đang chờ', action: 'Đặt hàng ngay' },
 ];
 
-const statusStyles = {
-  'Sẵn sàng bán': 'bg-teal-50 text-teal-700 border-teal-100',
-  'Sắp hết hàng': 'bg-rose-50 text-rose-700 border-rose-100',
-  'Đang sản xuất': 'bg-amber-50 text-amber-700 border-amber-100',
-  'Hoàn tất': 'bg-sky-50 text-sky-700 border-sky-100',
-};
-
 const normalizeProduct = (item) => ({
   id: item.id || item._id || Math.random().toString(36).slice(2, 10),
   image:
@@ -80,12 +73,18 @@ const AdminProductPanel = () => {
         adminService.getCategories({ page: 1, limit: 100 }),
       ]);
 
-      const productData = productRes.data?.data || productRes.data || [];
+      const productData = productRes.data?.data || productRes.data?.products || productRes.data || [];
       const categoryData = categoryRes.data?.data || categoryRes.data || [];
 
       setItems(Array.isArray(productData) ? productData.map(normalizeProduct) : []);
       setCategories(Array.isArray(categoryData) ? categoryData : []);
-      setTotal(productRes.data?.pagination?.total || (Array.isArray(productData) ? productData.length : 0));
+      
+      // Bắt chính xác totalItem từ backend trả về
+      setTotal(
+        productRes.data?.pagination?.totalItem || 
+        productRes.data?.pagination?.total || 
+        (Array.isArray(productData) ? productData.length : 0)
+      );
     } catch (e) {
       console.warn('Không tải được sản phẩm', e?.message || e);
       setItems([]);
@@ -99,7 +98,7 @@ const AdminProductPanel = () => {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page,category]);
 
   const handleSearch = () => {
     setPage(1);
@@ -305,6 +304,41 @@ const AdminProductPanel = () => {
 
   const totalLabel = useMemo(() => `${total || items.length} sản phẩm`, [total, items.length]);
 
+  const totalPages = Math.ceil((total || items.length) / limit) || 1;
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= page - 1 && i <= page + 1)) {
+        pages.push(i);
+      } else if (i === page - 2 || i === page + 2) {
+        pages.push('...');
+      }
+    }
+    
+    // Loại bỏ các dấu '...' bị trùng nhau
+    const uniquePages = pages.filter((p, index, arr) => p !== '...' || arr[index - 1] !== '...');
+
+    return uniquePages.map((p, index) => (
+      p === '...' ? (
+        <span key={`dots-${index}`} className="px-2 text-on-surface-variant/50">...</span>
+      ) : (
+        <button
+          key={p}
+          type="button"
+          onClick={() => setPage(p)}
+          className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${
+            page === p
+              ? 'bg-primary text-white font-black'
+              : 'border border-outline-variant/60 hover:bg-surface-container text-on-surface-variant'
+          }`}
+        >
+          {p}
+        </button>
+      )
+    ));
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden">
@@ -377,7 +411,12 @@ const AdminProductPanel = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                const selectedCat = e.target.value;
+                setCategory(selectedCat); // Cập nhật state danh mục
+                setPage(1);               // Reset về trang 1
+                load({ page: 1, categoryOverride: selectedCat }); // Tự động gọi hàm load với category mới
+              }}
               className="min-w-[160px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none"
             >
               <option value="">Tất cả danh mục</option>
@@ -386,13 +425,6 @@ const AdminProductPanel = () => {
                     {(cat.category_code || cat.code || '-') + ' - ' + (cat.category_name || cat.name || cat.title || 'Danh mục')}
                 </option>
               ))}
-            </select>
-
-            <select className="min-w-[140px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none">
-              <option value="">Tất cả trạng thái</option>
-              <option value="ready">Sẵn sàng bán</option>
-              <option value="low">Sắp hết hàng</option>
-              <option value="production">Đang sản xuất</option>
             </select>
           </div>
 
@@ -507,13 +539,15 @@ const AdminProductPanel = () => {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button type="button" className="h-9 w-9 rounded-lg bg-primary text-white font-black">1</button>
-            <button type="button" className="h-9 w-9 rounded-lg border border-outline-variant/60 hover:bg-surface-container">2</button>
-            <button type="button" className="h-9 w-9 rounded-lg border border-outline-variant/60 hover:bg-surface-container">3</button>
+            
+            {/* Render động các số trang */}
+            {renderPageNumbers()}
+
             <button
               type="button"
-              onClick={() => setPage((p) => p + 1)}
-              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors disabled:opacity-40"
+              disabled={page === totalPages}
             >
               <ChevronRight className="w-4 h-4" />
             </button>

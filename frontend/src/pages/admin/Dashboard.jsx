@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,7 +29,10 @@ import ManageSettings from './ManageSettings';
 import PricingForm from '../quotations/PricingForm';
 import QuotationList from '../quotations/QuotationList';
 import QuotationDetail from '../quotations/QuotationDetail';
-
+import ManageMaterialTypes from '../../components/admin/ManageMaterialTypes';
+import ManageMaterialUnits from '../../components/admin/ManageMaterialUnits';
+import ManageInvalidBatches from './ManageInvalidBatches';
+import ManageOrders from './ManageOrders';
 const weeklyRevenue = [
   { name: 'Thứ 2', doanhThu: 120 },
   { name: 'Thứ 3', doanhThu: 240 },
@@ -98,6 +102,8 @@ const orders = [
   },
 ];
 
+
+
 const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
   <div className="bg-white border border-outline-variant/70 rounded-2xl p-5 shadow-sm min-h-[132px] flex flex-col justify-between">
     <div className="flex items-start justify-between gap-3">
@@ -126,7 +132,21 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
 );
 
 const Dashboard = () => {
-  const [activePanel, setActivePanel] = React.useState('overview');
+  const location = useLocation();
+  
+  // 1. Khởi tạo state ban đầu dựa trên URL hiện tại
+  const getPanelFromUrl = () => {
+    const queryParams = new URLSearchParams(location.search);
+    return queryParams.get('panel') || 'overview';
+  };
+
+  const [activePanel, setActivePanel] = useState(getPanelFromUrl);
+
+  // 2. QUAN TRỌNG: Lắng nghe URL thay đổi khi bấm vào Sidebar để ép Dashboard chuyển trang
+  useEffect(() => {
+    const currentPanel = getPanelFromUrl();
+    setActivePanel(currentPanel);
+  }, [location.search]); // Mỗi khi query ?panel=... thay đổi, hàm này sẽ chạy
 
   return (
     <div className="min-h-screen bg-[#f6f8f8] text-on-surface">
@@ -292,9 +312,20 @@ const Dashboard = () => {
               </section>
             )}
 
+            {activePanel === 'material_types' && (
+              <section>
+                <ManageMaterialTypes />
+              </section>
+            )}
+
+            {activePanel === 'material_units' && (
+              <section>
+                <ManageMaterialUnits />
+              </section>
+            )}
+
             {activePanel === 'settings' && (
               <section>
-                {/* Lazy load or direct import is fine here */}
                 <ManageSettings />
               </section>
             )}
@@ -316,6 +347,19 @@ const Dashboard = () => {
                 <QuotationDetail onBack={()=>{ setActivePanel('quotations'); localStorage.removeItem('activeQuotationId'); }} />
               </section>
             )}
+
+            {activePanel === 'invalid_batches' && (
+              <section>
+                <ManageInvalidBatches />
+              </section>
+            )}
+
+            {activePanel === 'orders' &&(
+              <section>
+                <ManageOrders />
+              </section>
+            )}
+
           </main>
         </div>
       </div>
