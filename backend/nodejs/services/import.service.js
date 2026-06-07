@@ -53,7 +53,7 @@ class ImportService {
   // ==========================================
   // TASK-09BE & TASK-10BE: BỘ MÁY ĐỌC FILE (ĐÃ FIX MAPPING)
   // ==========================================
-  async processImportExcel(fileBuffer) {
+  async processImportExcel(fileBuffer, fileName) {
     const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
@@ -62,10 +62,27 @@ class ImportService {
     const rows = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
 
     // ĐÃ SỬA: Nếu file chỉ có 4 dòng đầu (chưa có data ở dòng 5) thì báo lỗi
-    if (rows.length <= 4) throw new Error("File Excel không có dữ liệu!");
+    let headerIndex = -1;
+    // Chỉ quét 20 dòng đầu để tìm header cho nhẹ máy
+    for (let i = 0; i < Math.min(rows.length, 20); i++) {
+      if (
+        rows[i] &&
+        rows[i][0] &&
+        String(rows[i][0]).toLowerCase().includes("mã sản phẩm")
+      ) {
+        headerIndex = i;
+        break;
+      }
+    }
 
-    // ĐÃ SỬA: Loại bỏ 4 dòng đầu (index 0,1,2,3), map data từ dòng số 5 (index 4)
-    const dataRows = rows.slice(4).map((row) => ({
+    if (headerIndex === -1) {
+      throw new Error(
+        "Không nhận diện được form mẫu! Không tìm thấy cột 'Mã sản phẩm'.",
+      );
+    }
+
+    // ✅ Bắt đầu đọc dữ liệu từ ngay dưới dòng tiêu đề tìm được
+    const dataRows = rows.slice(headerIndex + 1).map((row) => ({
       product_code: (row[0] || "").toString().trim(),
       product_name: (row[1] || "").toString().trim(),
       category_code: (row[2] || "").toString().trim(),
@@ -74,8 +91,13 @@ class ImportService {
       other_image_urls: (row[5] || "").toString().trim(),
     }));
 
+    // (Tiếp tục đoạn code tạo batch ở phía dưới giữ nguyên)
     const batch = await prisma.import_batches.create({
-      data: { batch_type: "EXCEL_PRODUCT", status: "PENDING" },
+      data: {
+        batch_type: "EXCEL_PRODUCT",
+        status: "PENDING",
+        file_name: fileName,
+      },
     });
 
     const allProducts = await prisma.products.findMany({
@@ -389,6 +411,41 @@ class ImportService {
         where: { id: batchId },
       });
     });
+  }
+  // Lấy danh sách các batch và thống kê số lượng lỗi
+  async getAllBatches(limit = 200) {
+    const batches = await prisma.import_batches.findMany({
+      take: limit,
+      orderBy: {
+        created_at: "desc",
+      },
+      include: {
+        product_imports_tmp: {
+          select: { validation_status: true }, // Lấy trạng thái để đếm
+        },
+      },
+    });
+
+    // Format lại dữ liệu để tính toán số dòng lỗi / hợp lệ cho Frontend
+    const formattedBatches = batches.map((batch) => {
+      const total_rows = batch.product_imports_tmp.length;
+      const invalid_count = batch.product_imports_tmp.filter(
+        (row) => row.validation_status === "INVALID",
+      ).length;
+      const valid_count = total_rows - invalid_count;
+
+      // Xóa mảng data thô đi để API trả về nhẹ và nhanh hơn
+      delete batch.product_imports_tmp;
+
+      return {
+        ...batch,
+        total_rows,
+        valid_count,
+        invalid_count, // Frontend sẽ dùng biến này để hiển thị "Số dòng lỗi"
+      };
+    });
+
+    return formattedBatches;
   }
 }
 

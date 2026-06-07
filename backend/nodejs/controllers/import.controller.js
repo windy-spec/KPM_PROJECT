@@ -34,8 +34,11 @@ class ImportController {
         });
       }
 
-      // Đẩy buffer của file nhận được vào Service xử lý
-      const result = await importService.processImportExcel(req.file.buffer);
+      // ✅ ĐÚNG: Lấy tên file gốc từ Multer thông qua req.file.originalname
+      const result = await importService.processImportExcel(
+        req.file.buffer,
+        req.file.originalname,
+      );
 
       res.status(200).json({
         success: true,
@@ -119,6 +122,18 @@ class ImportController {
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
+    }
+  } // Lấy danh sách lô nhập
+  async getAllBatches(req, res) {
+    try {
+      // Lấy limit từ query params (Frontend đang gửi ?limit=200)
+      const limit = parseInt(req.query.limit) || 200;
+
+      const result = await importService.getAllBatches(limit);
+
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 }

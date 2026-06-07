@@ -1,42 +1,42 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  Loader2, 
-  Trash2, 
-  Eye, 
-  FileSpreadsheet, 
-  AlertCircle, 
-  Calendar, 
-  RefreshCcw, 
-  X, 
-  Search, 
-  Filter, 
-  TriangleAlert 
-} from 'lucide-react';
-import adminService from '../../services/admin.service';
-import ConfirmModal from '../../components/common/ConfirmModal';
-import Portal from '../../components/common/Portal';
-import Pagination from '../../components/common/Pagination';
-import { showError, showSuccess } from '../../utils/notify';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Loader2,
+  Trash2,
+  Eye,
+  FileSpreadsheet,
+  AlertCircle,
+  Calendar,
+  RefreshCcw,
+  X,
+  Search,
+  Filter,
+  TriangleAlert,
+} from "lucide-react";
+import adminService from "../../services/admin.service";
+import ConfirmModal from "../../components/common/ConfirmModal";
+import Portal from "../../components/common/Portal";
+import Pagination from "../../components/common/Pagination";
+import { showError, showSuccess } from "../../utils/notify";
 
 const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleString("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
 export default function ManageInvalidBatches() {
   const [batches, setBatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   // Thanh công cụ tìm kiếm & bộ lọc đồng bộ AdminProductPanel
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   // Phân trang
   const [page, setPage] = useState(1);
@@ -52,7 +52,7 @@ export default function ManageInvalidBatches() {
 
   const fetchInvalidBatches = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       // 1. Gọi API lấy toàn bộ danh sách các lô hàng
       const res = await adminService.getImportBatches({ limit: 200 });
@@ -70,9 +70,13 @@ export default function ManageInvalidBatches() {
       setBatches(invalidBatches);
       setPage(1); 
     } catch (err) {
-      console.error("Lỗi chi tiết khi gọi API:", err);
-      setError('Không thể tải danh sách lô hàng lỗi từ hệ thống.');
-      showError('Lỗi tải dữ liệu lô lỗi!');
+      console.error(err);
+      setError(
+        err?.response?.data?.message ||
+          "Không thể kết nối đến máy chủ hoặc API chưa được thiết lập.",
+      );
+      showError("Không thể tải danh sách lô hàng lỗi từ hệ thống.");
+      setBatches([]); // Đảm bảo clear danh sách nếu lỗi xảy ra
     } finally {
       setLoading(false);
     }
@@ -88,7 +92,18 @@ export default function ManageInvalidBatches() {
     setPendingDelete(batch);
     setShowDeleteModal(true);
   };
-
+  // Gọi API lấy dữ liệu chi tiết của lô khi bấm xem
+  const handleViewClick = async (batch, e) => {
+    e.stopPropagation();
+    try {
+      const res = await adminService.getImportBatchDetails(batch.id);
+      const detailData = res.data?.data || res.data;
+      // Gắn thêm file_name vào để Modal hiển thị
+      setSelectedBatch({ ...detailData, file_name: batch.file_name });
+    } catch (err) {
+      showError("Không thể tải chi tiết dòng lỗi của lô này!");
+    }
+  };
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     setDeleteLoading(true);
@@ -97,7 +112,7 @@ export default function ManageInvalidBatches() {
         await adminService.deleteImportBatch(pendingDelete.id);
       }
       showSuccess(`Đã dọn dẹp sạch lô hàng lỗi #${pendingDelete.id}`);
-      setBatches(prev => prev.filter(b => b.id !== pendingDelete.id));
+      setBatches((prev) => prev.filter((b) => b.id !== pendingDelete.id));
       setShowDeleteModal(false);
       setPendingDelete(null);
       // Nếu xóa xong trang hiện tại trống thì lùi trang
@@ -105,7 +120,9 @@ export default function ManageInvalidBatches() {
         setPage(page - 1);
       }
     } catch (err) {
-      showError(err?.response?.data?.message || 'Không thể xóa lô hàng lỗi này');
+      showError(
+        err?.response?.data?.message || "Không thể xóa lô hàng lỗi này",
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -117,26 +134,30 @@ export default function ManageInvalidBatches() {
       if (adminService.exportInvalidBatchErrors) {
         const response = await adminService.exportInvalidBatchErrors(batchId);
         const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
-        link.setAttribute('download', `Errors_Batch_${batchId}.xlsx`);
+        link.setAttribute("download", `Errors_Batch_${batchId}.xlsx`);
         document.body.appendChild(link);
         link.click();
         link.remove();
-        showSuccess('Tải file báo cáo lỗi Excel thành công!');
+        showSuccess("Tải file báo cáo lỗi Excel thành công!");
       } else {
-        showError('Tính năng xuất Excel lỗi chưa được tích hợp trong adminService.');
+        showError(
+          "Tính năng xuất Excel lỗi chưa được tích hợp trong adminService.",
+        );
       }
     } catch (err) {
-      showError('Không thể tải file excel lỗi.');
+      showError("Không thể tải file excel lỗi.");
     }
   };
 
   // Logic Tìm kiếm & Bộ lọc Client-side dựa trên dữ liệu thật trả về
   const filteredBatches = useMemo(() => {
-    return batches.filter(b => {
-      const matchesSearch = b.file_name?.toLowerCase().includes(searchQuery.toLowerCase()) || String(b.id).includes(searchQuery);
-      const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter;
+    return batches.filter((b) => {
+      const matchesSearch =
+        b.file_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(b.id).includes(searchQuery);
+      const matchesStatus = statusFilter === "ALL" || b.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [batches, searchQuery, statusFilter]);
@@ -157,7 +178,8 @@ export default function ManageInvalidBatches() {
             Lô Hàng Import Lỗi
           </h1>
           <p className="text-sm font-medium text-on-surface-variant/80">
-            Quản lý, xem chi tiết lỗi kiểm định dữ liệu và dọn dẹp các tệp Excel tạm thời.
+            Quản lý, xem chi tiết lỗi kiểm định dữ liệu và dọn dẹp các tệp Excel
+            tạm thời.
           </p>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -166,7 +188,9 @@ export default function ManageInvalidBatches() {
             disabled={loading}
             className="flex h-10 items-center gap-2 rounded-xl border border-outline-variant/80 bg-surface px-4 text-sm font-bold text-on-surface shadow-sm transition-all hover:bg-surface-container-low disabled:opacity-50"
           >
-            <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCcw
+              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+            />
             Làm mới
           </button>
         </div>
@@ -179,8 +203,12 @@ export default function ManageInvalidBatches() {
             <TriangleAlert className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-on-surface-variant/70 uppercase tracking-wider">Tổng số lô lỗi</p>
-            <p className="text-2xl font-black text-on-surface">{filteredBatches.length} Lô</p>
+            <p className="text-xs font-bold text-on-surface-variant/70 uppercase tracking-wider">
+              Tổng số lô lỗi
+            </p>
+            <p className="text-2xl font-black text-on-surface">
+              {filteredBatches.length} Lô
+            </p>
           </div>
         </div>
       </div>
@@ -193,27 +221,37 @@ export default function ManageInvalidBatches() {
             type="text"
             placeholder="Tìm theo mã lô, tên tệp tin Excel..."
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(1);
+            }}
             className="h-10 w-full rounded-xl border border-outline-variant bg-surface pl-10 pr-4 text-sm font-semibold text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
           />
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 rounded-xl border border-outline-variant bg-surface px-3 h-10 text-xs font-bold text-on-surface-variant">
             <Filter className="h-3.5 w-3.5" />
             <span>Trạng thái:</span>
           </div>
-          {['ALL', 'INVALID', 'REJECTED'].map((st) => (
+          {["ALL", "INVALID", "REJECTED"].map((st) => (
             <button
               key={st}
-              onClick={() => { setStatusFilter(st); setPage(1); }}
+              onClick={() => {
+                setStatusFilter(st);
+                setPage(1);
+              }}
               className={`h-10 px-4 rounded-xl text-xs font-black transition-all ${
                 statusFilter === st
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'border border-outline-variant/80 bg-surface text-on-surface hover:bg-surface-container-low'
+                  ? "bg-primary text-white shadow-sm"
+                  : "border border-outline-variant/80 bg-surface text-on-surface hover:bg-surface-container-low"
               }`}
             >
-              {st === 'ALL' ? 'Tất cả lô' : st === 'INVALID' ? 'Lỗi Định Dạng' : 'Bị Từ Chối'}
+              {st === "ALL"
+                ? "Tất cả lô"
+                : st === "INVALID"
+                  ? "Lỗi Định Dạng"
+                  : "Bị Từ Chối"}
             </button>
           ))}
         </div>
@@ -247,7 +285,9 @@ export default function ManageInvalidBatches() {
                   <td colSpan="6" className="p-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      <p className="text-xs font-bold text-on-surface-variant/60">Đang quét dọn dữ liệu hệ thống...</p>
+                      <p className="text-xs font-bold text-on-surface-variant/60">
+                        Đang quét dọn dữ liệu hệ thống...
+                      </p>
                     </div>
                   </td>
                 </tr>
@@ -256,25 +296,27 @@ export default function ManageInvalidBatches() {
                   <td colSpan="6" className="p-12 text-center">
                     <div className="flex flex-col items-center gap-2 text-on-surface-variant/50">
                       <AlertCircle className="h-8 w-8" />
-                      <p className="text-sm font-bold">Không tìm thấy lô hàng lỗi nào thực tế trên hệ thống.</p>
+                      <p className="text-sm font-bold">
+                        Không tìm thấy lô hàng lỗi nào thực tế trên hệ thống.
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 currentTableData.map((batch) => {
-                  const errorCount = batch.product_imports_tmp?.length || batch.fail_count || 0;
+                  const errorCount = batch.invalid_count || 0;
                   return (
-                    <tr 
-                      key={batch.id} 
+                    <tr
+                      key={batch.id}
                       className="group hover:bg-surface-container-low/40 transition-colors cursor-pointer"
-                      onClick={() => setSelectedBatch(batch)}
+                      onClick={(e) => handleViewClick(batch, e)}
                     >
                       <td className="p-4 text-center font-mono font-bold text-primary">
                         #{batch.id}
                       </td>
                       <td className="p-4">
                         <div className="font-semibold text-on-surface max-w-xs truncate sm:max-w-md">
-                          {batch.file_name || 'Không rõ tên file'}
+                          {batch.file_name || "Không rõ tên file"}
                         </div>
                       </td>
                       <td className="p-4 text-on-surface-variant/90 font-medium text-xs">
@@ -287,18 +329,23 @@ export default function ManageInvalidBatches() {
                         {errorCount} dòng
                       </td>
                       <td className="p-4 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black tracking-wide ${
-                          batch.status === 'REJECTED' 
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200' 
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {batch.status || 'INVALID'}
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black tracking-wide ${
+                            batch.status === "REJECTED"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
+                        >
+                          {batch.status || "INVALID"}
                         </span>
                       </td>
-                      <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td
+                        className="p-4 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => setSelectedBatch(batch)}
+                            onClick={(e) => handleViewClick(batch, e)} // ✅ SỬA LẠI THÀNH THẾ NÀY
                             title="Xem chi tiết dòng lỗi"
                             className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container hover:text-primary transition-all"
                           >
@@ -327,7 +374,11 @@ export default function ManageInvalidBatches() {
             <p className="text-[11px] font-black text-on-surface-variant/60 uppercase tracking-wider">
               Trang {page} / {totalPages} ({filteredBatches.length} bản ghi)
             </p>
-            <Pagination currentPage={page} totalPages={totalPages} onPageChange={(p) => setPage(p)} />
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(p) => setPage(p)}
+            />
           </div>
         )}
       </div>
@@ -337,7 +388,6 @@ export default function ManageInvalidBatches() {
         <Portal>
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in">
             <div className="flex max-h-[85vh] w-full max-w-5xl flex-col rounded-[32px] border border-outline-variant/60 bg-surface shadow-2xl overflow-hidden animate-scale-up">
-              
               {/* Header Modal */}
               <div className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container-low px-6 py-4">
                 <div className="flex items-center gap-3">
@@ -349,11 +399,15 @@ export default function ManageInvalidBatches() {
                       Chi Tiết Lỗi Lô: {selectedBatch.file_name}
                     </h3>
                     <p className="text-xs font-bold text-on-surface-variant/70">
-                      Mã số hệ thống: <span className="font-mono text-primary">#{selectedBatch.id}</span> • Đăng lúc: {formatDate(selectedBatch.created_at)}
+                      Mã số hệ thống:{" "}
+                      <span className="font-mono text-primary">
+                        #{selectedBatch.id}
+                      </span>{" "}
+                      • Đăng lúc: {formatDate(selectedBatch.created_at)}
                     </p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedBatch(null)}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
                 >
@@ -370,32 +424,59 @@ export default function ManageInvalidBatches() {
                         <th className="p-3 w-32">Mã Sản Phẩm</th>
                         <th className="p-3 w-48">Tên Sản Phẩm</th>
                         <th className="p-3 w-32">Mã Danh Mục</th>
-                        <th className="p-3">Nội Dung Chi Tiết Lỗi Kiểm Định (Validation)</th>
+                        <th className="p-3">
+                          Nội Dung Chi Tiết Lỗi Kiểm Định (Validation)
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/20 font-medium">
-                      {(!selectedBatch.product_imports_tmp || selectedBatch.product_imports_tmp.length === 0) ? (
+                      {!selectedBatch.rows ||
+                      selectedBatch.rows.length === 0 ? (
                         <tr>
-                          <td colSpan="4" className="p-8 text-center text-on-surface-variant/60 font-bold">
-                            Không tìm thấy dữ liệu dòng lỗi nào của lô này trên cơ sở dữ liệu.
+                          <td
+                            colSpan="4"
+                            className="p-8 text-center text-on-surface-variant/60 font-bold"
+                          >
+                            Không tìm thấy dữ liệu dòng lỗi nào của lô này trên
+                            cơ sở dữ liệu.
                           </td>
                         </tr>
                       ) : (
-                        selectedBatch.product_imports_tmp.map((row, idx) => {
-                          const rawData = typeof row.raw_data === 'string' ? JSON.parse(row.raw_data) : (row.raw_data || {});
-                          const errors = typeof row.validation_errors === 'string' ? JSON.parse(row.validation_errors) : (row.validation_errors || {});
-                          
+                        selectedBatch.rows.map((row, idx) => {
+                          // Gọi đúng biến `data` thay vì `raw_data` do BE đã xử lý sẵn
+                          const rawData =
+                            typeof row.data === "string"
+                              ? JSON.parse(row.data)
+                              : row.data || {};
+                          const errors =
+                            typeof row.validation_errors === "string"
+                              ? JSON.parse(row.validation_errors)
+                              : row.validation_errors || {};
+
                           return (
-                            <tr key={row.id || idx} className="hover:bg-surface-container-low/30 transition-colors">
-                              <td className="p-3 font-mono font-bold uppercase tracking-wider text-primary">{rawData.product_code || <span className="text-on-surface-variant/40 italic">Trống</span>}</td>
-                              <td className="p-3 font-semibold text-on-surface">{rawData.product_name || 'N/A'}</td>
-                              <td className="p-3 font-semibold uppercase text-on-surface-variant">{rawData.category_code || 'N/A'}</td>
-                              <td className="p-3 text-rose-600 font-semibold whitespace-pre-line bg-rose-50/20">
-                                {errors && Object.keys(errors).length > 0 ? (
-                                  Object.values(errors).map((err, i) => `• ${err}`).join('\n')
-                                ) : (
-                                  'Lỗi cấu trúc hoặc định dạng dữ liệu không đồng nhất.'
+                            <tr
+                              key={row.id || idx}
+                              className="hover:bg-surface-container-low/30 transition-colors"
+                            >
+                              <td className="p-3 font-mono font-bold uppercase tracking-wider text-primary">
+                                {rawData.product_code || (
+                                  <span className="text-on-surface-variant/40 italic">
+                                    Trống
+                                  </span>
                                 )}
+                              </td>
+                              <td className="p-3 font-semibold text-on-surface">
+                                {rawData.product_name || "N/A"}
+                              </td>
+                              <td className="p-3 font-semibold uppercase text-on-surface-variant">
+                                {rawData.category_code || "N/A"}
+                              </td>
+                              <td className="p-3 text-rose-600 font-semibold whitespace-pre-line bg-rose-50/20">
+                                {errors && Object.keys(errors).length > 0
+                                  ? Object.values(errors)
+                                      .map((err, i) => `• ${err}`)
+                                      .join("\n")
+                                  : "Lỗi cấu trúc hoặc định dạng dữ liệu không đồng nhất."}
                               </td>
                             </tr>
                           );
@@ -413,17 +494,16 @@ export default function ManageInvalidBatches() {
                   onClick={() => handleDownloadErrorFile(selectedBatch.id)}
                   className="flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white shadow-sm transition-all hover:bg-emerald-700"
                 >
-                  <FileSpreadsheet className="h-4 w-4" /> 
+                  <FileSpreadsheet className="h-4 w-4" />
                   Xuất Excel Sửa Lỗi
                 </button>
-                <button 
-                  onClick={() => setSelectedBatch(null)} 
+                <button
+                  onClick={() => setSelectedBatch(null)}
                   className="h-10 rounded-xl border border-outline-variant bg-surface px-5 text-sm font-bold text-on-surface hover:bg-surface-container-low transition-colors"
                 >
                   Đóng cửa sổ
                 </button>
               </div>
-
             </div>
           </div>
         </Portal>
@@ -437,7 +517,9 @@ export default function ManageInvalidBatches() {
         confirmText="Xác nhận xóa"
         cancelText="Hủy bỏ"
         loading={deleteLoading}
-        onCancel={() => { if(!deleteLoading) setShowDeleteModal(false); }}
+        onCancel={() => {
+          if (!deleteLoading) setShowDeleteModal(false);
+        }}
         onConfirm={confirmDelete}
       />
     </div>

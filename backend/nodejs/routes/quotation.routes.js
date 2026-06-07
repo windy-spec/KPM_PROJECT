@@ -9,4 +9,6 @@ router.put("/:id/status", quotationController.updateStatus);
 router.post("/:id/attachments", quotationController.addAttachment); // API lưu link bản vẽ
 router.delete("/:id", quotationController.delete);
 router.post("/calculate", quotationController.calculateBulk);
+router.post("/calculate-realtime", quotationController.calculateRealtime);
+router.post("/favorite", quotationController.saveFavorite);
 module.exports = router;

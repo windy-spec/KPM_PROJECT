@@ -178,5 +178,116 @@ class QuotationService {
       },
     });
   }
+  // CỖ MÁY TÍNH GIÁ REAL-TIME CHO FRONTEND (Không lưu DB)
+  async calculateRealtime(data) {
+    const { product_id, width, height, material_id, thickness_id, paint_id } =
+      data;
+
+    if (!width || !height || !material_id || !thickness_id || !paint_id) {
+      throw new Error(
+        "Vui lòng cung cấp đủ thông số (Kích thước, Vật tư, Độ dày, Sơn)!",
+      );
+    }
+
+    const area = (parseFloat(width) / 1000) * (parseFloat(height) / 1000); // Đổi mm ra m2
+
+    // Truy vấn song song dữ liệu để tính giá
+    const [material, thickness, paint, product, laborRate] = await Promise.all([
+      prisma.materials.findUnique({ where: { id: material_id } }),
+      prisma.material_thickness.findUnique({ where: { id: thickness_id } }),
+      prisma.paint_types.findUnique({ where: { id: paint_id } }),
+      product_id
+        ? prisma.products.findUnique({ where: { id: product_id } })
+        : null,
+      prisma.labor_rates.findFirst(), // Lấy đơn giá thợ mặc định
+    ]);
+
+    if (!material || !thickness || !paint) {
+      throw new Error("Thông số Vật tư, Độ dày hoặc Sơn không hợp lệ!");
+    }
+
+    // 1. Tính chi phí lõi
+    const material_cost =
+      parseFloat(material.base_price) *
+      parseFloat(thickness.price_multiplier) *
+      area;
+    const paint_cost = parseFloat(paint.price_per_sqm) * area;
+    const labor_cost = laborRate ? parseFloat(laborRate.rate_amount) * area : 0;
+
+    // 2. Cộng thêm giá tùy chỉnh của chủ xưởng (Cost-plus pricing)
+    const price_adjustment =
+      product && product.price_adjustment
+        ? parseFloat(product.price_adjustment)
+        : 0;
+
+    const total_price =
+      material_cost + paint_cost + labor_cost + price_adjustment;
+
+    return {
+      area: area.toFixed(2),
+      breakdown: {
+        material_cost,
+        paint_cost,
+        labor_cost,
+        price_adjustment,
+      },
+      total_price,
+    };
+  }
+  // LƯU CẤU HÌNH YÊU THÍCH CỦA KHÁCH HÀNG (Lưu vào DB với status 'favorite')
+  async saveFavorite(data) {
+    const {
+      user_id,
+      title,
+      product_id,
+      width,
+      height,
+      material_id,
+      thickness_id,
+      paint_id,
+      note,
+    } = data;
+
+    if (!user_id)
+      throw new Error("Vui lòng đăng nhập để lưu cấu hình yêu thích!");
+
+    // Tính giá tiền tại thời điểm lưu (Gọi lại hàm calculateRealtime)
+    const priceData = await this.calculateRealtime({
+      product_id,
+      width,
+      height,
+      material_id,
+      thickness_id,
+      paint_id,
+    });
+
+    // Tạo báo giá với trạng thái favorite
+    return await prisma.quotations.create({
+      data: {
+        user_id,
+        title: title || "Cấu hình yêu thích chưa đặt tên",
+        total_quoted_price: priceData.total_price,
+        status: "favorite",
+        quotation_specs: {
+          create: [
+            {
+              material_id,
+              thickness_id,
+              paint_id,
+              dimensions: {
+                product_id,
+                width: parseFloat(width),
+                height: parseFloat(height),
+                area: priceData.area,
+              },
+              snapshot_price: priceData.total_price,
+              note,
+            },
+          ],
+        },
+      },
+      include: { quotation_specs: true },
+    });
+  }
 }
 module.exports = new QuotationService();

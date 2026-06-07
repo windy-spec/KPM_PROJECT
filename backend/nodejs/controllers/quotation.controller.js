@@ -71,5 +71,32 @@ class QuotationController {
       res.status(400).json({ success: false, message: e.message });
     }
   }
+  async calculateRealtime(req, res) {
+    try {
+      const result = await quotationService.calculateRealtime(req.body);
+      res.status(200).json({ success: true, data: result });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async saveFavorite(req, res) {
+    try {
+      // Trong thực tế, user_id sẽ lấy từ token: req.user.id. Tạm thời lấy từ body
+      const user_id = req.user?.id || req.body.user_id;
+      const data = { ...req.body, user_id };
+
+      const result = await quotationService.saveFavorite(data);
+      res
+        .status(201)
+        .json({
+          success: true,
+          message: "Đã lưu vào danh sách yêu thích!",
+          data: result,
+        });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
 }
 module.exports = new QuotationController();

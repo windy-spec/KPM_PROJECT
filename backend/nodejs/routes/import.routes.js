@@ -56,4 +56,11 @@ router.delete(
   adminMiddleware,
   importController.deleteBatch,
 );
+// API: Lấy danh sách tất cả các lô hàng đệm
+router.get(
+  "/batches",
+  authMiddleware,
+  adminMiddleware,
+  importController.getAllBatches,
+);
 module.exports = router;
