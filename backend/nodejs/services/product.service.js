@@ -123,7 +123,21 @@ class ProductService {
       },
     });
   }
-  
+  // LẤY CHI TIẾT 1 SẢN PHẨM (Kèm tất cả hình ảnh và danh mục)
+  async getProductById(id) {
+    const product = await prisma.products.findUnique({
+      where: { id },
+      include: {
+        product_categories: { select: { category_name: true } },
+        product_images: {
+          orderBy: { is_primary: "desc" }, // Ảnh primary sẽ xếp đầu tiên
+        },
+      },
+    });
+
+    if (!product) throw new Error("Không tìm thấy sản phẩm!");
+    return product;
+  }
 }
 
 module.exports = new ProductService();

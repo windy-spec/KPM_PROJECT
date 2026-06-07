@@ -4,13 +4,11 @@ class ProductController {
   async create(req, res) {
     try {
       const product = await productService.createProduct(req.body);
-      res
-        .status(201)
-        .json({
-          success: true,
-          message: "Tạo sản phẩm thành công",
-          data: product,
-        });
+      res.status(201).json({
+        success: true,
+        message: "Tạo sản phẩm thành công",
+        data: product,
+      });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
@@ -84,6 +82,15 @@ class ProductController {
       });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async getById(req, res) {
+    try {
+      const { id } = req.params;
+      const product = await productService.getProductById(id);
+      res.status(200).json({ success: true, data: product });
+    } catch (error) {
+      res.status(404).json({ success: false, message: error.message });
     }
   }
 }
