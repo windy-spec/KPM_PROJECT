@@ -54,14 +54,25 @@ export default function ManageInvalidBatches() {
     setLoading(true);
     setError('');
     try {
-      // Gọi trực tiếp dữ liệu thật từ Backend
+      // 1. Gọi API lấy toàn bộ danh sách các lô hàng
       const res = await adminService.getImportBatches({ limit: 200 });
-      setBatches(res.data?.data || res.data || []);
+
+      // Bốc tách chuẩn cấu trúc Axios Response của hệ thống
+      const allBatches = res.data?.data || res.data || [];
+
+      // 2. Lọc thông minh chống sai sót chữ hoa/chữ thường từ DB
+      const invalidBatches = allBatches.filter(batch => {
+        const statusLower = batch.status?.toLowerCase();
+        return statusLower === 'invalid' || statusLower === 'failed';
+      });
+
+      // 3. Cập nhật vào State hiển thị và đưa phân trang về trang 1
+      setBatches(invalidBatches);
+      setPage(1); 
     } catch (err) {
-      console.error(err);
-      setError(err?.response?.data?.message || 'Không thể kết nối đến máy chủ hoặc API chưa được thiết lập.');
-      showError('Không thể tải danh sách lô hàng lỗi từ hệ thống.');
-      setBatches([]); // Đảm bảo clear danh sách nếu lỗi xảy ra
+      console.error("Lỗi chi tiết khi gọi API:", err);
+      setError('Không thể tải danh sách lô hàng lỗi từ hệ thống.');
+      showError('Lỗi tải dữ liệu lô lỗi!');
     } finally {
       setLoading(false);
     }
