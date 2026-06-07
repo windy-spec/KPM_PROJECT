@@ -246,6 +246,7 @@ model user_profiles {
   first_name   String    @db.VarChar(50)
   middle_name  String?   @db.VarChar(50)
   last_name    String    @db.VarChar(50)
+  nickname     String?   @db.VarChar(100)
   phone_number String?   @db.VarChar(20)
   address      String?
   zalo_number  String?   @db.VarChar(20)

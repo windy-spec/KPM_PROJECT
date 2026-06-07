@@ -235,7 +235,7 @@ class authService {
       },
     });
   }
-  
+
   async getUsersAccessLogs() {
     return await prisma.users.findMany({
       select: {
@@ -259,6 +259,100 @@ class authService {
       orderBy: {
         last_login_at: "desc",
       },
+    });
+  }
+  async getAllUsersForAdmin(query) {
+    const { page = 1, limit = 10, search = "" } = query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const whereCondition = {};
+    if (search) {
+      whereCondition.OR = [
+        { username: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        {
+          user_profiles: {
+            OR: [
+              { phone_number: { contains: search, mode: "insensitive" } },
+              { nickname: { contains: search, mode: "insensitive" } }, // Cho phép tìm theo cả nickname
+            ],
+          },
+        },
+      ];
+    }
+
+    const [users, total] = await prisma.$transaction([
+      prisma.users.findMany({
+        where: whereCondition,
+        skip,
+        take,
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          is_active: true,
+          created_at: true,
+          roles: { select: { id: true, role_name: true } },
+          user_profiles: {
+            select: {
+              first_name: true,
+              last_name: true,
+              phone_number: true,
+              nickname: true, // Trả về nickname cho Admin xem
+            },
+          },
+        },
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.users.count({ where: whereCondition }),
+    ]);
+
+    return {
+      users,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        totalItem: total,
+        totalPage: Math.ceil(total / Number(limit)),
+      },
+    };
+  }
+
+  // 2. Cập nhật User (Đổi Role & Cập nhật Nickname)
+  async updateUserByAdmin(userId, data) {
+    const { role_id, nickname } = data;
+
+    const user = await prisma.users.findUnique({ where: { id: userId } });
+    if (!user) throw new Error("Không tìm thấy tài khoản người dùng!");
+
+    return await prisma.$transaction(async (tx) => {
+      // Nếu Admin có truyền lên role_id mới thì cập nhật bảng users
+      if (role_id) {
+        await tx.users.update({
+          where: { id: userId },
+          data: { role_id },
+        });
+      }
+
+      // Nếu Admin có cập nhật nickname thì sửa bảng user_profiles
+      if (nickname !== undefined) {
+        await tx.user_profiles.update({
+          where: { user_id: userId },
+          data: { nickname },
+        });
+      }
+
+      // Trả về data mới nhất
+      return await tx.users.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          username: true,
+          roles: { select: { role_name: true } },
+          user_profiles: { select: { nickname: true } },
+        },
+      });
     });
   }
 }

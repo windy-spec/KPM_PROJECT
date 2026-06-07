@@ -201,5 +201,33 @@ class authController {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
+  async getAllUsers(req, res) {
+    try {
+      const result = await authService.getAllUsersForAdmin(req.query);
+      return res.status(200).json({
+        success: true,
+        data: result.users,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Cập nhật User (Role, Nickname)
+  async updateUserByAdmin(req, res) {
+    try {
+      const { id } = req.params; // ID của user bị sửa
+      const updatedUser = await authService.updateUserByAdmin(id, req.body);
+
+      return res.status(200).json({
+        success: true,
+        message: "Cập nhật thông tin người dùng thành công!",
+        data: updatedUser,
+      });
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 module.exports = new authController();
