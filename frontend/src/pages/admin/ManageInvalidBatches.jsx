@@ -54,21 +54,9 @@ export default function ManageInvalidBatches() {
     setLoading(true);
     setError("");
     try {
-      // 1. Gọi API lấy toàn bộ danh sách các lô hàng
+      // Gọi trực tiếp dữ liệu thật từ Backend
       const res = await adminService.getImportBatches({ limit: 200 });
-
-      // Bốc tách chuẩn cấu trúc Axios Response của hệ thống
-      const allBatches = res.data?.data || res.data || [];
-
-      // 2. Lọc thông minh chống sai sót chữ hoa/chữ thường từ DB
-      const invalidBatches = allBatches.filter(batch => {
-        const statusLower = batch.status?.toLowerCase();
-        return statusLower === 'invalid' || statusLower === 'failed';
-      });
-
-      // 3. Cập nhật vào State hiển thị và đưa phân trang về trang 1
-      setBatches(invalidBatches);
-      setPage(1); 
+      setBatches(res.data?.data || res.data || []);
     } catch (err) {
       console.error(err);
       setError(
