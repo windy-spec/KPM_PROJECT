@@ -321,29 +321,44 @@ class authService {
 
   // 2. Cập nhật User (Đổi Role & Cập nhật Nickname)
   async updateUserByAdmin(userId, data) {
-    const { role_id, nickname } = data;
+    const { role_name, nickname} = data;
 
     const user = await prisma.users.findUnique({ where: { id: userId } });
     if (!user) throw new Error("Không tìm thấy tài khoản người dùng!");
 
     return await prisma.$transaction(async (tx) => {
-      // Nếu Admin có truyền lên role_id mới thì cập nhật bảng users
-      if (role_id) {
+      let updateData = {};
+
+      // 1. Tìm và map role_name từ Frontend sang role_id cho khớp UUID
+      if (role_name) {
+        const role = await tx.roles.findUnique({ where: { role_name } });
+        if (!role) throw new Error("Quyền hạn không tồn tại trên hệ thống!");
+        updateData.role_id = role.id;
+      }
+
+      // Thực thi cập nhật bảng users nếu có thay đổi role hoặc active status
+      if (Object.keys(updateData).length > 0) {
         await tx.users.update({
           where: { id: userId },
-          data: { role_id },
+          data: updateData,
         });
       }
 
-      // Nếu Admin có cập nhật nickname thì sửa bảng user_profiles
+      // 2. Xử lý cập nhật nickname bằng phương thức UPSERT chống crash 1-1
       if (nickname !== undefined) {
-        await tx.user_profiles.update({
+        await tx.user_profiles.upsert({
           where: { user_id: userId },
-          data: { nickname },
+          update: { nickname },
+          create: {
+            user_id: userId,
+            nickname: nickname,
+            first_name: "", // Đảm bảo các trường @db.VarChar(50) không bị lỗi trường bắt buộc
+            last_name: ""
+          },
         });
       }
 
-      // Trả về data mới nhất
+      // Trả về dữ liệu sạch sẽ, đúng cấu trúc ban đầu của design code
       return await tx.users.findUnique({
         where: { id: userId },
         select: {

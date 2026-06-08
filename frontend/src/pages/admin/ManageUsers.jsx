@@ -7,6 +7,7 @@ import adminService from '../../services/admin.service';
 import Portal from '../../components/common/Portal';
 import { showError, showSuccess } from '../../utils/notify';
 
+
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,42 +21,73 @@ export default function ManageUsers() {
   // Quản lý trạng thái Modal Chỉnh sửa
   const [editingUser, setEditingUser] = useState(null);
   const [submitLoading, setSubmitLoading] = useState(false);
+
+  // State dùng để ép component render lại mỗi phút nhằm cập nhật số phút Offline
+  const [tick, setTick] = useState(0);
   
   const [form, setForm] = useState({
     role_name: '',
     nickname: '',
-    is_active: true
   });
 
-  const loadUsers = async () => {
-    setLoading(true);
+  const loadUsers = async (isSilent = false) => {
+    // Chỉ set loading quay quay nếu KHÔNG PHẢI là chạy ngầm (Silent)
+    if (!isSilent) setLoading(true);
     try {
-        // Gọi qua adminService thay vì axios trực tiếp
-        const response = await adminService.getUsersForAdmin({
+      // 1. Lấy danh sách user từ server
+      const response = await adminService.getUsersForAdmin({
         page,
         limit: 10,
         search: searchQuery
-        });
-        
-        // Kiểm tra cấu trúc dữ liệu trả về từ backend
-        setUsers(response.data.data); 
-        setTotal(response.data.pagination.totalItem);
-    } catch (error) {
-        console.error("Lỗi đồng bộ danh sách Admin:", error);
-        showError("Không thể tải danh sách người dùng.");
-    } finally {
-        setLoading(false);
-    }
-    };
+      });
+      
+      let usersData = response.data?.data || [];
 
+      // 2. Gọi API lấy logs để bù đắp và xác thực trạng thái online thực tế
+      try {
+        const logsResponse = await adminService.getUsersAccessLogs();
+        const logs = logsResponse.data?.data || [];
+        
+        usersData = usersData.map(user => {
+          // Tìm log của user này
+          const userLog = logs.find(log => log.id === user.id);
+          return {
+            ...user,
+            // Nếu tìm thấy log thì lấy last_login_at từ log, không thì giữ nguyên
+            last_login_at: userLog ? userLog.last_login_at : user.last_login_at,
+            // Đánh dấu true nếu user này có log hoạt động gần đây từ server trả về
+            hasActiveLog: !!userLog 
+          };
+        });
+      } catch (logErr) {
+        console.error("Không thể lấy logs truy cập:", logErr);
+      }
+
+      setUsers(usersData);
+      setTotal(response.data?.pagination?.totalItem || 0);
+    } catch (error) {
+      showError(error.response?.data?.message || 'Không thể tải danh sách người dùng');
+    } finally {
+      if (!isSilent) setLoading(false);
+    }
+  };
+
+  // Quét realtime mỗi 4 giây
   useEffect(() => {
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    // Lần đầu vào trang hoặc khi đổi trang/tìm kiếm thì hiện Loader quay quay như bình thường
+    loadUsers(false);
+
+    const interval = setInterval(() => {
+      // Chạy ngầm sau mỗi 4 giây: cập nhật data im lặng tránh gây giật lag UI
+      loadUsers(true); 
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [page, searchQuery]);
 
   const handleSearch = () => {
     setPage(1);
-    loadUsers(1, searchQuery);
+    loadUsers(false);
   };
 
   const handleOpenEdit = (user) => {
@@ -80,7 +112,7 @@ export default function ManageUsers() {
       
       showSuccess("Cập nhật phân quyền và trạng thái thành công!");
       setEditingUser(null);
-      await loadUsers();
+      await loadUsers(true);
     } catch (err) {
       showError(err.response?.data?.message || "Cập nhật tài khoản thất bại.");
     } finally {
@@ -88,11 +120,17 @@ export default function ManageUsers() {
     }
   };
 
-  // Tính toán trạng thái Online (Giả định: Có tương tác trong 30 phút qua)
-  const isOnline = (lastLoginAt) => {
-    if (!lastLoginAt) return false;
-    const diff = Date.now() - new Date(lastLoginAt).getTime();
-    return diff < 30 * 60 * 1000;
+  // Kiểm tra trạng thái dựa trên việc phản hồi log hoạt động từ server
+  const isOnline = (user) => {
+    // Bảo vệ nếu object user không hợp lệ hoặc chưa từng đăng nhập
+    if (!user || !user.last_login_at) return false;
+    
+    // Nếu user không có log hoạt động trả về từ API access-logs -> Chắc chắn đã logout/offline
+    if (!user.hasActiveLog) return false;
+    
+    // Nếu có log, check khoảng thời gian tương tác (15 phút) để đảm bảo tính thực tế
+    const diff = Date.now() - new Date(user.last_login_at).getTime();
+    return diff < 15 * 60 * 1000; 
   };
 
   const pageStart = total === 0 ? 0 : (page - 1) * limit + 1;
@@ -129,6 +167,8 @@ export default function ManageUsers() {
       )
     ));
   };
+
+  
 
   return (
     <div className="space-y-6">
@@ -189,8 +229,7 @@ export default function ManageUsers() {
 
             <tbody className="divide-y divide-outline-variant/25 text-sm">
               {users.map((user, idx) => {
-                const userOnline = isOnline(user.last_login_at);
-                const isBanned = !user.is_active;
+                const userOnline = isOnline(user);
 
                 return (
                   <tr key={user.id} className="hover:bg-surface-container/20 transition-colors">
@@ -204,13 +243,13 @@ export default function ManageUsers() {
                           <Users className="w-5 h-5 text-on-surface-variant/45" />
                         </div>
                         <div className="min-w-0">
-                          <div className="font-black text-on-surface flex items-center gap-2">
-                            {user.username}
-                            {isBanned && (
-                              <span className="inline-flex items-center rounded-md bg-rose-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-700">
-                                Bị khóa
+                          <div className="inline-flex items-center gap-1.5 font-bold text-sm text-on-surface">
+                            <span>{user.username}</span>
+                            {user.user_profiles?.nickname ? (
+                              <span className="text-xs font-normal text-on-surface-variant/80 bg-surface-container-high px-2 py-0.5 rounded-md whitespace-nowrap">
+                                ({user.user_profiles.nickname})
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           <div className="text-[11px] text-on-surface-variant/60 mt-0.5">{user.email}</div>
                         </div>
@@ -225,11 +264,29 @@ export default function ManageUsers() {
                       </span>
                     </td>
 
+                    
+
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         <CircleDot className={`w-3.5 h-3.5 ${userOnline ? 'text-emerald-500' : 'text-on-surface-variant/40'}`} />
                         <span className={`text-[11px] font-bold ${userOnline ? 'text-emerald-600' : 'text-on-surface-variant/60'}`}>
-                          {userOnline ? 'Đang Online' : 'Offline'}
+                          {userOnline ? (
+                            'Đang hoạt động'
+                          ) : (
+                            (() => {
+                              if (!user.last_login_at) return 'Chưa hoạt động';
+                              
+                              const diffMins = Math.floor((Date.now() - new Date(user.last_login_at).getTime()) / (60 * 1000));
+                              
+                              if (diffMins < 60) {
+                                return `Offline ${diffMins} phút trước`;
+                              } else if (diffMins < 1440) {
+                                return `Offline ${Math.floor(diffMins / 60)} giờ trước`;
+                              } else {
+                                return `Offline ${Math.floor(diffMins / 1440)} ngày trước`;
+                              }
+                            })()
+                          )}
                         </span>
                       </div>
                       <div className="text-[10px] text-on-surface-variant/50 mt-1">
@@ -319,38 +376,20 @@ export default function ManageUsers() {
                         onChange={e => setForm({ ...form, role_name: e.target.value })}
                         className="w-full h-11 px-4 text-sm bg-white border border-outline-variant/60 rounded-xl focus:outline-none focus:border-primary font-bold text-on-surface"
                     >
-                        <option value="USER">👥 Người dùng cơ bản (USER)</option>
-                        <option value="ADMIN">👑 Quản trị viên hệ thống (ADMIN)</option>
+                        <option value="USER">Người dùng cơ bản (USER)</option>
+                        <option value="ADMIN">Quản trị viên hệ thống (ADMIN)</option>
                     </select>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-[0.1em] text-on-surface-variant mb-3">Trạng thái đăng nhập</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border cursor-pointer transition-all ${form.is_active ? 'border-emerald-500 bg-emerald-50' : 'border-outline-variant/40 hover:bg-surface-container'}`}>
-                      <input 
-                        type="radio" 
-                        name="accountStatus"
-                        checked={form.is_active === true} 
-                        onChange={() => setForm({ ...form, is_active: true })}
-                        className="hidden"
-                      />
-                      <CircleDot className={`w-4 h-4 ${form.is_active ? 'text-emerald-600' : 'text-on-surface-variant/50'}`} />
-                      <span className={`text-xs font-bold ${form.is_active ? 'text-emerald-700' : 'text-on-surface-variant'}`}>Cho phép</span>
-                    </label>
-
-                    <label className={`flex items-center justify-center gap-2 px-3 py-3 rounded-xl border cursor-pointer transition-all ${!form.is_active ? 'border-rose-500 bg-rose-50' : 'border-outline-variant/40 hover:bg-surface-container'}`}>
-                      <input 
-                        type="radio" 
-                        name="accountStatus"
-                        checked={form.is_active === false} 
-                        onChange={() => setForm({ ...form, is_active: false })}
-                        className="hidden"
-                      />
-                      <ShieldBan className={`w-4 h-4 ${!form.is_active ? 'text-rose-600' : 'text-on-surface-variant/50'}`} />
-                      <span className={`text-xs font-bold ${!form.is_active ? 'text-rose-700' : 'text-on-surface-variant'}`}>Khóa tài khoản</span>
-                    </label>
-                  </div>
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-on-surface-variant/70">Biệt danh (Nickname)</label>
+                  <input
+                    type="text"
+                    value={form.nickname || ''}
+                    onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+                    placeholder="Nhập biệt danh cho thành viên..."
+                    className="w-full h-11 px-4 text-sm bg-surface-container border border-outline-variant/60 rounded-xl focus:outline-none focus:border-primary transition-colors"
+                  />
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-5 border-t border-outline-variant/40 mt-2">
