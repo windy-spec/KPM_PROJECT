@@ -19,6 +19,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 
+
 const AdminSidebar = ({ onPanelChange = () => {} }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -30,6 +31,11 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
   // Quản lý trạng thái đóng mở danh mục "Vật tư"
   const [isMaterialOpen, setIsMaterialOpen] = useState(
     ['materials', 'material_types', 'material_units'].includes(activePanel)
+  );
+
+  // Quản lý trạng thái đóng mở danh mục "Cấu hình" mới
+  const [isSettingsOpen, setIsSettingsOpen] = useState(
+    ['settings_thickness', 'settings_paint', 'settings_labor'].includes(activePanel)
   );
 
   const handleLogout = async () => {
@@ -73,7 +79,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
         },
 
         { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
-        { label: 'Invalid batches', icon: Package, panel: 'invalid_batches' },
+        { label: 'Quản lý lô', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản lý đơn hàng', icon: ShoppingCart, panel: 'orders' },
         { label: 'Quản lý user', icon: User, panel: 'users'}
       ],
@@ -81,7 +87,19 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
     {
       label: 'Hệ thống',
       items: [
-        { label: 'Cấu hình', icon: Settings, panel: 'settings' },
+        // ĐÃ CẬP NHẬT: Chuyển đổi item Cấu hình đơn lẻ thành cấu trúc dropdown đa cấp 
+        {
+          label: 'Cấu hình',
+          icon: Settings,
+          isDropdown: true,
+          isOpen: isSettingsOpen,
+          onToggle: () => setIsSettingsOpen(!isSettingsOpen),
+          submenu: [
+            { label: 'Hệ số độ dày', icon: Ruler, panel: 'settings_thickness' },
+            { label: 'Đơn giá sơn', icon: Layers, panel: 'settings_paint' },
+            { label: 'Bảng giá nhân công', icon: Settings, panel: 'settings_labor' },
+          ],
+        },
       ],
     },
   ];
@@ -109,7 +127,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
               {group.items.map((item) => {
                 const Icon = item.icon;
 
-                // XỬ LÝ GIAO DIỆN DROPDOWN (MỤC VẬT TƯ)
+                // XỬ LÝ GIAO DIỆN DROPDOWN (MỤC VẬT TƯ VÀ CẤU HÌNH)
                 if (item.isDropdown) {
                   const isAnySubmenuActive = item.submenu.some(sub => activePanel === sub.panel);
                   
@@ -162,6 +180,8 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
                     </div>
                   );
                 }
+
+                
 
                 // XỬ LÝ CÁC MENU LINK THÔNG THƯỜNG
                 const isActive = item.path

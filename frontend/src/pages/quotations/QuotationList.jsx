@@ -48,7 +48,7 @@ export default function QuotationList({ onOpen }) {
       
       {/* Header Bar chuẩn AdminProductPanel */}
       <div className="px-4 md:px-5 py-4 border-b border-outline-variant/50 flex items-center justify-start gap-2 bg-surface-container/10">
-        <h2 className="text-[15px] md:text-[16px] font-black uppercase tracking-[0.12em] text-on-surface whitespace-nowrap">
+        <h2 className="text-[15px] md:text-[16px] font-black uppercase tracking-[0.12em] text-on-surface">
           Danh sách Báo giá
         </h2>
         <span className="inline-flex items-center rounded-md bg-surface-container px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/75">

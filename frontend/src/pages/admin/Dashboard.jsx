@@ -326,9 +326,9 @@ const Dashboard = () => {
               </section>
             )}
 
-            {activePanel === 'settings' && (
+            {['settings', 'settings_thickness', 'settings_paint', 'settings_labor'].includes(activePanel) && (
               <section>
-                <ManageSettings />
+                <ManageSettings activePanel={activePanel} />
               </section>
             )}
 

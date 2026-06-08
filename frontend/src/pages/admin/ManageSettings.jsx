@@ -1,211 +1,84 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import adminService from "../../services/admin.service";
 import Portal from "../../components/common/Portal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { showError, showSuccess } from "../../utils/notify";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Settings, Undo2, Save, Component, Palette, Briefcase, Search } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
+import LaborCategorySelect from "../../components/admin/LaborCategorySelect";
 
 const ITEMS_PER_PAGE = 6;
 
-function TabNav({ tabs, active, onChange }) {
-  return (
-    <div className="inline-flex items-center gap-2">
-      {tabs.map((t) => (
-        <button
-          key={t.key}
-          onClick={() => onChange(t.key)}
-          className={`text-xs font-black uppercase tracking-[0.12em] px-3 py-2 rounded-lg transition-colors ${
-            active === t.key
-              ? "bg-primary text-white"
-              : "bg-surface-container/10 text-on-surface-variant"
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function ThicknessRow({ item, onEdit, onDelete }) {
-  // Trích xuất mã và tên từ object materials do Prisma lồng vào
   const matCode = item.materials?.material_code || "";
   const matName = item.materials?.material_name || "";
 
   return (
     <tr className="hover:bg-surface-container/20 transition-colors">
-      <td className="p-4">
+      <td className="p-4 pl-6">
         {matCode ? (
           <div className="flex flex-col">
-            <span className="font-bold text-primary">{matCode}</span>
-            <span className="text-xs text-on-surface-variant/80 mt-0.5">
-              {matName}
+            <span className="font-black text-on-surface">{matName}</span>
+            <span className="font-mono text-[11px] text-primary mt-0.5">
+              Mã: {matCode}
             </span>
           </div>
         ) : (
-          "-"
+          <span className="text-on-surface-variant/50">-</span>
         )}
       </td>
-      <td className="p-4">{item.thickness_value}</td>
-      <td className="p-4">{Number(item.price_multiplier).toFixed(2)}</td>
-      <td className="p-4 text-center">
+      <td className="p-4">
+        <span className="font-bold text-on-surface-variant/90">{item.thickness_value}</span>
+      </td>
+      <td className="p-4">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-surface-container font-mono text-[11px] font-bold text-on-surface-variant/90 border border-outline-variant/40">
+          x {Number(item.price_multiplier).toFixed(2)}
+        </span>
+      </td>
+      <td className="p-4 pr-6 text-center">
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => onEdit(item)}
-            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold hover:bg-surface-container transition-colors"
+            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors flex items-center gap-1.5"
           >
-            Sửa
+            <Pencil className="w-3 h-3" /> Sửa
           </button>
           <button
             onClick={() => onDelete(item)}
-            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors flex items-center gap-1.5"
           >
-            Xoá
+            <Trash2 className="w-3 h-3" /> Xoá
           </button>
         </div>
       </td>
     </tr>
   );
 }
-
-const ThicknessForm = ({ initial = {}, materials = [], onCancel, onSave }) => {
-  const [form, setForm] = useState({
-    material_id: "",
-    thickness_value: "",
-    price_multiplier: "",
-  });
-  useEffect(
-    () =>
-      setForm({
-        material_id: initial.material_id || "",
-        thickness_value: initial.thickness_value || "",
-        price_multiplier: initial.price_multiplier ?? "",
-      }),
-    [initial],
-  );
-
-  const canSave =
-    form.material_id &&
-    form.thickness_value &&
-    form.price_multiplier !== "" &&
-    Number(form.price_multiplier) > 0;
-
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-        <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-          <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5">
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-                {initial.id ? "Sửa hệ số độ dày" : "Thêm hệ số độ dày"}
-              </h3>
-              <p className="mt-2 text-xs text-on-surface-variant/70">
-                Hệ số dùng để nhân theo độ dày khi tính toán giá.
-              </p>
-            </div>
-            <button
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Vật tư
-              </label>
-              <select
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                value={form.material_id}
-                onChange={(e) =>
-                  setForm({ ...form, material_id: e.target.value })
-                }
-              >
-                <option value="">Chọn vật tư</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.material_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Tên độ dày
-              </label>
-              <input
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                value={form.thickness_value}
-                onChange={(e) =>
-                  setForm({ ...form, thickness_value: e.target.value })
-                }
-                placeholder="VD: 1.2ly"
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Hệ số nhân
-              </label>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                value={form.price_multiplier}
-                onChange={(e) =>
-                  setForm({ ...form, price_multiplier: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4">
-            <button
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={() => onSave(form)}
-              disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Lưu
-            </button>
-          </div>
-        </div>
-      </div>
-    </Portal>
-  );
-};
 
 function PaintRow({ item, onEdit, onDelete }) {
   return (
     <tr className="hover:bg-surface-container/20 transition-colors">
-      <td className="p-4">{item.paint_name}</td>
-      <td className="p-4">
-        {Number(item.price_per_sqm).toLocaleString("vi-VN")}
+      <td className="p-4 pl-6 font-black text-on-surface">{item.paint_name}</td>
+      <td className="p-4 font-bold text-teal-700">
+        {Number(item.price_per_sqm).toLocaleString("vi-VN")} đ
       </td>
-      <td className="p-4">{item.description || "-"}</td>
-      <td className="p-4 text-center">
+      <td className="p-4 text-on-surface-variant/80 text-xs max-w-xs truncate" title={item.description}>
+        {item.description || "-"}
+      </td>
+      <td className="p-4 pr-6 text-center">
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => onEdit(item)}
-            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold hover:bg-surface-container transition-colors"
+            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors flex items-center gap-1.5"
           >
-            Sửa
+            <Pencil className="w-3 h-3" /> Sửa
           </button>
           <button
             onClick={() => onDelete(item)}
-            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors flex items-center gap-1.5"
           >
-            Xoá
+            <Trash2 className="w-3 h-3" /> Xoá
           </button>
         </div>
       </td>
@@ -213,132 +86,23 @@ function PaintRow({ item, onEdit, onDelete }) {
   );
 }
 
-const PaintForm = ({ initial = {}, onCancel, onSave }) => {
-  const [form, setForm] = useState({
-    paint_name: "",
-    price_per_sqm: "",
-    description: "",
-  });
-  useEffect(
-    () =>
-      setForm({
-        paint_name: initial.paint_name || "",
-        price_per_sqm: initial.price_per_sqm ?? "",
-        description: initial.description || "",
-      }),
-    [initial],
-  );
-  const canSave =
-    form.paint_name.trim() &&
-    form.price_per_sqm !== "" &&
-    Number(form.price_per_sqm) >= 0;
+// ==========================================
+// COMPONENT CHÍNH
+// ==========================================
 
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-        <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-          <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5">
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-                {initial.id ? "Sửa loại sơn" : "Thêm loại sơn"}
-              </h3>
-              <p className="mt-2 text-xs text-on-surface-variant/70">
-                Giá thi công dùng khi ước lượng công sơn theo m2.
-              </p>
-            </div>
-            <button
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid gap-4 px-6 py-5">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Tên loại sơn
-              </label>
-              <input
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                value={form.paint_name}
-                onChange={(e) =>
-                  setForm({ ...form, paint_name: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Đơn giá thi công (VNĐ/m2)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                value={form.price_per_sqm}
-                onChange={(e) =>
-                  setForm({ ...form, price_per_sqm: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                Mô tả (tuỳ chọn)
-              </label>
-              <textarea
-                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                rows={3}
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4">
-            <button
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={() => onSave(form)}
-              disabled={!canSave}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Lưu
-            </button>
-          </div>
-        </div>
-      </div>
-    </Portal>
-  );
-};
-
-const ManageSettings = () => {
+const ManageSettings = ({ activePanel }) => {
   const [tab, setTab] = useState("thickness");
+  const navigate = useNavigate();
 
-  // State quản lý trang cho từng tab
-  const [thPage, setThPage] = useState(1);
-  const [paintPage, setPaintPage] = useState(1);
-
-  // labor pricing
+  // States Dữ liệu gốc
   const [labCategories, setLabCategories] = useState([]);
   const [labModels, setLabModels] = useState([]);
-  const [labRatesMap, setLabRatesMap] = useState({}); // { [categoryId]: { [modelId]: { id, price } } }
-  const [labEdits, setLabEdits] = useState({}); // staged edits { categoryId: { modelId: price } }
+  const [labRatesMap, setLabRatesMap] = useState({});
+  const [labEdits, setLabEdits] = useState({}); 
   const [labSaveConfirmOpen, setLabSaveConfirmOpen] = useState(false);
   const [labSaving, setLabSaving] = useState(false);
-  const [newRate, setNewRate] = useState({
-    category_id: "",
-    model_id: "",
-    rate_amount: "",
-  });
+  const [newRate, setNewRate] = useState({ category_id: "", model_id: "", rate_amount: "" });
 
-  // thickness
   const [thicknessList, setThicknessList] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [thFormOpen, setThFormOpen] = useState(false);
@@ -346,49 +110,103 @@ const ManageSettings = () => {
   const [thPendingDelete, setThPendingDelete] = useState(null);
   const [thConfirmOpen, setThConfirmOpen] = useState(false);
 
-  // paint
   const [paintList, setPaintList] = useState([]);
   const [paintFormOpen, setPaintFormOpen] = useState(false);
   const [paintEditing, setPaintEditing] = useState(null);
   const [paintPendingDelete, setPaintPendingDelete] = useState(null);
   const [paintConfirmOpen, setPaintConfirmOpen] = useState(false);
 
-  // Phân trang Client-side sử dụng useMemo để tối ưu hiệu năng
+  // States Tìm kiếm & Phân trang
+  const [searchTerm, setSearchTerm] = useState("");
+  const [thPage, setThPage] = useState(1);
+  const [paintPage, setPaintPage] = useState(1);
+
+  // Lắng nghe đổi Tab từ URL
+  useEffect(() => {
+    if (activePanel === "settings_paint") {
+      setTab("paint");
+    } else if (activePanel === "settings_labor") {
+      setTab("labor");
+    } else {
+      setTab("thickness");
+    }
+    // Reset mọi thứ khi đổi tab
+    setThPage(1);
+    setPaintPage(1);
+    setSearchTerm("");
+  }, [activePanel]);
+
+  // Reset trang về 1 khi gõ tìm kiếm
+  useEffect(() => {
+    setThPage(1);
+    setPaintPage(1);
+  }, [searchTerm]);
+
+  // ==========================================
+  // LOGIC LỌC TÌM KIẾM (REAL-TIME FILTERING)
+  // ==========================================
+  const filteredThicknessList = useMemo(() => {
+    if (!searchTerm.trim()) return thicknessList;
+    const lower = searchTerm.toLowerCase();
+    return thicknessList.filter((t) => 
+      t.materials?.material_name?.toLowerCase().includes(lower) ||
+      t.materials?.material_code?.toLowerCase().includes(lower) ||
+      t.thickness_value?.toLowerCase().includes(lower)
+    );
+  }, [thicknessList, searchTerm]);
+
+  const filteredPaintList = useMemo(() => {
+    if (!searchTerm.trim()) return paintList;
+    const lower = searchTerm.toLowerCase();
+    return paintList.filter((p) => 
+      p.paint_name?.toLowerCase().includes(lower) ||
+      p.description?.toLowerCase().includes(lower)
+    );
+  }, [paintList, searchTerm]);
+
+  const filteredLabCategories = useMemo(() => {
+    if (!searchTerm.trim()) return labCategories;
+    const lower = searchTerm.toLowerCase();
+    return labCategories.filter((c) => 
+      c.category_name?.toLowerCase().includes(lower)
+    );
+  }, [labCategories, searchTerm]);
+
+  // ==========================================
+  // LOGIC PHÂN TRANG (Dựa trên danh sách đã lọc)
+  // ==========================================
   const paginatedThicknessList = useMemo(() => {
     const startIndex = (thPage - 1) * ITEMS_PER_PAGE;
-    return thicknessList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [thicknessList, thPage]);
+    return filteredThicknessList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredThicknessList, thPage]);
 
   const totalThPages = useMemo(() => {
-    return Math.ceil(thicknessList.length / ITEMS_PER_PAGE);
-  }, [thicknessList]);
+    return Math.ceil(filteredThicknessList.length / ITEMS_PER_PAGE);
+  }, [filteredThicknessList]);
 
   const paginatedPaintList = useMemo(() => {
     const startIndex = (paintPage - 1) * ITEMS_PER_PAGE;
-    return paintList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [paintList, paintPage]);
+    return filteredPaintList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredPaintList, paintPage]);
 
   const totalPaintPages = useMemo(() => {
-    return Math.ceil(paintList.length / ITEMS_PER_PAGE);
-  }, [paintList]);
+    return Math.ceil(filteredPaintList.length / ITEMS_PER_PAGE);
+  }, [filteredPaintList]);
 
-  // Reset trang về 1 khi chuyển đổi giữa các tab
+  // Hàm đổi Tab
   const handleTabChange = (nextTab) => {
-    setTab(nextTab);
-    setThPage(1);
-    setPaintPage(1);
+    const panelMap = {
+      thickness: "settings_thickness",
+      paint: "settings_paint",
+      labor: "settings_labor",
+    };
+    navigate(`/admin/dashboard?panel=${panelMap[nextTab]}`);
   };
 
+  // Load Data
   const loadAll = async () => {
     try {
-      const [
-        materialsRes,
-        thRes,
-        paintRes,
-        labCatRes,
-        labModelRes,
-        labRatesRes,
-      ] = await Promise.all([
+      const [materialsRes, thRes, paintRes, labCatRes, labModelRes, labRatesRes] = await Promise.all([
         adminService.getMaterials({ page: 1, limit: 500 }),
         adminService.getMaterialThickness(),
         adminService.getPaintTypes(),
@@ -397,12 +215,7 @@ const ManageSettings = () => {
         adminService.getLaborRates(),
       ]);
 
-      setMaterials(
-        (materialsRes.data?.data || materialsRes.data || []).map((m) => ({
-          id: m.id,
-          material_name: m.material_name,
-        })),
-      );
+      setMaterials((materialsRes.data?.data || materialsRes.data || []).map((m) => ({ id: m.id, material_name: m.material_name })));
       setThicknessList(thRes.data?.data || thRes.data || []);
       setPaintList(paintRes.data?.data || paintRes.data || []);
 
@@ -413,16 +226,12 @@ const ManageSettings = () => {
       setLabCategories(Array.isArray(cats) ? cats : []);
       setLabModels(Array.isArray(models) ? models : []);
 
-      // build rates map
       const map = {};
       (rates || []).forEach((r) => {
         const cid = r.category_id;
         const mid = r.model_id;
         if (!map[cid]) map[cid] = {};
-        map[cid][mid] = {
-          id: r.id,
-          price: Number(r.rate_amount ?? r.price ?? 0),
-        };
+        map[cid][mid] = { id: r.id, price: Number(r.rate_amount ?? r.price ?? 0) };
       });
       setLabRatesMap(map);
       setLabEdits({});
@@ -431,80 +240,43 @@ const ManageSettings = () => {
     }
   };
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  useEffect(() => { loadAll(); }, []);
 
+  // CRUD Handlers
   const handleThSave = async (form) => {
     try {
-      if (thEditing?.id) {
-        await adminService.updateMaterialThickness(thEditing.id, form);
-        showSuccess("Cập nhật thành công");
-      } else {
-        await adminService.createMaterialThickness(form);
-        showSuccess("Thêm thành công");
-      }
-      setThFormOpen(false);
-      setThEditing(null);
-      await loadAll();
-    } catch (e) {
-      showError(e?.response?.data?.message || e?.message || "Lưu thất bại");
-    }
+      if (thEditing?.id) { await adminService.updateMaterialThickness(thEditing.id, form); showSuccess("Cập nhật thành công"); }
+      else { await adminService.createMaterialThickness(form); showSuccess("Thêm thành công"); }
+      setThFormOpen(false); setThEditing(null); await loadAll();
+    } catch (e) { showError(e?.response?.data?.message || e?.message || "Lưu thất bại"); }
   };
 
   const handlePaintSave = async (form) => {
     try {
-      if (paintEditing?.id) {
-        await adminService.updatePaintType(paintEditing.id, form);
-        showSuccess("Cập nhật thành công");
-      } else {
-        await adminService.createPaintType(form);
-        showSuccess("Thêm thành công");
-      }
-      setPaintFormOpen(false);
-      setPaintEditing(null);
-      await loadAll();
-    } catch (e) {
-      showError(e?.response?.data?.message || e?.message || "Lưu thất bại");
-    }
+      if (paintEditing?.id) { await adminService.updatePaintType(paintEditing.id, form); showSuccess("Cập nhật thành công"); } 
+      else { await adminService.createPaintType(form); showSuccess("Thêm thành công"); }
+      setPaintFormOpen(false); setPaintEditing(null); await loadAll();
+    } catch (e) { showError(e?.response?.data?.message || e?.message || "Lưu thất bại"); }
   };
 
   const confirmThDelete = async () => {
     if (!thPendingDelete) return setThConfirmOpen(false);
     try {
       await adminService.deleteMaterialThickness(thPendingDelete.id);
-      setThConfirmOpen(false);
-      setThPendingDelete(null);
-
-      // Nếu xóa item cuối cùng của trang hiện tại, lùi lại 1 trang
-      if (paginatedThicknessList.length === 1 && thPage > 1) {
-        setThPage((prev) => prev - 1);
-      }
-
-      await loadAll();
-      showSuccess("Xoá thành công");
-    } catch (e) {
-      showError(e?.response?.data?.message || e?.message || "Xoá thất bại");
-    }
+      setThConfirmOpen(false); setThPendingDelete(null);
+      if (paginatedThicknessList.length === 1 && thPage > 1) setThPage((prev) => prev - 1);
+      await loadAll(); showSuccess("Xoá thành công");
+    } catch (e) { showError(e?.response?.data?.message || e?.message || "Xoá thất bại"); }
   };
 
   const confirmPaintDelete = async () => {
     if (!paintPendingDelete) return setPaintConfirmOpen(false);
     try {
       await adminService.deletePaintType(paintPendingDelete.id);
-      setPaintConfirmOpen(false);
-      setPaintPendingDelete(null);
-
-      // Nếu xóa item cuối cùng của trang hiện tại, lùi lại 1 trang
-      if (paginatedPaintList.length === 1 && paintPage > 1) {
-        setPaintPage((prev) => prev - 1);
-      }
-
-      await loadAll();
-      showSuccess("Xoá thành công");
-    } catch (e) {
-      showError(e?.response?.data?.message || e?.message || "Xoá thất bại");
-    }
+      setPaintConfirmOpen(false); setPaintPendingDelete(null);
+      if (paginatedPaintList.length === 1 && paintPage > 1) setPaintPage((prev) => prev - 1);
+      await loadAll(); showSuccess("Xoá thành công");
+    } catch (e) { showError(e?.response?.data?.message || e?.message || "Xoá thất bại"); }
   };
 
   const applyLabChanges = async () => {
@@ -515,482 +287,493 @@ const ManageSettings = () => {
         Object.keys(labEdits[cid]).forEach((mid) => {
           const newVal = labEdits[cid][mid];
           const existing = labRatesMap?.[cid]?.[mid]?.price;
-          // only include if changed and not empty
           if (newVal !== "" && Number(newVal) !== Number(existing)) {
-            updates.push({
-              category_id: cid,
-              model_id: mid,
-              rate_amount: Number(newVal),
-            });
+            updates.push({ category_id: cid, model_id: mid, rate_amount: Number(newVal) });
           }
         });
       });
 
-      if (updates.length === 0) {
-        showSuccess("Không có thay đổi nào.");
-        setLabEdits({});
-        return;
-      }
-
+      if (updates.length === 0) { showSuccess("Không có thay đổi nào."); setLabEdits({}); return; }
       setLabSaving(true);
       await Promise.all(updates.map((u) => adminService.setLaborRate(u)));
       showSuccess("Cập nhật đơn giá nhân công thành công.");
       await loadAll();
-    } catch (e) {
-      showError(
-        e?.response?.data?.message || e?.message || "Cập nhật thất bại",
-      );
-    } finally {
-      setLabSaving(false);
-    }
+    } catch (e) { showError(e?.response?.data?.message || e?.message || "Cập nhật thất bại"); } 
+    finally { setLabSaving(false); }
   };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-outline-variant/60 bg-white shadow-sm p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black">
-            Cấu hình hệ số độ dày, đơn giá sơn & nhân công
-          </h2>
-          <TabNav
-            tabs={[
-              { key: "thickness", label: "Hệ số Độ dày" },
-              { key: "paint", label: "Đơn giá Sơn" },
-              { key: "labor", label: "Bảng giá Nhân công" },
-            ]}
-            active={tab}
-            onChange={setTab}
-          />
-        </div>
+      
+      {/* VIEW: HỆ SỐ ĐỘ DÀY */}
+      {tab === "thickness" && (
+        <div className="bg-white border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-4 md:px-5 py-4 border-b border-outline-variant/50 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[15px] md:text-[16px] font-black uppercase tracking-[0.12em] text-on-surface">Danh sách Hệ số</h2>
+              <span className="inline-flex items-center rounded-md bg-surface-container px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/75">
+                {filteredThicknessList.length} bản ghi
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {/* THANH TÌM KIẾM */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+                <input 
+                  type="text"
+                  placeholder="Tìm vật tư, độ dày..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 w-full sm:w-56 h-10 bg-white border border-outline-variant/60 rounded-xl text-sm outline-none focus:border-primary transition-colors"
+                />
+              </div>
 
-        {tab === "thickness" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div />
               <button
-                onClick={() => {
-                  setThEditing(null);
-                  setThFormOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors"
+                onClick={() => { setThEditing(null); setThFormOpen(true); }}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary h-10 px-4 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors shrink-0"
               >
-                {" "}
-                <Plus className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Thêm</span>
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Thêm hệ số</span>
               </button>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-[700px] w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                    <th className="p-4">Vật tư</th>
-                    <th className="p-4">Độ dày</th>
-                    <th className="p-4">Hệ số</th>
-                    <th className="p-4 text-center">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/25 text-sm">
-                  {paginatedThicknessList.map((t) => (
-                    <ThicknessRow
-                      key={t.id}
-                      item={t}
-                      onEdit={(it) => {
-                        setThEditing(it);
-                        setThFormOpen(true);
-                      }}
-                      onDelete={(it) => {
-                        setThPendingDelete(it);
-                        setThConfirmOpen(true);
-                      }}
-                    />
-                  ))}
-                  {thicknessList.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="p-8 text-center text-sm text-on-surface-variant/60"
-                      >
-                        Không có cấu hình nào
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <Pagination
-              currentPage={thPage}
-              totalPages={totalThPages}
-              onPageChange={setThPage}
-            />
           </div>
-        )}
 
-        {tab === "paint" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div />
-              <button
-                onClick={() => {
-                  setPaintEditing(null);
-                  setPaintFormOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors"
-              >
-                {" "}
-                <Plus className="h-4 w-4" />{" "}
-                <span className="hidden sm:inline">Thêm</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-[700px] w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                    <th className="p-4">Tên loại sơn</th>
-                    <th className="p-4">Đơn giá (VNĐ/m2)</th>
-                    <th className="p-4">Mô tả</th>
-                    <th className="p-4 text-center">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/25 text-sm">
-                  {paginatedPaintList.map((p) => (
-                    <PaintRow
-                      key={p.id}
-                      item={p}
-                      onEdit={(it) => {
-                        setPaintEditing(it);
-                        setPaintFormOpen(true);
-                      }}
-                      onDelete={(it) => {
-                        setPaintPendingDelete(it);
-                        setPaintConfirmOpen(true);
-                      }}
-                    />
-                  ))}
-                  {paintList.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="p-8 text-center text-sm text-on-surface-variant/60"
-                      >
-                        Không có loại sơn nào
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <Pagination
-              currentPage={paintPage}
-              totalPages={totalPaintPages}
-              onPageChange={setPaintPage}
-            />
-          </div>
-        )}
-        {tab === "labor" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex items-center gap-2">
-                  <select
-                    value={newRate.category_id}
-                    onChange={(e) =>
-                      setNewRate({ ...newRate, category_id: e.target.value })
-                    }
-                    className="rounded-lg border border-outline-variant/60 px-3 py-2 text-sm"
-                  >
-                    <option value="">Chọn loại thợ</option>
-                    {labCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.category_name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={newRate.model_id}
-                    onChange={(e) =>
-                      setNewRate({ ...newRate, model_id: e.target.value })
-                    }
-                    className="rounded-lg border border-outline-variant/60 px-3 py-2 text-sm"
-                  >
-                    <option value="">Chọn mô hình</option>
-                    {labModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.model_name}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="Đơn giá"
-                    value={newRate.rate_amount}
-                    onChange={(e) =>
-                      setNewRate({ ...newRate, rate_amount: e.target.value })
-                    }
-                    className="rounded-lg border border-outline-variant/60 px-3 py-2 text-sm w-36"
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                  <th className="p-4 pl-6">Vật tư áp dụng</th>
+                  <th className="p-4 w-[160px]">Kích thước Độ dày</th>
+                  <th className="p-4 w-[140px]">Hệ số nhân</th>
+                  <th className="p-4 pr-6 text-center w-[160px]">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/25 text-sm">
+                {paginatedThicknessList.map((t) => (
+                  <ThicknessRow
+                    key={t.id}
+                    item={t}
+                    onEdit={(it) => { setThEditing(it); setThFormOpen(true); }}
+                    onDelete={(it) => { setThPendingDelete(it); setThConfirmOpen(true); }}
                   />
-                  <button
-                    onClick={async () => {
-                      if (
-                        !newRate.category_id ||
-                        !newRate.model_id ||
-                        newRate.rate_amount === ""
-                      )
-                        return showError("Vui lòng điền đầy đủ");
-                      try {
-                        await adminService.setLaborRate({
-                          category_id: newRate.category_id,
-                          model_id: newRate.model_id,
-                          rate_amount: Number(newRate.rate_amount),
-                        });
-                        showSuccess("Thêm đơn giá thành công");
-                        setNewRate({
-                          category_id: "",
-                          model_id: "",
-                          rate_amount: "",
-                        });
-                        await loadAll();
-                      } catch (e) {
-                        showError(
-                          e?.response?.data?.message ||
-                            e?.message ||
-                            "Thêm thất bại",
-                        );
-                      }
-                    }}
-                    className="rounded-lg bg-primary px-3 py-2 text-white"
-                  >
-                    Thêm
-                  </button>
-                </div>
+                ))}
+                {filteredThicknessList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-sm text-on-surface-variant/60 font-medium">Không tìm thấy hệ số nào phù hợp</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {filteredThicknessList.length > ITEMS_PER_PAGE && (
+            <div className="border-t border-outline-variant/40 px-4 md:px-5 py-3 flex justify-end bg-surface-container/10">
+              <Pagination currentPage={thPage} totalPages={totalThPages} onPageChange={setThPage} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW: ĐƠN GIÁ SƠN */}
+      {tab === "paint" && (
+        <div className="bg-white border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-4 md:px-5 py-4 border-b border-outline-variant/50 bg-surface-container/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[15px] md:text-[16px] font-black uppercase tracking-[0.12em] text-on-surface">Bảng Đơn giá Sơn</h2>
+              <span className="inline-flex items-center rounded-md bg-surface-container px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/75">
+                {filteredPaintList.length} bản ghi
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* THANH TÌM KIẾM */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+                <input 
+                  type="text"
+                  placeholder="Tìm loại sơn..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 w-full sm:w-56 h-10 bg-white border border-outline-variant/60 rounded-xl text-sm outline-none focus:border-primary transition-colors"
+                />
               </div>
+
+              <button
+                onClick={() => { setPaintEditing(null); setPaintFormOpen(true); }}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary h-10 px-4 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors shrink-0"
+              >
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Thêm đơn giá</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                  <th className="p-4 pl-6">Tên/Loại sơn bảo vệ</th>
+                  <th className="p-4 w-[180px]">Đơn giá (VNĐ/m²)</th>
+                  <th className="p-4">Mô tả chi tiết</th>
+                  <th className="p-4 pr-6 text-center w-[160px]">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/25 text-sm">
+                {paginatedPaintList.map((p) => (
+                  <PaintRow
+                    key={p.id}
+                    item={p}
+                    onEdit={(it) => { setPaintEditing(it); setPaintFormOpen(true); }}
+                    onDelete={(it) => { setPaintPendingDelete(it); setPaintConfirmOpen(true); }}
+                  />
+                ))}
+                {filteredPaintList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-sm text-on-surface-variant/60 font-medium">Không tìm thấy loại sơn nào phù hợp</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredPaintList.length > ITEMS_PER_PAGE && (
+            <div className="border-t border-outline-variant/40 px-4 md:px-5 py-3 flex justify-end bg-surface-container/10">
+              <Pagination currentPage={paintPage} totalPages={totalPaintPages} onPageChange={setPaintPage} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW: GIÁ NHÂN CÔNG */}
+      {tab === "labor" && (
+        <div className="bg-white border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-4 md:px-5 py-4 border-b border-outline-variant/50 bg-surface-container/10 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            
+            {/* Form Thêm nhanh */}
+            <div className="flex flex-wrap items-center gap-3">
+              <LaborCategorySelect
+                value={newRate.category_id}
+                onChange={(selectedId) => setNewRate({ ...newRate, category_id: selectedId })}
+                categories={labCategories}
+              />
+              <select
+                value={newRate.model_id}
+                onChange={(e) => setNewRate({ ...newRate, model_id: e.target.value })}
+                className="h-10 rounded-xl border border-outline-variant/60 bg-white px-3 text-[13px] font-semibold outline-none focus:border-primary min-w-[160px]"
+              >
+                <option value="">-- Mức độ --</option>
+                {labModels.map((m) => (<option key={m.id} value={m.id}>{m.model_name}</option>))}
+              </select>
               <div className="flex items-center gap-2">
+                <input
+                  type="number" min="0" step="1" placeholder="Nhập giá (VNĐ)"
+                  value={newRate.rate_amount}
+                  onChange={(e) => setNewRate({ ...newRate, rate_amount: e.target.value })}
+                  className="h-10 w-36 rounded-xl border border-outline-variant/60 bg-white px-3 text-sm outline-none focus:border-primary"
+                />
                 <button
-                  onClick={() => {
-                    setLabEdits({});
-                    showSuccess("Đã huỷ thay đổi");
+                  onClick={async () => {
+                    if (!newRate.category_id || !newRate.model_id || newRate.rate_amount === "") return showError("Vui lòng điền đầy đủ");
+                    try {
+                      await adminService.setLaborRate({ category_id: newRate.category_id, model_id: newRate.model_id, rate_amount: Number(newRate.rate_amount) });
+                      showSuccess("Thêm đơn giá thành công");
+                      setNewRate({ category_id: "", model_id: "", rate_amount: "" });
+                      await loadAll();
+                    } catch (e) { showError(e?.response?.data?.message || e?.message || "Thêm thất bại"); }
                   }}
-                  className="rounded-lg border border-outline-variant/60 px-3 py-2 text-sm hover:bg-surface-container transition-colors"
+                  className="h-10 w-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors shadow-sm shrink-0"
+                  title="Thêm nhanh"
                 >
-                  Huỷ thay đổi
-                </button>
-                <button
-                  onClick={() => setLabSaveConfirmOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-amber-600 transition-colors"
-                >
-                  Lưu cập nhật
+                  <Plus className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-[800px] w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                    <th className="p-4">Loại thợ / Hình thức</th>
-                    {labModels.map((m) => (
-                      <th key={m.id} className="p-4">
-                        {m.model_name}
-                      </th>
-                    ))}
-                    <th className="p-4">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/25 text-sm">
-                  {labCategories.map((cat) => (
-                    <tr
-                      key={cat.id}
-                      className="hover:bg-surface-container/20 transition-colors"
-                    >
-                      <td className="p-4 font-black">{cat.category_name}</td>
-                      {labModels.map((m) => {
-                        const staged = labEdits?.[cat.id]?.[m.id];
-                        const existing = labRatesMap?.[cat.id]?.[m.id]?.price;
-                        const value =
-                          typeof staged !== "undefined"
-                            ? staged
-                            : typeof existing !== "undefined"
-                              ? existing
-                              : "";
-                        return (
-                          <td key={m.id} className="p-4">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                className="flex-1 rounded-lg border border-outline-variant/60 px-3 py-2 text-sm outline-none focus:border-primary"
-                                value={value}
-                                onChange={(e) => {
-                                  const v =
-                                    e.target.value === ""
-                                      ? ""
-                                      : Number(e.target.value);
-                                  setLabEdits((prev) => {
-                                    const copy = { ...prev };
-                                    if (!copy[cat.id]) copy[cat.id] = {};
-                                    copy[cat.id][m.id] = v;
-                                    return copy;
-                                  });
-                                }}
-                              />
-                            </div>
-                          </td>
-                        );
-                      })}
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={async () => {
-                              // reset staged for this row
+            {/* Actions & Search */}
+            <div className="flex items-center gap-3">
+              {/* THANH TÌM KIẾM */}
+              <div className="relative hidden md:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+                <input 
+                  type="text"
+                  placeholder="Tìm nhóm thợ..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-2 w-44 h-10 bg-white border border-outline-variant/60 rounded-xl text-sm outline-none focus:border-primary transition-colors"
+                />
+              </div>
+
+              <button
+                onClick={() => { setLabEdits({}); showSuccess("Đã huỷ thay đổi"); }}
+                className="inline-flex items-center gap-2 h-10 rounded-xl border border-outline-variant/60 bg-white px-4 text-xs font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                <Undo2 className="w-3.5 h-3.5" /> Khôi phục
+              </button>
+              <button
+                onClick={() => setLabSaveConfirmOpen(true)}
+                className="inline-flex items-center gap-2 h-10 rounded-xl bg-amber-500 px-5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-amber-600 transition-colors"
+              >
+                <Save className="w-4 h-4" /> Lưu tất cả
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar cho Mobile (vì trên kia bị hidden trên md) */}
+          <div className="px-4 md:hidden py-3 border-b border-outline-variant/50 bg-surface-container/5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+              <input 
+                type="text"
+                placeholder="Tìm nhóm thợ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-4 py-2 w-full h-10 bg-white border border-outline-variant/60 rounded-xl text-sm outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                  <th className="p-4 pl-6 w-[200px]">Nhóm Thợ</th>
+                  {labModels.map((m) => (
+                    <th key={m.id} className="p-4">{m.model_name}</th>
+                  ))}
+                  <th className="p-4 pr-6 text-center w-[220px]">Tác vụ Hàng</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/25 text-sm">
+                {filteredLabCategories.map((cat) => (
+                  <tr key={cat.id} className="hover:bg-surface-container/10 transition-colors">
+                    <td className="p-4 pl-6 font-black text-on-surface">{cat.category_name}</td>
+                    {labModels.map((m) => {
+                      const staged = labEdits?.[cat.id]?.[m.id];
+                      const existing = labRatesMap?.[cat.id]?.[m.id]?.price;
+                      const value = typeof staged !== "undefined" ? staged : typeof existing !== "undefined" ? existing : "";
+                      const isEdited = typeof staged !== "undefined" && staged !== existing;
+
+                      return (
+                        <td key={m.id} className="p-3">
+                          <input
+                            type="number" min="0" step="1"
+                            className={`w-full h-10 rounded-xl border px-3 text-[13px] font-bold outline-none transition-colors ${
+                              isEdited ? "bg-amber-50 border-amber-300 text-amber-800" : "bg-transparent border-transparent hover:border-outline-variant/40 focus:bg-white focus:border-primary"
+                            }`}
+                            placeholder="Chưa có giá"
+                            value={value}
+                            onChange={(e) => {
+                              const v = e.target.value === "" ? "" : Number(e.target.value);
                               setLabEdits((prev) => {
                                 const copy = { ...prev };
-                                delete copy[cat.id];
+                                if (!copy[cat.id]) copy[cat.id] = {};
+                                copy[cat.id][m.id] = v;
                                 return copy;
                               });
-                              showSuccess("Hoàn tác hàng");
                             }}
-                            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold hover:bg-surface-container transition-colors"
-                          >
-                            Hoàn tác
-                          </button>
-                          <button
-                            onClick={async () => {
-                              // save staged values for this row only
-                              const row = labEdits?.[cat.id] || {};
-                              const calls = [];
-                              Object.keys(row).forEach((mid) => {
-                                const v = row[mid];
-                                if (v === "") return;
-                                calls.push(
-                                  adminService.setLaborRate({
-                                    category_id: cat.id,
-                                    model_id: mid,
-                                    rate_amount: Number(v),
-                                  }),
-                                );
-                              });
-                              if (calls.length === 0) {
-                                showError("Không có thay đổi cho hàng này");
-                                return;
-                              }
-                              try {
-                                await Promise.all(calls);
-                                showSuccess("Cập nhật hàng thành công");
-                                await loadAll();
-                              } catch (e) {
-                                showError(
-                                  e?.response?.data?.message ||
-                                    e?.message ||
-                                    "Cập nhật thất bại",
-                                );
-                              }
-                            }}
-                            className="rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-white hover:bg-primary/90"
-                          >
-                            Cập nhật
-                          </button>
-                          <button
-                            onClick={async () => {
-                              // delete existing rates for this row
-                              const existingMap = labRatesMap?.[cat.id] || {};
-                              const ids = Object.keys(existingMap)
-                                .map((k) => existingMap[k].id)
-                                .filter(Boolean);
-                              if (ids.length === 0) {
-                                showError(
-                                  "Không có đơn giá để xóa cho hàng này",
-                                );
-                                return;
-                              }
-                              try {
-                                await Promise.all(
-                                  ids.map((id) =>
-                                    adminService.deleteLaborRate(id),
-                                  ),
-                                );
-                                showSuccess("Xoá hàng thành công");
-                                await loadAll();
-                              } catch (e) {
-                                showError(
-                                  e?.response?.data?.message ||
-                                    e?.message ||
-                                    "Xoá thất bại",
-                                );
-                              }
-                            }}
-                            className="rounded-lg border border-outline-variant/60 px-3 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
-                          >
-                            Xoá
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {labCategories.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={labModels.length + 1}
-                        className="p-8 text-center text-sm text-on-surface-variant/60"
-                      >
-                        Không có dữ liệu nhân công
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                          />
+                        </td>
+                      );
+                    })}
+                    <td className="p-4 pr-6 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={async () => {
+                            const row = labEdits?.[cat.id] || {};
+                            const calls = [];
+                            Object.keys(row).forEach((mid) => {
+                              const v = row[mid];
+                              if (v === "") return;
+                              calls.push(adminService.setLaborRate({ category_id: cat.id, model_id: mid, rate_amount: Number(v) }));
+                            });
+                            if (calls.length === 0) return showError("Không có thay đổi để lưu");
+                            try {
+                              await Promise.all(calls);
+                              showSuccess("Cập nhật thành công");
+                              await loadAll();
+                            } catch (e) { showError("Cập nhật thất bại"); }
+                          }}
+                          className="rounded-lg bg-surface-container border border-outline-variant/50 p-2 text-primary hover:bg-primary hover:text-white transition-colors"
+                          title="Lưu hàng này"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLabEdits((prev) => { const copy = { ...prev }; delete copy[cat.id]; return copy; });
+                            showSuccess("Đã hoàn tác");
+                          }}
+                          className="rounded-lg border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors"
+                          title="Hoàn tác thay đổi chưa lưu"
+                        >
+                          <Undo2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const existingMap = labRatesMap?.[cat.id] || {};
+                            const ids = Object.keys(existingMap).map((k) => existingMap[k].id).filter(Boolean);
+                            if (ids.length === 0) return showError("Trống sẵn");
+                            try {
+                              await Promise.all(ids.map((id) => adminService.deleteLaborRate(id)));
+                              showSuccess("Xoá thành công");
+                              await loadAll();
+                            } catch (e) { showError("Xoá thất bại"); }
+                          }}
+                          className="rounded-lg border border-outline-variant/60 p-2 text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                          title="Xóa toàn bộ giá trên hàng này"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredLabCategories.length === 0 && (
+                  <tr><td colSpan={labModels.length + 2} className="p-8 text-center text-sm font-medium text-on-surface-variant/60">Không tìm thấy nhóm thợ phù hợp</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM MODALS */}
+      <ConfirmModal
+        open={thConfirmOpen} title="Xác nhận Xoá" message={`Xóa hệ số của độ dày ${thPendingDelete?.thickness_value || ""}?`}
+        onConfirm={confirmThDelete} onCancel={() => setThConfirmOpen(false)}
+      />
+      <ConfirmModal
+        open={paintConfirmOpen} title="Xác nhận Xoá" message={`Xóa bảng giá sơn ${paintPendingDelete?.paint_name || ""}?`}
+        onConfirm={confirmPaintDelete} onCancel={() => setPaintConfirmOpen(false)}
+      />
+      <ConfirmModal
+        open={labSaveConfirmOpen} title="Áp dụng Đơn giá Nhân công"
+        message="Hệ số mới sẽ lập tức ảnh hưởng đến các báo giá được tạo từ lúc này. Bạn chắc chắn muốn áp dụng thay đổi?"
+        onConfirm={applyLabChanges} onCancel={() => setLabSaveConfirmOpen(false)}
+        confirmText="Lưu ngay"
+      />
+
+      {/* PORTAL FORMS */}
+      {thFormOpen && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg overflow-hidden rounded-[26px] border border-outline-variant/60 bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-outline-variant/50 px-6 py-5 bg-surface-container/10">
+                <div className="flex items-center gap-3">
+                  <Component className="w-5 h-5 text-primary" />
+                  <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
+                    {thEditing ? "Sửa Hệ số" : "Thêm Hệ số"}
+                  </h3>
+                </div>
+                <button onClick={() => { setThFormOpen(false); setThEditing(null); }} className="rounded-xl p-2 text-on-surface-variant hover:bg-surface-container transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+
+              <div className="grid gap-5 px-6 py-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Vật tư định mức</label>
+                  <select
+                    className="w-full h-12 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary"
+                    value={thEditing?.material_id || ""}
+                    onChange={(e) => setThEditing(prev => ({ ...(prev || {}), material_id: e.target.value }))}
+                  >
+                    <option value="">-- Chọn vật tư --</option>
+                    {materials.map((m) => (<option key={m.id} value={m.id}>{m.material_name}</option>))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Kích thước Độ dày</label>
+                  <input
+                    className="w-full h-12 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary"
+                    value={thEditing?.thickness_value || ""}
+                    onChange={(e) => setThEditing(prev => ({ ...(prev || {}), thickness_value: e.target.value }))}
+                    placeholder="VD: 1.2ly"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Hệ số nhân Giá</label>
+                  <input
+                    type="number" min="0.01" step="0.01"
+                    className="w-full h-12 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary"
+                    value={thEditing?.price_multiplier || ""}
+                    onChange={(e) => setThEditing(prev => ({ ...(prev || {}), price_multiplier: e.target.value }))}
+                    placeholder="VD: 1.15"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4">
+                <button onClick={() => { setThFormOpen(false); setThEditing(null); }} className="rounded-xl border border-outline-variant/60 px-5 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors">
+                  Hủy
+                </button>
+                <button 
+                  onClick={() => handleThSave(thEditing)}
+                  disabled={!thEditing?.material_id || !thEditing?.thickness_value || !thEditing?.price_multiplier}
+                  className="rounded-xl bg-primary px-6 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >Lưu thay đổi</button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
-
-      <ConfirmModal
-        open={thConfirmOpen}
-        title="Xoá cấu hình"
-        message={`Xoá ${thPendingDelete?.thickness_value || ""}?`}
-        onConfirm={confirmThDelete}
-        onCancel={() => setThConfirmOpen(false)}
-      />
-      <ConfirmModal
-        open={paintConfirmOpen}
-        title="Xoá loại sơn"
-        message={`Xoá ${paintPendingDelete?.paint_name || ""}?`}
-        onConfirm={confirmPaintDelete}
-        onCancel={() => setPaintConfirmOpen(false)}
-      />
-      <ConfirmModal
-        open={labSaveConfirmOpen}
-        title={"Lưu ý: Thay đổi đơn giá nhân công"}
-        message={
-          "Lưu ý: Việc thay đổi đơn giá nhân công sẽ áp dụng ngay lập tức cho các Báo giá mới được tạo từ thời điểm này trở đi. Bạn có chắc chắn muốn thay đổi?"
-        }
-        onConfirm={applyLabChanges}
-        onCancel={() => setLabSaveConfirmOpen(false)}
-      />
-
-      {thFormOpen && (
-        <ThicknessForm
-          initial={thEditing || {}}
-          materials={materials}
-          onCancel={() => {
-            setThFormOpen(false);
-            setThEditing(null);
-          }}
-          onSave={handleThSave}
-        />
+        </Portal>
       )}
+
       {paintFormOpen && (
-        <PaintForm
-          initial={paintEditing || {}}
-          onCancel={() => {
-            setPaintFormOpen(false);
-            setPaintEditing(null);
-          }}
-          onSave={handlePaintSave}
-        />
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg overflow-hidden rounded-[26px] border border-outline-variant/60 bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-outline-variant/50 px-6 py-5 bg-surface-container/10">
+                <div className="flex items-center gap-3">
+                  <Palette className="w-5 h-5 text-primary" />
+                  <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
+                    {paintEditing ? "Sửa Đơn Giá Sơn" : "Thêm Loại Sơn"}
+                  </h3>
+                </div>
+                <button onClick={() => { setPaintFormOpen(false); setPaintEditing(null); }} className="rounded-xl p-2 text-on-surface-variant hover:bg-surface-container transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+
+              <div className="grid gap-5 px-6 py-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên loại sơn</label>
+                  <input
+                    className="w-full h-12 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary"
+                    value={paintEditing?.paint_name || ""}
+                    onChange={(e) => setPaintEditing(prev => ({ ...(prev || {}), paint_name: e.target.value }))}
+                    placeholder="VD: Sơn lót xám"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Đơn giá thi công (VNĐ/m²)</label>
+                  <input
+                    type="number" min="0" step="1000"
+                    className="w-full h-12 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary"
+                    value={paintEditing?.price_per_sqm || ""}
+                    onChange={(e) => setPaintEditing(prev => ({ ...(prev || {}), price_per_sqm: e.target.value }))}
+                    placeholder="VD: 55000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Mô tả chi tiết</label>
+                  <textarea
+                    rows={3}
+                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 p-4 text-sm font-semibold outline-none transition-colors focus:bg-white focus:border-primary resize-none"
+                    value={paintEditing?.description || ""}
+                    onChange={(e) => setPaintEditing(prev => ({ ...(prev || {}), description: e.target.value }))}
+                    placeholder="Mô tả mục đích sử dụng..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4">
+                <button onClick={() => { setPaintFormOpen(false); setPaintEditing(null); }} className="rounded-xl border border-outline-variant/60 px-5 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors">
+                  Hủy
+                </button>
+                <button 
+                  onClick={() => handlePaintSave(paintEditing)}
+                  disabled={!paintEditing?.paint_name || !paintEditing?.price_per_sqm}
+                  className="rounded-xl bg-primary px-6 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >Lưu dữ liệu</button>
+              </div>
+            </div>
+          </div>
+        </Portal>
       )}
     </div>
   );
