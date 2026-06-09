@@ -26,5 +26,11 @@ router.post(
   upload.single("image"),
   productController.uploadImage,
 );
+router.delete(
+  "/:id/images/:imageId",
+  authMiddleware,
+  adminMiddleware,
+  productController.deleteImage,
+);
 router.get("/:id", productController.getById);
 module.exports = router;

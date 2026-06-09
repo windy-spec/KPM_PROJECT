@@ -1,4 +1,5 @@
 const prisma = require("../models/prisma");
+const { sendQuotationEmail } = require("../utils/mailer.utils");
 
 class QuotationService {
   // 1. LẤY DANH SÁCH BÁO GIÁ (Dành cho Admin/Sale xem tổng quan)
@@ -43,7 +44,7 @@ class QuotationService {
 
   // 3. CẬP NHẬT TRẠNG THÁI (VD: Từ "draft" sang "approved" hoặc "cancelled")
   async updateStatus(id, status) {
-    const validStatuses = ["draft", "approved", "cancelled"];
+    const validStatuses = ["draft", "pending_admin", "sent_to_customer", "approved", "rejected", "cancelled", "favorite"];
     if (!validStatuses.includes(status)) {
       throw new Error("Trạng thái không hợp lệ!");
     }
@@ -55,6 +56,112 @@ class QuotationService {
       data: { status },
     });
   }
+
+  // 3.1 GỬI YÊU CẦU BÁO GIÁ (Khách hàng tạo request mới)
+  async requestCustomQuote(data) {
+    const { user_id, title, product_id, components, note } = data;
+
+    if (!user_id) throw new Error("Vui lòng đăng nhập để gửi yêu cầu báo giá!");
+    
+    // Kiểm tra thông tin khách hàng (phải có SĐT hoặc Địa chỉ mới cho gửi)
+    const profile = await prisma.user_profiles.findUnique({ where: { user_id } });
+    if (!profile || (!profile.phone_number && !profile.address)) {
+      throw new Error("PROFILE_INCOMPLETE");
+    }
+
+    if (!components || !Array.isArray(components) || components.length === 0) {
+      throw new Error("Không có cấu hình để gửi!");
+    }
+
+    // Tính giá tiền tự động làm mốc tham khảo ban đầu
+    const priceData = await this.calculateRealtime({ product_id, components });
+
+    // Tạo mảng specs dựa theo từng component
+    const specsData = components.map((comp, idx) => {
+      const area = (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
+      const detail = priceData.component_details[idx];
+      return {
+        component_name: comp.component_name,
+        material_id: comp.material_id,
+        thickness_id: comp.thickness_id,
+        paint_id: comp.paint_id,
+        dimensions: {
+          product_id,
+          width: parseFloat(comp.width),
+          height: parseFloat(comp.height),
+          area: area,
+        },
+        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0), 
+        note,
+      };
+    });
+
+    return await prisma.quotations.create({
+      data: {
+        user_id,
+        title: title || "Yêu cầu báo giá tùy chỉnh",
+        total_quoted_price: priceData.total_amount,
+        status: "pending_admin",
+        quotation_specs: { create: specsData },
+      },
+      include: { quotation_specs: true },
+    });
+  }
+
+  // 3.2 LẤY DANH SÁCH CÁ NHÂN (Cho User Dashboard)
+  async getUserQuotations(user_id, statuses = []) {
+    const whereClause = { user_id };
+    if (statuses && statuses.length > 0) {
+      whereClause.status = { in: statuses };
+    }
+    
+    return await prisma.quotations.findMany({
+      where: whereClause,
+      include: {
+        quotation_specs: {
+          include: {
+            materials: true,
+            material_thickness: true,
+            paint_types: true,
+          },
+        },
+      },
+      orderBy: { created_at: "desc" },
+    });
+  }
+
+  // 3.3 ADMIN DUYỆT BÁO GIÁ & GỬI EMAIL
+  async approveQuoteRequest(id, data) {
+    const { total_quoted_price } = data;
+    
+    const quotation = await this.getQuotationById(id);
+    if (!quotation) throw new Error("Báo giá không tồn tại!");
+    
+    // Cập nhật giá bán cuối cùng do Admin chốt và đổi status
+    const updatedQuote = await prisma.quotations.update({
+      where: { id },
+      data: { 
+        total_quoted_price: total_quoted_price !== undefined ? total_quoted_price : quotation.total_quoted_price,
+        status: "sent_to_customer" 
+      },
+      include: {
+        users: true
+      }
+    });
+
+    // Tự động gửi Email cho khách hàng nếu họ có email
+    if (updatedQuote.users && updatedQuote.users.email) {
+      try {
+        await sendQuotationEmail(updatedQuote.users.email, updatedQuote);
+      } catch (err) {
+        console.error("Lỗi gửi email báo giá:", err);
+        // Không block flow nếu lỗi email
+      }
+    }
+
+    return updatedQuote;
+  }
+
 
   // 4. THÊM FILE ĐÍNH KÈM (Lưu Link bản vẽ từ FE gửi xuống)
   async addAttachment(quotation_id, data) {
@@ -227,17 +334,19 @@ class QuotationService {
       total_area += area;
 
       const [material, thickness, paint] = await Promise.all([
-        prisma.materials.findUnique({ where: { id: material_id } }),
-        prisma.material_thickness.findUnique({ where: { id: thickness_id } }),
-        prisma.paint_types.findUnique({ where: { id: paint_id } }),
+        material_id ? prisma.materials.findUnique({ where: { id: material_id } }) : null,
+        thickness_id ? prisma.material_thickness.findUnique({ where: { id: thickness_id } }) : null,
+        paint_id ? prisma.paint_types.findUnique({ where: { id: paint_id } }) : null,
       ]);
 
-      if (!material || !thickness || !paint) {
-        throw new Error(`Vật tư của linh kiện '${component_name || "Chưa rõ"}' không hợp lệ!`);
+      if (!material) {
+        throw new Error(`Dữ liệu vật tư không hợp lệ cho linh kiện: ${component_name}`);
       }
 
-      const material_price = parseFloat(material.base_price) * parseFloat(thickness.price_multiplier) * area;
-      const paint_price = parseFloat(paint.price_per_sqm) * area;
+      const mat_multiplier = thickness ? parseFloat(thickness.price_multiplier) : 1.0;
+      const mat_base_price = parseFloat(material.base_price);
+      const material_price = mat_base_price * mat_multiplier * area;
+      const paint_price = paint ? parseFloat(paint.price_per_sqm) * area : 0;
 
       total_material_price += material_price;
       total_paint_price += paint_price;

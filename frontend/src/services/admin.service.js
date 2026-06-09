@@ -183,6 +183,10 @@ const adminService = {
     });
   },
 
+  deleteProductImage(id, imageId) {
+    return apiClient.delete(`/products/${id}/images/${imageId}`);
+  },
+
   createCategory(data) {
     return apiClient.post('/categories', data);
   },

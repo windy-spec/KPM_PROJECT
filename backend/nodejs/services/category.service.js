@@ -9,6 +9,12 @@ class CategoryService {
     });
     if (existing) throw new Error(`Mã danh mục '${category_code}' đã tồn tại!`);
 
+    if (parent_id) {
+      const parentCat = await prisma.product_categories.findUnique({ where: { id: parent_id } });
+      if (!parentCat) throw new Error("Danh mục cha không tồn tại!");
+      if (parentCat.parent_id) throw new Error("Chỉ hỗ trợ tối đa 2 cấp danh mục!");
+    }
+
     return await prisma.product_categories.create({
       data: {
         category_code,
@@ -41,6 +47,18 @@ class CategoryService {
         where: { category_code },
       });
       if (codeConflict) throw new Error("Mã danh mục mới đã bị trùng!");
+    }
+
+    if (parent_id) {
+      if (parent_id === id) throw new Error("Danh mục không thể là cha của chính nó!");
+      const parentCat = await prisma.product_categories.findUnique({ where: { id: parent_id } });
+      if (!parentCat) throw new Error("Danh mục cha không tồn tại!");
+      if (parentCat.parent_id) throw new Error("Chỉ hỗ trợ tối đa 2 cấp danh mục!");
+
+      const hasSub = await prisma.product_categories.findFirst({
+        where: { parent_id: id },
+      });
+      if (hasSub) throw new Error("Không thể chuyển thành danh mục con vì danh mục này đang chứa các danh mục con khác!");
     }
 
     return await prisma.product_categories.update({

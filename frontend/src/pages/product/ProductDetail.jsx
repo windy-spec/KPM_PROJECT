@@ -5,6 +5,7 @@ import { materialService } from '../../services/material.service';
 import { quotationService } from '../../services/quotation.service';
 import { toast } from 'react-toastify';
 import { ChevronDown, ArrowLeft, Loader2, Save, ShoppingCart } from 'lucide-react';
+import { CATEGORY_BLUEPRINTS } from '../../config/categoryBlueprints';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -49,15 +50,32 @@ export default function ProductDetail() {
         setPaints(paintRes.data?.data || paintRes.data || []);
         setLaborRates(laborRes.data?.data || laborRes.data || []);
 
-        // Khởi tạo config cho từng linh kiện
-        if (pData?.components && Array.isArray(pData.components)) {
+        // Khởi tạo config cho từng linh kiện từ Blueprint hoặc fallback
+        const categoryCode = pData?.product_categories?.category_code;
+        const blueprint = CATEGORY_BLUEPRINTS[categoryCode] || [];
+
+        if (blueprint.length > 0) {
+          const initialConfig = blueprint.map(comp => ({
+            component_name: comp.name,
+            width: 1000,
+            height: 2000,
+            material_id: '',
+            thickness_id: '',
+            paint_id: '',
+            allowed_materials: comp.allowed_materials || [],
+            allow_paint: comp.allow_paint
+          }));
+          setComponentsConfig(initialConfig);
+        } else if (pData?.components && Array.isArray(pData.components)) {
           const initialConfig = pData.components.map(comp => ({
             component_name: comp.name || 'Linh kiện',
             width: comp.defaultWidth || 1000,
             height: comp.defaultHeight || 2000,
             material_id: '',
             thickness_id: '',
-            paint_id: ''
+            paint_id: '',
+            allowed_materials: [],
+            allow_paint: true
           }));
           setComponentsConfig(initialConfig);
         }
@@ -75,9 +93,13 @@ export default function ProductDetail() {
     if (!componentsConfig.length) return;
 
     // Check xem tất cả component đã chọn đủ vật tư, độ dày, sơn chưa
-    const isFullyConfigured = componentsConfig.every(
-      c => c.material_id && c.thickness_id && c.paint_id && c.width > 0 && c.height > 0
-    );
+    const isFullyConfigured = componentsConfig.every(c => {
+      if (!c.material_id || c.width <= 0 || c.height <= 0) return false;
+      const hasThicknesses = thicknesses.some(t => String(t.material_id) === String(c.material_id));
+      if (hasThicknesses && !c.thickness_id) return false;
+      if (c.allow_paint && !c.paint_id) return false;
+      return true;
+    });
 
     if (!isFullyConfigured) return;
 
@@ -132,6 +154,29 @@ export default function ProductDetail() {
       toast.success("Đã lưu thiết kế vào mục yêu thích!");
     } catch (error) {
       toast.error(error.response?.data?.message || "Lỗi lưu yêu thích");
+    }
+  };
+
+  const handleRequestQuote = async () => {
+    if (!priceData) {
+      toast.warning("Vui lòng cấu hình đầy đủ trước khi yêu cầu báo giá!");
+      return;
+    }
+    try {
+      await quotationService.requestCustomQuote({
+        product_id: product.id,
+        components: componentsConfig,
+        note: note
+      });
+      toast.success("Đã gửi yêu cầu báo giá! Admin sẽ liên hệ lại với bạn.");
+      navigate('/profile'); // Chuyển đến trang cá nhân
+    } catch (error) {
+      if (error.response?.data?.code === 'PROFILE_INCOMPLETE') {
+        toast.error("Vui lòng cập nhật Số điện thoại và Địa chỉ ở trang Cá nhân trước khi gửi yêu cầu.");
+        navigate('/profile');
+      } else {
+        toast.error(error.response?.data?.message || "Lỗi gửi yêu cầu báo giá");
+      }
     }
   };
 
@@ -221,35 +266,54 @@ export default function ProductDetail() {
                       <label className="block text-xs font-bold text-on-surface-variant mb-1">
                         Loại vật tư
                       </label>
-                      <div className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold text-on-surface/70 border-none cursor-not-allowed">
-                        {
-                          materials.find(m => String(m.id) === String(comp.material_id))?.material_name
-                          || "Chưa xác định"
-                        }
+                      <select
+                        value={comp.material_id}
+                        onChange={(e) => {
+                          const newConfig = [...componentsConfig];
+                          newConfig[idx].material_id = e.target.value;
+                          newConfig[idx].thickness_id = ''; // Reset thickness when material changes
+                          setComponentsConfig(newConfig);
+                        }}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                      >
+                        <option value="">-- Chọn loại vật tư --</option>
+                        {materials
+                          .filter(m => comp.allowed_materials.length === 0 || comp.allowed_materials.includes(m.material_code))
+                          .map(m => (
+                            <option key={m.id} value={m.id}>{m.material_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {thicknesses.some(t => !comp.material_id || String(t.material_id) === String(comp.material_id)) && (
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant mb-1">Độ dày</label>
+                        <select
+                          value={comp.thickness_id}
+                          onChange={(e) => handleConfigChange(idx, 'thickness_id', e.target.value)}
+                          className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                          disabled={!comp.material_id}
+                        >
+                          <option value="">-- Chọn độ dày --</option>
+                          {thicknesses
+                            .filter(t => !comp.material_id || String(t.material_id) === String(comp.material_id))
+                            .map(t => <option key={t.id} value={t.id}>{t.thickness_value}</option>)}
+                        </select>
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Độ dày</label>
-                      <select
-                        value={comp.thickness_id}
-                        onChange={(e) => handleConfigChange(idx, 'thickness_id', e.target.value)}
-                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                      >
-                        <option value="">-- Chọn độ dày --</option>
-                        {thicknesses.map(t => <option key={t.id} value={t.id}>{t.thickness_value}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại sơn</label>
-                      <select
-                        value={comp.paint_id}
-                        onChange={(e) => handleConfigChange(idx, 'paint_id', e.target.value)}
-                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                      >
-                        <option value="">-- Chọn loại sơn --</option>
-                        {paints.map(p => <option key={p.id} value={p.id}>{p.paint_name}</option>)}
-                      </select>
-                    </div>
+                    )}
+                    
+                    {comp.allow_paint && (
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại sơn</label>
+                        <select
+                          value={comp.paint_id}
+                          onChange={(e) => handleConfigChange(idx, 'paint_id', e.target.value)}
+                          className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                        >
+                          <option value="">-- Chọn loại sơn --</option>
+                          {paints.map(p => <option key={p.id} value={p.id}>{p.paint_name}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -292,15 +356,21 @@ export default function ProductDetail() {
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
+              onClick={handleRequestQuote}
+              className="flex-[2] bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
+            >
+              Yêu cầu Báo giá
+            </button>
+            <button
               onClick={handleAddToCart}
-              className="flex-1 bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
+              className="flex-1 bg-surface-container-highest text-on-surface font-black py-3.5 px-4 rounded-xl hover:bg-outline-variant/30 transition-all flex items-center justify-center gap-2 shadow-sm"
             >
               <ShoppingCart className="w-5 h-5" />
-              Thêm vào giỏ hàng
             </button>
             <button
               onClick={handleSaveFavorite}
-              className="flex-1 sm:flex-none sm:w-14 bg-surface-container text-rose-500 font-bold py-3.5 px-4 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-center shadow-sm"
+              title="Lưu yêu thích"
+              className="flex-none w-14 bg-pink-50 text-pink-500 font-bold py-3.5 px-4 rounded-xl hover:bg-pink-100 hover:text-pink-600 transition-colors flex items-center justify-center shadow-sm"
             >
               <Save className="w-5 h-5" />
             </button>

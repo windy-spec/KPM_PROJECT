@@ -63,4 +63,61 @@ const sendVerifyEmail = async (email, code, type = "REGISTER") => {
   return transporter.sendMail(mailOptions);
 };
 
-module.exports = { sendVerifyEmail };
+const sendQuotationEmail = async (email, quotationData) => {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
+
+  const mailOptions = {
+    from: `"KPM Materials" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: `[KPM] Báo giá chi tiết - Yêu cầu #${quotationData.id.slice(0, 8)}`,
+    html: `
+      <div style="max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f9f9f9; padding: 30px; border-radius: 10px; border: 1px solid #e5e7eb;">
+        
+        <div style="text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 25px;">
+          <h1 style="color: #1e3a8a; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">KPM MATERIALS</h1>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Hệ thống Quản lý & Báo giá Vật tư</p>
+        </div>
+
+        <div style="background-color: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+          <h2 style="color: #1f2937; font-size: 20px; margin-top: 0;">Xin chào,</h2>
+          
+          <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+            Chúng tôi xin gửi đến bạn báo giá chi tiết cho yêu cầu <strong>${quotationData.title || 'Cấu hình sản phẩm'}</strong>.
+          </p>
+
+          <div style="margin: 20px 0; padding: 15px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+            <p style="margin: 0; color: #1e3a8a; font-size: 16px;">
+              <strong>Tổng tiền chốt:</strong> <span style="font-size: 20px; color: #dc2626;">${formatCurrency(quotationData.total_quoted_price)}</span>
+            </p>
+          </div>
+
+          <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">
+            Bạn có thể đăng nhập vào hệ thống để xem chi tiết từng hạng mục vật tư và xác nhận báo giá này.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/profile" style="display: inline-block; background-color: #3b82f6; color: #ffffff; text-decoration: none; padding: 12px 30px; font-size: 16px; font-weight: 600; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);">
+              XEM BÁO GIÁ & CHỐT ĐƠN
+            </a>
+          </div>
+
+          <p style="color: #6b7280; font-size: 14px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+            Trân trọng,<br/>
+            <strong>Đội ngũ KPM Materials</strong>
+          </p>
+        </div>
+
+        <div style="text-align: center; margin-top: 25px; color: #9ca3af; font-size: 12px; line-height: 1.5;">
+          <p style="margin: 0;">Email này được gửi tự động từ hệ thống KPM Materials.</p>
+          <p style="margin: 5px 0 0 0;">© 2026 KPM Materials. All rights reserved.</p>
+        </div>
+
+      </div>
+    `,
+  };
+  return transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendVerifyEmail, sendQuotationEmail };

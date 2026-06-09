@@ -23,17 +23,20 @@ const normalizeCategory = (item) => ({
   createdAt: item.created_at || item.createdAt || null,
   subCategories: item.sub_categories || [],
   isParent: item.parent_id === null || !item.parent_id,
+  parent_id: item.parent_id || null,
 });
 
 // Giữ nguyên CategoryForm của bạn
-const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
+const CategoryForm = ({ initial = {}, parentOptions = [], onCancel, onSave }) => {
   const [form, setForm] = useState({
     category_code: '',
     category_name: '',
     description: '',
+    parent_id: '',
     ...initial,
   });
   const isEditing = Boolean(initial.id);
+  const hasSubCategories = initial.subCategories?.length > 0;
   useEffect(() => { setForm((current) => ({ ...current, ...initial })); }, [initial]);
 
   return (
@@ -65,6 +68,24 @@ const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên danh mục</label>
               <input value={form.category_name || ''} onChange={(e) => setForm({ ...form, category_name: e.target.value })} placeholder="VD: Cổng sắt CNC" className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Danh mục cha</label>
+              <select
+                value={form.parent_id || ''}
+                onChange={(e) => setForm({ ...form, parent_id: e.target.value })}
+                disabled={hasSubCategories}
+                className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${hasSubCategories ? 'border-outline-variant/60 bg-surface-container/40 text-on-surface-variant cursor-not-allowed' : 'border-outline-variant/60 bg-surface-container/20 focus:border-primary'}`}
+              >
+                <option value="">-- Không có (Danh mục gốc) --</option>
+                {parentOptions.map((opt) => {
+                  if (opt.id === initial.id) return null;
+                  return (
+                    <option key={opt.id} value={opt.id}>{opt.name}</option>
+                  )
+                })}
+              </select>
+              {hasSubCategories && <p className="text-[11px] text-amber-600">Không thể đổi danh mục cha vì danh mục này đang chứa danh mục con.</p>}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chú thích</label>
@@ -189,6 +210,7 @@ const ManageCategories = () => {
       category_code: item.code || item.category_code || '',
       category_name: item.name || item.category_name || '',
       description: item.description === '-' ? '' : item.description || '',
+      parent_id: item.parent_id || '',
     });
     setShowForm(true);
   };
@@ -223,6 +245,7 @@ const ManageCategories = () => {
         category_code: form.category_code,
         category_name: form.category_name,
         description: form.description,
+        parent_id: form.parent_id || null,
       };
 
       if (editing?.id) {
@@ -467,7 +490,7 @@ const ManageCategories = () => {
         </div>
       </div>
 
-      {showForm && <CategoryForm initial={editing || {}} onCancel={() => setShowForm(false)} onSave={handleSave} />}
+      {showForm && <CategoryForm initial={editing || {}} parentOptions={items} onCancel={() => setShowForm(false)} onSave={handleSave} />}
       <ConfirmModal
         open={showConfirmDelete}
         title="Xác nhận xoá"
