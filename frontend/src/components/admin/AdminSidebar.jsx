@@ -28,14 +28,9 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
   const queryParams = new URLSearchParams(location.search);
   const activePanel = queryParams.get('panel') || 'overview';
 
-  // Quản lý trạng thái đóng mở danh mục "Vật tư"
-  const [isMaterialOpen, setIsMaterialOpen] = useState(
-    ['materials', 'material_types', 'material_units'].includes(activePanel)
-  );
-
-  // Quản lý trạng thái đóng mở danh mục "Cấu hình" mới
-  const [isSettingsOpen, setIsSettingsOpen] = useState(
-    ['settings_thickness', 'settings_paint', 'settings_labor'].includes(activePanel)
+  // Quản lý trạng thái đóng mở danh mục "Cấu hình & Vật tư"
+  const [isConfigOpen, setIsConfigOpen] = useState(
+    ['settings_thickness', 'settings_paint', 'settings_labor', 'materials', 'material_types', 'material_units'].includes(activePanel)
   );
 
   const handleLogout = async () => {
@@ -63,21 +58,6 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
         { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
         { label: 'Lập báo giá', icon: ShoppingCart, panel: 'pricing' },
         { label: 'Danh sách Báo giá', icon: FileText, panel: 'quotations' },
-        
-        // Cấu trúc dropdown Vật tư đa cấp
-        {
-          label: 'Vật tư',
-          icon: Boxes,
-          isDropdown: true,
-          isOpen: isMaterialOpen,
-          onToggle: () => setIsMaterialOpen(!isMaterialOpen),
-          submenu: [
-            { label: 'Loại vật tư', icon: Layers, panel: 'material_types' },
-            { label: 'Đơn vị tính', icon: Ruler, panel: 'material_units' },
-            { label: 'Quản lý vật tư', icon: Boxes, panel: 'materials' },
-          ],
-        },
-
         { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
         { label: 'Quản lý lô', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản lý đơn hàng', icon: ShoppingCart, panel: 'orders' },
@@ -87,17 +67,20 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
     {
       label: 'Hệ thống',
       items: [
-        // ĐÃ CẬP NHẬT: Chuyển đổi item Cấu hình đơn lẻ thành cấu trúc dropdown đa cấp 
+        // Gộp Cấu hình và Vật tư vào chung 1 Dropdown
         {
-          label: 'Cấu hình',
+          label: 'Cấu hình & Vật tư',
           icon: Settings,
           isDropdown: true,
-          isOpen: isSettingsOpen,
-          onToggle: () => setIsSettingsOpen(!isSettingsOpen),
+          isOpen: isConfigOpen,
+          onToggle: () => setIsConfigOpen(!isConfigOpen),
           submenu: [
             { label: 'Hệ số độ dày', icon: Ruler, panel: 'settings_thickness' },
             { label: 'Đơn giá sơn', icon: Layers, panel: 'settings_paint' },
-            { label: 'Bảng giá nhân công', icon: Settings, panel: 'settings_labor' },
+            { label: 'Bảng giá nhân công', icon: Users, panel: 'settings_labor' },
+            { label: 'Loại vật tư', icon: Layers, panel: 'material_types' },
+            { label: 'Đơn vị tính', icon: Ruler, panel: 'material_units' },
+            { label: 'Quản lý vật tư', icon: Boxes, panel: 'materials' },
           ],
         },
       ],

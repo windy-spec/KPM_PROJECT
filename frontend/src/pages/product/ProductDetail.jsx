@@ -1,0 +1,313 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { productService } from '../../services/product.service';
+import { materialService } from '../../services/material.service';
+import { quotationService } from '../../services/quotation.service';
+import { toast } from 'react-toastify';
+import { ChevronDown, ArrowLeft, Loader2, Save, ShoppingCart } from 'lucide-react';
+
+export default function ProductDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [product, setProduct] = useState(null);
+  const [materials, setMaterials] = useState([]);
+  const [thicknesses, setThicknesses] = useState([]);
+  const [paints, setPaints] = useState([]);
+  const [laborRates, setLaborRates] = useState([]);
+  
+  const [componentsConfig, setComponentsConfig] = useState([]);
+  const [expandedIndex, setExpandedIndex] = useState(0);
+  const [priceData, setPriceData] = useState(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [note, setNote] = useState('');
+  const [mainImage, setMainImage] = useState(null);
+
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [prodRes, matRes, thickRes, paintRes, laborRes] = await Promise.all([
+          productService.getProductById(id),
+          materialService.getMaterials(),
+          materialService.getThicknesses(),
+          materialService.getPaints(),
+          materialService.getLaborRates()
+        ]);
+        
+        const pData = prodRes.data?.data || prodRes.data;
+        setProduct(pData);
+
+        // Khởi tạo ảnh chính (ưu tiên is_primary, nếu không thì lấy ảnh đầu tiên)
+        if (pData?.product_images?.length > 0) {
+          const primaryImg = pData.product_images.find(img => img.is_primary) || pData.product_images[0];
+          setMainImage(primaryImg.image_url);
+        }
+
+        setMaterials(matRes.data?.data || matRes.data || []);
+        setThicknesses(thickRes.data?.data || thickRes.data || []);
+        setPaints(paintRes.data?.data || paintRes.data || []);
+        setLaborRates(laborRes.data?.data || laborRes.data || []);
+
+        // Khởi tạo config cho từng linh kiện
+        if (pData?.components && Array.isArray(pData.components)) {
+          const initialConfig = pData.components.map(comp => ({
+            component_name: comp.name || 'Linh kiện',
+            width: comp.defaultWidth || 1000,
+            height: comp.defaultHeight || 2000,
+            material_id: '',
+            thickness_id: '',
+            paint_id: ''
+          }));
+          setComponentsConfig(initialConfig);
+        }
+      } catch (error) {
+        console.error("Error fetching product data:", error);
+        toast.error("Không thể tải thông tin sản phẩm: " + (error.response?.data?.message || error.message));
+        // navigate(-1); // Tạm ẩn để debug
+      }
+    };
+    if (id) fetchData();
+  }, [id, navigate]);
+
+  // Debounce API call
+  useEffect(() => {
+    if (!componentsConfig.length) return;
+    
+    // Check xem tất cả component đã chọn đủ vật tư, độ dày, sơn chưa
+    const isFullyConfigured = componentsConfig.every(
+      c => c.material_id && c.thickness_id && c.paint_id && c.width > 0 && c.height > 0
+    );
+
+    if (!isFullyConfigured) return;
+
+    const timer = setTimeout(async () => {
+      setIsCalculating(true);
+      try {
+        const laborRate = laborRates[0]; // Tạm dùng labor đầu tiên
+        const payload = {
+          product_id: product.id,
+          labor_category_id: laborRate?.category_id,
+          labor_model_id: laborRate?.model_id,
+          components: componentsConfig
+        };
+        const res = await quotationService.calculateRealtime(payload);
+        setPriceData(res.data?.data || res.data);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Lỗi khi tính giá");
+      } finally {
+        setIsCalculating(false);
+      }
+    }, 500); // Debounce 500ms
+
+    return () => clearTimeout(timer);
+  }, [componentsConfig, product, laborRates]);
+
+  const handleConfigChange = (index, field, value) => {
+    const newConfig = [...componentsConfig];
+    newConfig[index][field] = value;
+    setComponentsConfig(newConfig);
+  };
+
+  const handleAddToCart = () => {
+    if (!priceData) {
+      toast.warning("Vui lòng cấu hình đầy đủ linh kiện để xem giá trước khi thêm vào giỏ!");
+      return;
+    }
+    toast.success("Đã thêm vào giỏ hàng thành công!");
+    // Logic giỏ hàng lưu localstorage hoặc context
+  };
+
+  const handleSaveFavorite = async () => {
+    if (!priceData) {
+      toast.warning("Vui lòng cấu hình đầy đủ trước khi lưu!");
+      return;
+    }
+    try {
+      await quotationService.saveFavorite({
+        product_id: product.id,
+        components: componentsConfig,
+        note: note
+      });
+      toast.success("Đã lưu thiết kế vào mục yêu thích!");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Lỗi lưu yêu thích");
+    }
+  };
+
+  if (!product) return <div className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div>;
+
+  return (
+    <div className="min-h-screen bg-surface p-4 md:p-8">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-primary mb-6 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Quay lại
+      </button>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
+        {/* Left: Visual */}
+        <div className="space-y-4">
+          <div className="rounded-2xl overflow-hidden bg-surface-container aspect-[4/3] shadow-sm border border-outline-variant/30 flex items-center justify-center relative group">
+             {mainImage ? (
+               <img 
+                 src={mainImage} 
+                 alt={product.product_name}
+                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+               />
+             ) : (
+               <div className="text-on-surface-variant/50 font-medium">Chưa có hình ảnh</div>
+             )}
+          </div>
+
+          {/* Dàn ảnh Thumbnails */}
+          {product.product_images?.length > 1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+              {product.product_images.map((img) => (
+                <button
+                  key={img.id}
+                  onClick={() => setMainImage(img.image_url)}
+                  className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${mainImage === img.image_url ? 'border-primary shadow-md scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                >
+                  <img src={img.image_url} alt="Thumbnail" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <h1 className="text-3xl font-black text-on-surface">{product.product_name}</h1>
+            <p className="text-sm font-mono text-on-surface-variant mt-1">Mã SP: {product.product_code}</p>
+          </div>
+        </div>
+
+        {/* Right: Configurator */}
+        <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/30">
+          <h2 className="text-xl font-black text-on-surface mb-4">Cấu hình linh kiện</h2>
+          
+          <div className="space-y-3 mb-6">
+            {componentsConfig.map((comp, idx) => (
+              <div key={idx} className="border border-outline-variant/40 rounded-xl overflow-hidden transition-all duration-300">
+                <button 
+                  onClick={() => setExpandedIndex(expandedIndex === idx ? -1 : idx)}
+                  className="w-full flex items-center justify-between p-4 bg-surface-container/30 hover:bg-surface-container/60 transition-colors"
+                >
+                  <span className="font-bold text-on-surface">{comp.component_name}</span>
+                  <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${expandedIndex === idx ? 'rotate-180' : ''}`} />
+                </button>
+                
+                <div className={`overflow-hidden transition-all duration-300 ${expandedIndex === idx ? 'max-h-[500px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Dài (mm)</label>
+                      <input 
+                        type="number" 
+                        value={comp.height}
+                        onChange={(e) => handleConfigChange(idx, 'height', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Rộng (mm)</label>
+                      <input 
+                        type="number" 
+                        value={comp.width}
+                        onChange={(e) => handleConfigChange(idx, 'width', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại vật tư</label>
+                      <select 
+                        value={comp.material_id}
+                        onChange={(e) => handleConfigChange(idx, 'material_id', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                      >
+                        <option value="">-- Chọn vật tư --</option>
+                        {materials.map(m => <option key={m.id} value={m.id}>{m.material_name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Độ dày</label>
+                      <select 
+                        value={comp.thickness_id}
+                        onChange={(e) => handleConfigChange(idx, 'thickness_id', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                      >
+                        <option value="">-- Chọn độ dày --</option>
+                        {thicknesses.map(t => <option key={t.id} value={t.id}>{t.thickness_value}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại sơn</label>
+                      <select 
+                        value={comp.paint_id}
+                        onChange={(e) => handleConfigChange(idx, 'paint_id', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                      >
+                        <option value="">-- Chọn loại sơn --</option>
+                        {paints.map(p => <option key={p.id} value={p.id}>{p.paint_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-6">
+             <label className="block text-xs font-bold text-on-surface-variant mb-2">Ghi chú yêu cầu riêng</label>
+             <textarea 
+               value={note}
+               onChange={(e) => setNote(e.target.value)}
+               placeholder="Khoét lỗ khóa từ, uốn vòm..."
+               className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-medium border-none focus:ring-2 focus:ring-primary outline-none resize-none h-24"
+             />
+          </div>
+
+          {/* Pricing Section */}
+          <div className="bg-primary/5 rounded-2xl p-5 border border-primary/20 relative overflow-hidden">
+             {isCalculating && (
+               <div className="absolute inset-0 bg-surface/50 backdrop-blur-sm flex items-center justify-center z-10">
+                 <Loader2 className="animate-spin text-primary w-6 h-6" />
+               </div>
+             )}
+             <div className="text-sm font-bold text-primary mb-1">Giá tạm tính</div>
+             <div className="text-4xl font-black text-on-surface mb-4">
+               {priceData ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceData.total_amount) : '--- ₫'}
+             </div>
+             
+             {priceData && (
+               <div className="space-y-1.5 pt-4 border-t border-primary/20">
+                 {priceData.breakdown_costs.map((b, i) => (
+                   <div key={i} className="flex justify-between text-xs font-medium text-on-surface-variant">
+                     <span>{b.name}</span>
+                     <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.amount)}</span>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
+             <button 
+               onClick={handleAddToCart}
+               className="flex-1 bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
+             >
+               <ShoppingCart className="w-5 h-5" />
+               Thêm vào giỏ hàng
+             </button>
+             <button 
+               onClick={handleSaveFavorite}
+               className="flex-1 sm:flex-none sm:w-14 bg-surface-container text-rose-500 font-bold py-3.5 px-4 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-center shadow-sm"
+             >
+               <Save className="w-5 h-5" />
+             </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}

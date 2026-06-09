@@ -1,40 +1,68 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import ProductCard from '../../components/common/ProductCard';
 import SidebarFilter from '../../components/layout/SidebarFilter';
-
-const products = [
-  { id: 1, title: 'Thép Tấm Đen Cán Nóng', spec1: 'Mác: SS400', spec2: 'Dày: 5mm', price: '15.500đ/kg', hasPrice: true },
-  { id: 2, title: 'Thép Hình Chữ I JIS G3101', spec1: 'Mác: SS400', spec2: 'Kích thước: 1200x100', price: '18.000đ/kg', hasPrice: true },
-  { id: 3, title: 'Ống Inox 304 Trang Trí Cao Cấp', spec1: 'Mác: SUS304', spec2: 'Dày: 1.2mm', price: '65.000đ/kg', hasPrice: true, tag: 'BÁN CHẠY' },
-  { id: 4, title: 'Sắt Đặc Vuông 14×14 Xoắn Mỹ Thuật', spec1: 'Mác: CT3', spec2: 'Gia công: Xoắn CNC', price: 'Liên hệ', hasPrice: false },
-  { id: 5, title: 'Thép Hộp Chữ Nhật Mạ Kẽm', spec1: 'Mác: Q235', spec2: 'Dày: 1.8mm', price: '19.500đ/kg', hasPrice: true },
-  { id: 6, title: 'Bản Mã Thép Đột Lỗ Theo Yêu Cầu', spec1: 'Mác: SS400', spec2: 'Dày: >10mm', price: 'Liên hệ', hasPrice: false },
-];
+import { productService } from '../../services/product.service';
 
 const ProductList = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, totalPage: 1, totalItem: 0 });
+  const [filters, setFilters] = useState({ categories: [] });
+
+  const fetchProducts = async (page = 1) => {
+    setLoading(true);
+    try {
+      const categoryIdParam = filters.categories.length > 0 ? filters.categories.join(',') : undefined;
+      const res = await productService.getProducts({ page, limit: 12, category_id: categoryIdParam });
+      const data = res.data;
+      setProducts(data.data || []);
+      setPagination(data.pagination || { page: 1, totalPage: 1, totalItem: 0 });
+    } catch (error) {
+      console.error("Lỗi lấy danh sách sản phẩm:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPage) {
+      fetchProducts(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
   return (
     <div className="min-h-screen bg-surface font-sans antialiased text-on-surface pb-16">
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-4 pt-6 text-xs font-bold text-on-surface-variant/60 uppercase tracking-wider flex items-center gap-2">
         <span>Trang chủ</span>
         <span>/</span>
-        <span className="text-primary">Danh mục Vật tư & Gia công</span>
+        <span className="text-primary">Danh mục Sản phẩm & Gia công</span>
       </div>
 
       {/* Tiêu đề */}
       <div className="max-w-7xl mx-auto px-4 pt-4 pb-8">
         <h1 className="text-2xl md:text-3xl font-black text-on-surface uppercase tracking-tight italic">
-          Vật tư cơ khí & Thép xây dựng
+          Sản phẩm cấu hình may đo
         </h1>
       </div>
 
       {/* Layout Grid chính */}
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-8">
         
-        {/* CỘT TRÁI: Gọi Component SidebarFilter vừa tạo */}
+        {/* CỘT TRÁI: SidebarFilter */}
         <div className="lg:col-span-1">
-          <SidebarFilter />
+          <SidebarFilter onFilterChange={handleFilterChange} />
         </div>
 
         {/* CỘT PHẢI: LƯỚI SẢN PHẨM */}
@@ -42,23 +70,64 @@ const ProductList = () => {
           {/* Toolbar */}
           <div className="bg-white border border-outline-variant rounded-2xl p-4 flex justify-between items-center mb-6 shadow-sm">
             <div className="text-xs font-bold text-on-surface-variant/80">
-              Hiển thị <span className="text-on-surface font-black">1 - 6</span> trong số <span className="text-primary font-black">124</span> vật tư
+              Hiển thị <span className="text-on-surface font-black">{products.length > 0 ? (pagination.page - 1) * 12 + 1 : 0} - {Math.min(pagination.page * 12, pagination.totalItem)}</span> trong số <span className="text-primary font-black">{pagination.totalItem}</span> sản phẩm
             </div>
           </div>
 
           {/* Lưới sản phẩm dùng ProductCard */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {products.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="animate-spin text-primary w-8 h-8" />
+            </div>
+          ) : products.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {products.map(product => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-on-surface-variant/60 font-medium">
+              Không tìm thấy sản phẩm nào phù hợp với bộ lọc hiện tại.
+            </div>
+          )}
 
           {/* Phân trang */}
-          <div className="mt-12 flex items-center justify-center gap-1.5 text-xs font-black">
-            <button className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center"><ChevronLeft className="w-4 h-4" /></button>
-            <button className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center">1</button>
-            <button className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center"><ChevronRight className="w-4 h-4" /></button>
-          </div>
+          {pagination.totalPage > 1 && (
+            <div className="mt-12 flex items-center justify-center gap-1.5 text-xs font-black">
+              <button 
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center disabled:opacity-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              {[...Array(pagination.totalPage)].map((_, idx) => {
+                const pageNum = idx + 1;
+                return (
+                  <button 
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-colors ${
+                      pageNum === pagination.page 
+                        ? 'bg-primary border-primary text-white' 
+                        : 'bg-white border-outline-variant text-on-surface-variant hover:border-primary/50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              <button 
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPage}
+                className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center disabled:opacity-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </main>
 
       </div>

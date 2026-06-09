@@ -20,7 +20,23 @@ const normalizeCategory = (item) => ({
   name: item.category_name || item.name || item.title || 'Danh mục',
   description: item.description || '-',
   createdAt: item.created_at || item.createdAt || null,
+  subCategories: item.sub_categories || [],
+  isParent: item.parent_id === null,
 });
+
+const flattenCategories = (categories) => {
+  const result = [];
+  categories.forEach((cat) => {
+    const parentItem = { ...normalizeCategory(cat), level: 0 };
+    result.push(parentItem);
+    if (cat.sub_categories && cat.sub_categories.length > 0) {
+      cat.sub_categories.forEach((sub) => {
+        result.push({ ...normalizeCategory(sub), level: 1, parentName: parentItem.name });
+      });
+    }
+  });
+  return result;
+};
 
 const CategoryForm = ({ initial = {}, onCancel, onSave }) => {
   const [form, setForm] = useState({
@@ -141,7 +157,7 @@ const ManageCategories = () => {
     try {
       const res = await adminService.getCategories();
       const data = res.data?.data || res.data || [];
-      setItems(Array.isArray(data) ? data.map(normalizeCategory) : []);
+      setItems(Array.isArray(data) ? flattenCategories(data) : []);
     } catch (e) {
       console.warn('Lỗi tải danh mục', e?.message || e);
       setItems([]);
@@ -199,6 +215,10 @@ const ManageCategories = () => {
 
   const handleDelete = async (id) => {
     const target = items.find((it) => (it.id || it._id) === id || it.id === id);
+    if (target && target.isParent && target.subCategories && target.subCategories.length > 0) {
+      showError('Không thể xoá danh mục cha đang có danh mục con bên trong!');
+      return;
+    }
     setPendingDelete(target || { id });
     setShowConfirmDelete(true);
   };
@@ -343,19 +363,29 @@ const ManageCategories = () => {
               ) : null}
 
               {pagedItems.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-surface-container/20 transition-colors">
+                <tr key={item.id} className={`transition-colors ${item.level === 0 ? 'bg-surface-container/5 font-semibold' : 'hover:bg-surface-container/20'}`}>
                   <td className="p-4 pl-6 font-mono text-xs text-on-surface-variant/70">
                     {((page - 1) * pageSize) + idx + 1 < 10
                       ? `0${((page - 1) * pageSize) + idx + 1}`
                       : ((page - 1) * pageSize) + idx + 1}
                   </td>
                   <td className="p-4">
-                    <span className="inline-flex rounded-md bg-surface-container px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
+                    <span className={`inline-flex rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${item.level === 0 ? 'bg-primary/10 text-primary' : 'bg-surface-container text-teal-700'}`}>
                       {item.code}
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="font-black text-on-surface">{item.name}</div>
+                    <div className="flex items-center gap-2">
+                      {item.level === 1 && (
+                        <div className="w-4 h-4 border-l-2 border-b-2 border-outline-variant/40 rounded-bl-md ml-2 mr-1 opacity-60" />
+                      )}
+                      <div className={`text-on-surface ${item.level === 0 ? 'font-black text-[15px]' : 'font-bold'}`}>
+                        {item.name}
+                        {item.level === 0 && item.subCategories.length > 0 && (
+                          <span className="ml-2 text-[10px] text-on-surface-variant/50 font-normal">({item.subCategories.length} con)</span>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4 max-w-[320px]">
                     <div className="line-clamp-2 text-on-surface-variant/80">{item.description}</div>

@@ -5,8 +5,8 @@ const authMiddleware = require("../middlewares/auth.middleware");
 const adminMiddleware = require("../middlewares/admin.middleware");
 const upload = require("../middlewares/upload.middleware"); // Gọi lính gác Cloudinary
 
-// 1. GET: Dành cho mọi user đã đăng nhập (để show lên bảng)
-router.get("/", authMiddleware, productController.getAll);
+// 1. GET: Public cho khách hàng vãng lai xem danh sách sản phẩm
+router.get("/", productController.getAll);
 
 // 2. POST, PUT, DELETE: Khóa chặt, chỉ Admin được đụng vào
 router.post("/", authMiddleware, adminMiddleware, productController.create);
