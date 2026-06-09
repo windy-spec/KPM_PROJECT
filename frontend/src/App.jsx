@@ -12,6 +12,8 @@ import ProductDetail from './pages/product/ProductDetail';
 import AdminDashboard from './pages/admin/Dashboard';
 import RoleGuard from './components/auth/RoleGuard';
 import PublicGuard from './components/auth/PublicGuard';
+import Checkout from './pages/checkout/Checkout';
+import Cart from './pages/cart/Cart';
 
 const routeMap = [
   {
@@ -67,6 +69,22 @@ const routeMap = [
     element: (
       <MainLayout>
         <ProductDetail />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/checkout',
+    element: (
+      <MainLayout>
+        <Checkout />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/cart',
+    element: (
+      <MainLayout>
+        <Cart />
       </MainLayout>
     ),
   },

@@ -65,11 +65,15 @@ const Navbar = () => {
     }
   };
 
+  const handleCartClick = () => {
+    // Chuyển hướng thẳng về trang giỏ hàng, để trang giỏ hàng tự xử lý dữ liệu
+    navigate('/cart');
+  };
+
   return (
     <header
-      className={`bg-white w-full z-50 sticky top-0 transition-all duration-200 ${
-        isScrolled ? 'shadow-none border-b border-transparent' : 'shadow-sm border-b border-outline-variant'
-      }`}
+      className={`bg-white w-full z-50 sticky top-0 transition-all duration-200 ${isScrolled ? 'shadow-none border-b border-transparent' : 'shadow-sm border-b border-outline-variant'
+        }`}
     >
       <div className="max-w-[1280px] mx-auto px-5 py-3">
         <div className="flex items-center justify-between gap-8">
@@ -90,7 +94,9 @@ const Navbar = () => {
           <div className="flex items-center gap-4">
             {isLoggedIn ? (
               <div className="flex items-center gap-2">
-                <button className="p-2 text-on-surface-variant hover:text-primary transition-all cursor-pointer">
+                <button
+                  onClick={handleCartClick}
+                  className="p-2 text-on-surface-variant hover:text-primary transition-all cursor-pointer">
                   <ShoppingCart className="w-6 h-6" />
                 </button>
 
