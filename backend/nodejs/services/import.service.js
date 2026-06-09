@@ -2,6 +2,26 @@ const ExcelJS = require("exceljs");
 const xlsx = require("xlsx");
 const path = require("path");
 const prisma = require("../models/prisma");
+const fs = require("fs");
+
+const PARENT_NAMES = {
+  HangRao: "Hàng rào",
+  Cua: "Cửa",
+  CuaSo: "Cửa sổ",
+  MaiNha: "Mái nhà",
+  VatDung: "Vật dụng"
+};
+
+const slugify = (str) => {
+  if (!str) return "";
+  return String(str)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, "-");
+};
 
 class ImportService {
   // ==========================================
@@ -15,7 +35,28 @@ class ImportService {
     );
     await workbook.xlsx.readFile(templatePath);
     const worksheet = workbook.worksheets[0];
+    try {
+      const fs = require("fs");
+      // Đã sửa: Sử dụng __dirname để định vị logo chuẩn xác từ thư mục templates
+      const logoPath = path.join(__dirname, "../templates/logo.png");
 
+      if (fs.existsSync(logoPath)) {
+        const logoId = workbook.addImage({
+          filename: logoPath,
+          extension: "png",
+        });
+
+        worksheet.addImage(logoId, {
+          tl: { col: 0, row: 0 },
+          br: { col: 1, row: 3 },
+          editAs: "oneCell",
+        });
+      } else {
+        console.log("❌ Lỗi: Không tìm thấy logo tại", logoPath);
+      }
+    } catch (err) {
+      console.log("❌ Lỗi chèn logo Template:", err.message);
+    }
     const categories = await prisma.product_categories.findMany({
       select: { category_code: true },
     });
@@ -42,7 +83,7 @@ class ImportService {
           "Vui lòng chọn đúng mã danh mục có sẵn trong danh sách xổ xuống!",
       };
 
-      // ĐÃ SỬA: Bắt đầu gắn Dropdown từ dòng số 5 (vì dòng 1,2,3,4 là Title và Header)
+      // Dropdown từ dòng số 5, áp dụng vào Cột C (Mã danh mục)
       for (let i = 5; i <= 500; i++) {
         worksheet.getCell(`C${i}`).dataValidation = dropdownValidation;
       }
@@ -51,19 +92,16 @@ class ImportService {
   }
 
   // ==========================================
-  // TASK-09BE & TASK-10BE: BỘ MÁY ĐỌC FILE (ĐÃ FIX MAPPING)
+  // TASK-09BE & TASK-10BE: BỘ MÁY ĐỌC FILE
   // ==========================================
   async processImportExcel(fileBuffer, fileName) {
     const workbook = xlsx.read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
 
-    // Sử dụng header: 1 để đọc theo mảng, sau đó tự map index
     const rows = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
 
-    // ĐÃ SỬA: Nếu file chỉ có 4 dòng đầu (chưa có data ở dòng 5) thì báo lỗi
     let headerIndex = -1;
-    // Chỉ quét 20 dòng đầu để tìm header cho nhẹ máy
     for (let i = 0; i < Math.min(rows.length, 20); i++) {
       if (
         rows[i] &&
@@ -75,23 +113,23 @@ class ImportService {
       }
     }
 
-    if (headerIndex === -1) {
+    if (headerIndex === -1)
       throw new Error(
         "Không nhận diện được form mẫu! Không tìm thấy cột 'Mã sản phẩm'.",
       );
-    }
 
-    // ✅ Bắt đầu đọc dữ liệu từ ngay dưới dòng tiêu đề tìm được
     const dataRows = rows.slice(headerIndex + 1).map((row) => ({
       product_code: (row[0] || "").toString().trim(),
       product_name: (row[1] || "").toString().trim(),
       category_code: (row[2] || "").toString().trim(),
-      default_specs: (row[3] || "").toString().trim(),
-      primary_image_url: (row[4] || "").toString().trim(),
-      other_image_urls: (row[5] || "").toString().trim(),
+      category_name: (row[3] || "").toString().trim(),
+      default_specs: (row[4] || "").toString().trim(),
+      components: (row[5] || "").toString().trim(),
+      price_adjustment: (row[6] || "").toString().trim(),
+      primary_image_url: (row[7] || "").toString().trim(),
+      other_image_urls: (row[8] || "").toString().trim(),
     }));
 
-    // (Tiếp tục đoạn code tạo batch ở phía dưới giữ nguyên)
     const batch = await prisma.import_batches.create({
       data: {
         batch_type: "EXCEL_PRODUCT",
@@ -105,6 +143,7 @@ class ImportService {
     });
     const dbProductCodes = new Set(allProducts.map((p) => p.product_code));
 
+    // Lấy danh mục hiện tại để đối chiếu
     const allCategories = await prisma.product_categories.findMany({
       select: { id: true, category_code: true },
     });
@@ -115,15 +154,14 @@ class ImportService {
     const recordsToInsert = [];
 
     for (const row of dataRows) {
-      // Bỏ qua dòng trống
       if (!row.product_code && !row.product_name && !row.category_code)
         continue;
 
       let validation_errors = {};
       let is_invalid = false;
       let mapped_category_id = null;
+      let is_new_category = false; // Cờ đánh dấu danh mục cần tạo mới
 
-      // Validate
       if (!row.product_code) {
         validation_errors.product_code = "Mã sản phẩm trống";
         is_invalid = true;
@@ -133,14 +171,24 @@ class ImportService {
         is_invalid = true;
       }
 
-      if (!row.category_code) {
-        validation_errors.category_code = "Mã danh mục trống";
+      // CƠ CHẾ MỚI: Tự động ghi nhận tạo danh mục nếu chưa có
+      let parentCode = row.category_code;
+      let childName = row.category_name;
+      let childCode = null;
+
+      if (!parentCode) {
+        validation_errors.category_code = "Mã danh mục cha trống";
         is_invalid = true;
-      } else if (!categoryMap.has(row.category_code)) {
-        validation_errors.category_code = `Mã '${row.category_code}' không tồn tại`;
+      } else if (!childName) {
+        validation_errors.category_name = "Tên danh mục con trống";
         is_invalid = true;
       } else {
-        mapped_category_id = categoryMap.get(row.category_code);
+        childCode = `${parentCode}-${slugify(childName)}`;
+        if (categoryMap.has(childCode)) {
+          mapped_category_id = categoryMap.get(childCode); // Đã có trong DB
+        } else {
+          is_new_category = true; // Chưa có, đánh dấu để tạo sau
+        }
       }
 
       if (row.product_code) {
@@ -160,15 +208,27 @@ class ImportService {
         try {
           JSON.parse(row.default_specs);
         } catch (e) {
-          validation_errors.default_specs =
-            "Cú pháp thông số kỹ thuật không phải định dạng JSON hợp lệ";
+          validation_errors.default_specs = "Cú pháp thông số lỗi";
+          is_invalid = true;
+        }
+      }
+      if (row.components) {
+        try {
+          JSON.parse(row.components);
+        } catch (e) {
+          validation_errors.components = "Cú pháp thành phần cấu tạo lỗi";
           is_invalid = true;
         }
       }
 
       recordsToInsert.push({
         batch_id: batch.id,
-        raw_data: JSON.stringify({ ...row, category_id: mapped_category_id }),
+        raw_data: JSON.stringify({
+          ...row,
+          category_id: mapped_category_id,
+          is_new_category,
+          child_category_code: childCode,
+        }),
         validation_status: is_invalid ? "INVALID" : "VALID",
         validation_errors: is_invalid ? validation_errors : null,
       });
@@ -177,30 +237,23 @@ class ImportService {
     await prisma.product_imports_tmp.createMany({ data: recordsToInsert });
     return { batch_id: batch.id, total_rows: recordsToInsert.length };
   }
-
   // ==========================================
   // GIAI ĐOẠN 4: REVIEW & APPROVE
   // ==========================================
-
-  // TASK-11BE: LẤY CHI TIẾT LÔ ĐỆM ĐỂ LÊN BẢNG REVIEW
   async getBatchDetails(batchId) {
     const batch = await prisma.import_batches.findUnique({
       where: { id: batchId },
-      include: {
-        product_imports_tmp: { orderBy: { created_at: "asc" } },
-      },
+      include: { product_imports_tmp: { orderBy: { created_at: "asc" } } },
     });
 
     if (!batch) throw new Error("Không tìm thấy lô nhập dữ liệu này!");
 
-    const formattedRows = batch.product_imports_tmp.map((item) => {
-      return {
-        id: item.id,
-        validation_status: item.validation_status,
-        validation_errors: item.validation_errors,
-        data: JSON.parse(item.raw_data),
-      };
-    });
+    const formattedRows = batch.product_imports_tmp.map((item) => ({
+      id: item.id,
+      validation_status: item.validation_status,
+      validation_errors: item.validation_errors,
+      data: JSON.parse(item.raw_data),
+    }));
 
     return {
       batch_id: batch.id,
@@ -211,7 +264,6 @@ class ImportService {
     };
   }
 
-  // TASK-13BE: TỪ CHỐI / HỦY LÔ NHẬP ĐỆM
   async rejectBatch(batchId) {
     const batch = await prisma.import_batches.findUnique({
       where: { id: batchId },
@@ -227,85 +279,134 @@ class ImportService {
   }
 
   // TASK-15BE: CHỐT DUYỆT - ĐẨY DATA VÀO DATABASE CHÍNH
-  // TASK-15BE: CHỐT DUYỆT - ĐẨY DATA VÀO DATABASE CHÍNH & GIỮ LẠI LỖI
   async approveBatch(batchId) {
     const batch = await prisma.import_batches.findUnique({
       where: { id: batchId },
-      include: {
-        product_imports_tmp: true, // Lấy tất cả dòng (cả VALID và INVALID)
-      },
+      include: { product_imports_tmp: true },
     });
 
     if (!batch) throw new Error("Lô nhập không tồn tại!");
-    if (batch.status !== "PENDING")
-      throw new Error("Lô này đã được xử lý trước đó!");
+    if (batch.status !== "PENDING") throw new Error("Lô này đã được xử lý!");
 
     const validRows = batch.product_imports_tmp.filter(
       (r) => r.validation_status === "VALID",
     );
-
     if (validRows.length === 0)
-      throw new Error("Không có dòng nào hợp lệ (VALID) để duyệt!");
+      throw new Error("Không có dòng nào hợp lệ để duyệt!");
 
-    return await prisma.$transaction(async (tx) => {
-      // 1. Lặp qua các dòng hợp lệ để tạo Sản phẩm
-      for (const item of validRows) {
-        const rowData = JSON.parse(item.raw_data);
+    return await prisma.$transaction(
+      async (tx) => {
+        // BƯỚC 1: LỌC TÌM VÀ TẠO CÁC DANH MỤC MỚI (TẠO THÀNH CÁC DANH MỤC CON)
+        const newCategoryMap = new Map(); // Dùng để nhớ ID vừa tạo {childCode: id}
+        const parentMapCache = new Map(); // Cache parent ID {parentCode: id}
 
-        // Tạo sản phẩm mới
-        const newProduct = await tx.products.create({
-          data: {
-            product_code: rowData.product_code,
-            product_name: rowData.product_name,
-            category_id: rowData.category_id,
-            default_specs: rowData.default_specs
-              ? JSON.parse(rowData.default_specs)
-              : null,
-          },
+        // Tải sẵn các parent category hiện có
+        const existingParents = await tx.product_categories.findMany({
+          where: { parent_id: null },
         });
+        existingParents.forEach(p => parentMapCache.set(p.category_code, p.id));
 
-        // Xử lý ảnh sản phẩm
-        let imageRecords = [];
-        if (rowData.primary_image_url) {
-          imageRecords.push({
-            product_id: newProduct.id,
-            image_url: rowData.primary_image_url,
-            is_primary: true,
-          });
+        for (const item of validRows) {
+          const rowData = JSON.parse(item.raw_data);
+
+          if (rowData.is_new_category && !newCategoryMap.has(rowData.child_category_code)) {
+            let parentCode = rowData.category_code;
+            let parentId = parentMapCache.get(parentCode);
+
+            // Tự động tạo Parent nếu chưa tồn tại
+            if (!parentId) {
+              const createdParent = await tx.product_categories.create({
+                data: {
+                  category_code: parentCode,
+                  category_name: PARENT_NAMES[parentCode] || parentCode,
+                  parent_id: null,
+                },
+              });
+              parentId = createdParent.id;
+              parentMapCache.set(parentCode, parentId);
+            }
+
+            // Tạo Child Category
+            const createdChild = await tx.product_categories.create({
+              data: {
+                category_code: rowData.child_category_code,
+                category_name: rowData.category_name, // Tên danh mục con
+                parent_id: parentId,
+              },
+            });
+            newCategoryMap.set(rowData.child_category_code, createdChild.id);
+          }
         }
-        if (rowData.other_image_urls) {
-          const urls = rowData.other_image_urls
-            .split(",")
-            .map((url) => url.trim())
-            .filter((url) => url !== "");
-          urls.forEach((url) => {
+
+        // BƯỚC 2: TIẾN HÀNH DUYỆT VÀ TẠO SẢN PHẨM VỚI DỮ LIỆU ĐÃ PHÂN RÃ
+        for (const item of validRows) {
+          const rowData = JSON.parse(item.raw_data);
+
+          // Lấy category_id cũ (nếu có sẵn) hoặc category_id vừa mới tạo nóng ở Bước 1
+          const finalCategoryId =
+            rowData.category_id || newCategoryMap.get(rowData.child_category_code);
+
+          // Bóc tách JSON an toàn
+          let parsedComponents = [];
+          let parsedSpecs = {};
+          if (rowData.components)
+            parsedComponents = JSON.parse(rowData.components);
+          if (rowData.default_specs)
+            parsedSpecs = JSON.parse(rowData.default_specs);
+
+          const parsedPriceAdjustment = (rowData.price_adjustment && !isNaN(parseFloat(rowData.price_adjustment)))
+            ? parseFloat(rowData.price_adjustment)
+            : 0;
+
+          const newProduct = await tx.products.create({
+            data: {
+              product_code: rowData.product_code,
+              product_name: rowData.product_name,
+              category_id: finalCategoryId, // Đã liên kết với danh mục con
+              default_specs: parsedSpecs, // Đã phân rã thành JSON Object
+              components: parsedComponents, // Đã phân rã mảng dữ liệu (Hiển thị UI)
+              price_adjustment: parsedPriceAdjustment,
+            },
+          });
+
+          // Xử lý lưu link ảnh...
+          let imageRecords = [];
+          if (rowData.primary_image_url) {
             imageRecords.push({
               product_id: newProduct.id,
-              image_url: url,
-              is_primary: false,
+              image_url: rowData.primary_image_url,
+              is_primary: true,
             });
-          });
+          }
+          if (rowData.other_image_urls) {
+            const urls = rowData.other_image_urls
+              .split(",")
+              .map((url) => url.trim())
+              .filter((url) => url !== "");
+            urls.forEach((url) => {
+              imageRecords.push({
+                product_id: newProduct.id,
+                image_url: url,
+                is_primary: false,
+              });
+            });
+          }
+          if (imageRecords.length > 0) {
+            await tx.product_images.createMany({ data: imageRecords });
+          }
         }
-        if (imageRecords.length > 0) {
-          await tx.product_images.createMany({ data: imageRecords });
-        }
-      }
 
-      // 2. XÓA CÁC DÒNG HỢP LỆ (VALID) KHỎI BẢNG ĐỆM
-      // Các dòng INVALID vẫn còn nguyên vì chúng ta không động đến chúng
-      await tx.product_imports_tmp.deleteMany({
-        where: {
-          batch_id: batchId,
-          validation_status: "VALID",
-        },
-      });
-
-      // 3. ĐỔI TRẠNG THÁI LÔ THÀNH APPROVED
-      return await tx.import_batches.update({
-        where: { id: batchId },
-        data: { status: "APPROVED" },
-      });
-    });
+        // Xóa bộ đệm và chốt lô
+        return await tx.import_batches.update({
+          where: { id: batchId },
+          data: { status: "APPROVED" },
+        });
+      },
+      {
+        maxWait: 10000, // Đợi kết nối DB tối đa 10s
+        timeout: 120000, // CHO PHÉP CHẠY TỐI ĐA 2 PHÚT (120,000 ms) MỚI TIMEOUT
+      },
+    );
   }
 
   // ==========================================
@@ -324,48 +425,73 @@ class ImportService {
 
     if (!batch) throw new Error("Lô nhập không tồn tại!");
     if (batch.product_imports_tmp.length === 0)
-      throw new Error("Lô này không có dòng dữ liệu nào bị lỗi để xuất!");
+      throw new Error(
+        "Lô này không có dòng dữ liệu nào bị lỗi để xuất! Hãy kiểm tra lại.",
+      );
 
-    // 1. Mở lại đúng cái form Template xịn của KPM
     const workbook = new ExcelJS.Workbook();
+    // ✅ ĐÃ SỬA: Dùng __dirname để tìm template chuẩn xác từ thư mục chứa file service
     const templatePath = path.join(
       __dirname,
       "../templates/KPM_Import_Product.xlsx",
     );
+
+    // Nếu file template không tồn tại, văng lỗi ngay để dễ debug
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`Không tìm thấy file mẫu tại: ${templatePath}`);
+    }
+
     await workbook.xlsx.readFile(templatePath);
     const worksheet = workbook.worksheets[0];
 
     try {
+      // ✅ ĐÃ SỬA: Dùng __dirname cho logo giống y như hàm generateProductTemplate
       const logoPath = path.join(__dirname, "../templates/logo.png");
-      const logoId = workbook.addImage({
-        filename: logoPath,
-        extension: "png",
-      });
 
-      // Chèn logo vào khu vực ô A1 đến A3 (Cột A).
-      worksheet.addImage(logoId, "A1:A3");
+      if (fs.existsSync(logoPath)) {
+        const logoId = workbook.addImage({
+          filename: logoPath,
+          extension: "png",
+        });
+
+        worksheet.addImage(logoId, {
+          tl: { col: 0, row: 0 },
+          br: { col: 1, row: 3 },
+          editAs: "oneCell",
+        });
+      } else {
+        console.log("❌ [LỖI] Không tìm thấy file logo tại:", logoPath);
+      }
     } catch (err) {
-      console.log(
-        "Cảnh báo: Không tìm thấy file logo.png trong thư mục templates!",
+      console.error(
+        "❌ [CRASH EXCELJS] Lỗi trong quá trình xử lý ảnh:",
+        err.message,
       );
     }
 
-    // 2. Chèn thêm Header cho "Cột Lỗi" vào ô G4 (Cột số 7, Dòng 4)
-    const errorHeaderCell = worksheet.getCell("G4");
+    const errorHeaderCell = worksheet.getCell("J4");
     errorHeaderCell.value =
       "🚨 CHI TIẾT LỖI (SỬA XONG CÓ THỂ UP LẠI NGUYÊN FILE NÀY)";
     errorHeaderCell.font = { bold: true, color: { argb: "FFFFFF" } };
     errorHeaderCell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "C00000" }, // Màu đỏ báo lỗi
+      fgColor: { argb: "C00000" },
     };
 
-    // Căn chỉnh độ rộng cột G
-    worksheet.getColumn("G").width = 50;
-    worksheet.getColumn("G").alignment = { wrapText: true, vertical: "middle" };
+    worksheet.getColumn("J").width = 50;
+    worksheet.getColumn("J").alignment = { wrapText: true, vertical: "middle" };
 
-    // 3. Đổ dữ liệu lỗi vào từ dòng số 5 trở đi
+    // --- FIX EXCELS SHARED FORMULA BUG ---
+    // spliceRows của exceljs bị lỗi không xóa sạch các clone của Shared Formula.
+    // Cách an toàn nhất là lặp qua tất cả các cell ở các dòng mẫu và reset cứng nó.
+    for (let r = 5; r <= 1000; r++) {
+      const row = worksheet.getRow(r);
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.value = null;
+      });
+    }
+
     let currentRow = 5;
     batch.product_imports_tmp.forEach((item) => {
       const rowData = JSON.parse(item.raw_data);
@@ -377,56 +503,45 @@ class ImportService {
           .map((err) => `• ${err}`)
           .join("\n");
       }
-      // Ghi đè data vào đúng các cột A, B, C, D, E, F, G
+
       worksheet.getRow(currentRow).values = [
-        rowData.product_code,
-        rowData.product_name,
-        rowData.category_code,
-        rowData.default_specs,
-        rowData.primary_image_url,
-        rowData.other_image_urls,
-        errorString,
+        rowData.product_code, // Cột A
+        rowData.product_name, // Cột B
+        rowData.category_code, // Cột C
+        rowData.category_name, // Cột D
+        rowData.default_specs, // Cột E
+        rowData.components, // Cột F
+        rowData.price_adjustment, // Cột G
+        rowData.primary_image_url, // Cột H
+        rowData.other_image_urls, // Cột I
+        errorString, // Cột J
       ];
       currentRow++;
     });
 
     return workbook;
   }
-  // ==========================================
-  // TASK-18BE: XÓA VẬT LÝ LÔ HÀNG (DÀNH CHO ADMIN DỌN RÁC)
-  // ==========================================
+
+  // TASK-18BE: XÓA VẬT LÝ LÔ HÀNG
   async deleteBatch(batchId) {
     const batch = await prisma.import_batches.findUnique({
       where: { id: batchId },
     });
     if (!batch) throw new Error("Lô nhập không tồn tại!");
 
-    // Dùng Transaction để chém sạch rễ (dữ liệu đệm) lẫn ngọn (lô cha)
     return await prisma.$transaction(async (tx) => {
-      await tx.product_imports_tmp.deleteMany({
-        where: { batch_id: batchId },
-      });
-
-      return await tx.import_batches.delete({
-        where: { id: batchId },
-      });
+      await tx.product_imports_tmp.deleteMany({ where: { batch_id: batchId } });
+      return await tx.import_batches.delete({ where: { id: batchId } });
     });
   }
-  // Lấy danh sách các batch và thống kê số lượng lỗi
+
   async getAllBatches(limit = 200) {
     const batches = await prisma.import_batches.findMany({
       take: limit,
-      orderBy: {
-        created_at: "desc",
-      },
-      include: {
-        product_imports_tmp: {
-          select: { validation_status: true }, // Lấy trạng thái để đếm
-        },
-      },
+      orderBy: { created_at: "desc" },
+      include: { product_imports_tmp: { select: { validation_status: true } } },
     });
 
-    // Format lại dữ liệu để tính toán số dòng lỗi / hợp lệ cho Frontend
     const formattedBatches = batches.map((batch) => {
       const total_rows = batch.product_imports_tmp.length;
       const invalid_count = batch.product_imports_tmp.filter(
@@ -434,15 +549,9 @@ class ImportService {
       ).length;
       const valid_count = total_rows - invalid_count;
 
-      // Xóa mảng data thô đi để API trả về nhẹ và nhanh hơn
       delete batch.product_imports_tmp;
 
-      return {
-        ...batch,
-        total_rows,
-        valid_count,
-        invalid_count, // Frontend sẽ dùng biến này để hiển thị "Số dòng lỗi"
-      };
+      return { ...batch, total_rows, valid_count, invalid_count };
     });
 
     return formattedBatches;

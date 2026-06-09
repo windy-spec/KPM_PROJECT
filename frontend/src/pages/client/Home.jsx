@@ -2,51 +2,16 @@ import React, { useEffect, useState } from 'react';
 import Hero from '../../components/home/Hero';
 import CategoryGrid from '../../components/home/CategoryGrid';
 import FeaturedProducts from '../../components/home/FeaturedProducts';
-
-const mockProducts = [
-  {
-    id: 1,
-    name: 'Cửa cổng sắt CNC 4 cánh mẫu Trống Đồng Đông Sơn',
-    image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=2070',
-    tags: ['Thép tấm 5mm', 'Sơn tĩnh điện'],
-    price: 3200000,
-    unit: 'm2',
-    isNew: true,
-  },
-  {
-    id: 2,
-    name: 'Cầu thang sắt nghệ thuật xoắn ốc hiện đại',
-    image: 'https://images.unsplash.com/photo-1621293954908-907159247fc8?q=80&w=2070',
-    tags: ['Sắt đặc 16x16', 'Tay vịn gỗ'],
-    price: 1850000,
-    unit: 'md',
-    isNew: false,
-  },
-  {
-    id: 3,
-    name: 'Lan can ban công sắt mỹ nghệ tân cổ điển',
-    image: 'https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?q=80&w=2070',
-    tags: ['Hoa văn đúc', 'Thép la'],
-    price: 1250000,
-    unit: 'md',
-    isNew: true,
-  },
-  {
-    id: 4,
-    name: 'Hàng rào sắt hộp mạ kẽm chống rỉ',
-    image: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=2070',
-    tags: ['Sắt hộp 40x80', 'Mạ kẽm'],
-    price: 950000,
-    unit: 'm2',
-    isNew: false,
-  },
-];
+import HowItWorks from '../../components/home/HowItWorks';
+import CoreValues from '../../components/home/CoreValues';
+import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
-    setProducts(mockProducts);
+    // Tạm thời ẩn mock products vì đã có CategoryGrid thật
   }, []);
 
   return (
@@ -55,26 +20,43 @@ const Home = () => {
         <Hero />
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-5 mt-16 mb-4">
-        <div className="relative flex items-center justify-center">
-          <div className="w-full h-px bg-outline-variant"></div>
-
-          <div className="absolute bg-surface px-4 flex gap-1.5">
-            <div className="w-2 h-2 bg-primary rotate-45 shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"></div>
-            <div className="w-2 h-2 bg-primary rotate-45 shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"></div>
-            <div className="w-2 h-2 bg-primary rotate-45 shadow-[0_0_8px_rgba(var(--primary-rgb),0.4)]"></div>
-          </div>
-        </div>
+      <div className="max-w-[1280px] mx-auto px-5 mt-16 mb-16">
+        <CoreValues />
       </div>
 
-      <main className="max-w-[1280px] mx-auto px-5 pb-24 flex flex-col gap-20">
+      <main className="max-w-[1280px] mx-auto px-5 pb-24 flex flex-col gap-24">
+        
+        {/* Danh mục nổi bật */}
         <section id="categories">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-sm font-black uppercase text-primary tracking-[0.2em] mb-4">Danh mục Sản phẩm</h2>
+            <h3 className="text-3xl md:text-4xl font-black text-on-surface uppercase tracking-tight">Cấu hình Đa dạng</h3>
+          </div>
           <CategoryGrid />
         </section>
 
-        <section id="featured">
-          <FeaturedProducts products={products} />
+        {/* Quy trình */}
+        <section id="how-it-works">
+          <HowItWorks />
         </section>
+
+        {/* Banner chốt sale */}
+        <section className="relative rounded-[32px] overflow-hidden bg-primary px-8 py-20 text-center flex flex-col items-center justify-center">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
+          <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
+            <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight mb-6 leading-tight">
+              Sẵn sàng nhận báo giá cho công trình của bạn?
+            </h2>
+            <p className="text-primary-100 mb-10 text-lg">
+              Trải nghiệm hệ thống bóc tách vật tư tự động 100% của KPM ngay hôm nay. Không cần chờ đợi, không phát sinh chi phí.
+            </p>
+            <Link to="/products" className="bg-white text-primary px-10 h-16 rounded-2xl font-black uppercase tracking-wider flex items-center justify-center gap-3 hover:bg-surface-container transition-all hover:-translate-y-1 shadow-2xl">
+              Bắt đầu ngay
+              <ArrowRight className="w-6 h-6" />
+            </Link>
+          </div>
+        </section>
+
       </main>
     </div>
   );

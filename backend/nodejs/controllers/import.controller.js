@@ -1,25 +1,42 @@
 const importService = require("../services/import.service");
 
 class ImportController {
-  // 1. Download file mẫu
+  // 1. Download file mẫu (Đảm bảo 100% file mới, không dính cache)
   async downloadTemplate(req, res) {
     try {
+      console.log("🚀 ĐANG TẠO FILE EXCEL MỚI TỪ RAM...");
       const workbook = await importService.generateProductTemplate();
+
+      // Ép trình duyệt KHÔNG ĐƯỢC CACHE (Quan trọng!)
+      res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
 
       // Cấu hình Header để trình duyệt tự hiểu đây là file tải về
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
+
+      // Đặt tên file kèm thời gian thực (Timestamp) để chống trùng tên tuyệt đối
+      const timestamp = Date.now();
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=" + "KPM_Import_Product.xlsx",
+        `attachment; filename="KPM_Import_Product_${timestamp}.xlsx"`,
       );
 
       // Ghi file thẳng ra luồng response trả về cho client
       await workbook.xlsx.write(res);
       res.end();
+
+      console.log(
+        `✅ TẢI THÀNH CÔNG FILE: KPM_Import_Product_${timestamp}.xlsx`,
+      );
     } catch (error) {
+      console.error("❌ LỖI CONTROLLER TEMPLATE:", error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -34,7 +51,6 @@ class ImportController {
         });
       }
 
-      // ✅ ĐÚNG: Lấy tên file gốc từ Multer thông qua req.file.originalname
       const result = await importService.processImportExcel(
         req.file.buffer,
         req.file.originalname,
@@ -94,12 +110,16 @@ class ImportController {
       const { batchId } = req.params;
       const workbook = await importService.exportInvalidRows(batchId);
 
-      // Cấu hình để trình duyệt tải file Excel về
+      res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      );
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
-      // Đặt tên file có đính kèm mã lô để Admin dễ phân biệt
       res.setHeader(
         "Content-Disposition",
         `attachment; filename="KPM_San_Pham_Loi_${batchId.split("-")[0]}.xlsx"`,
@@ -111,6 +131,7 @@ class ImportController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
   // 7. Xóa vật lý lô nhập liệu
   async deleteBatch(req, res) {
     try {
@@ -123,14 +144,13 @@ class ImportController {
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
-  } // Lấy danh sách lô nhập
+  }
+
+  // 8. Lấy danh sách lô nhập
   async getAllBatches(req, res) {
     try {
-      // Lấy limit từ query params (Frontend đang gửi ?limit=200)
       const limit = parseInt(req.query.limit) || 200;
-
       const result = await importService.getAllBatches(limit);
-
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message });
