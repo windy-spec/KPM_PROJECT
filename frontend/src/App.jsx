@@ -10,7 +10,6 @@ import Profile from './pages/profile/Profile';
 import ProductList from './pages/product/ProductList';
 import ProductDetail from './pages/product/ProductDetail';
 import AdminDashboard from './pages/admin/Dashboard';
-import ManageCustomers from './pages/admin/ManageCustomers';
 import RoleGuard from './components/auth/RoleGuard';
 import PublicGuard from './components/auth/PublicGuard';
 
@@ -23,29 +22,29 @@ const routeMap = [
       </MainLayout>
     ),
   },
-  { 
-    path: '/login', 
+  {
+    path: '/login',
     element: (
       <PublicGuard>
         <Login />
       </PublicGuard>
-    ) 
+    )
   },
-  { 
-    path: '/register', 
+  {
+    path: '/register',
     element: (
       <PublicGuard>
         <Register />
       </PublicGuard>
-    ) 
+    )
   },
-  { 
-    path: '/forgot-password', 
+  {
+    path: '/forgot-password',
     element: (
       <PublicGuard>
         <ForgotPassword />
       </PublicGuard>
-    ) 
+    )
   },
   {
     path: '/profile',
@@ -115,13 +114,13 @@ function AppRoutes() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-surface/60 backdrop-blur-md p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300 flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
             </div>
             <h3 className="text-xl font-black text-on-surface mb-2">Phiên đăng nhập đã hết</h3>
             <p className="text-sm font-medium text-on-surface-variant mb-8">
               Để bảo mật tài khoản, vui lòng đăng nhập lại để tiếp tục sử dụng hệ thống.
             </p>
-            <button 
+            <button
               onClick={handleLoginRedirect}
               className="w-full bg-primary text-white font-bold py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-colors shadow-sm shadow-primary/30"
             >

@@ -15,7 +15,7 @@ export default function ProductDetail() {
   const [thicknesses, setThicknesses] = useState([]);
   const [paints, setPaints] = useState([]);
   const [laborRates, setLaborRates] = useState([]);
-  
+
   const [componentsConfig, setComponentsConfig] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [priceData, setPriceData] = useState(null);
@@ -34,7 +34,7 @@ export default function ProductDetail() {
           materialService.getPaints(),
           materialService.getLaborRates()
         ]);
-        
+
         const pData = prodRes.data?.data || prodRes.data;
         setProduct(pData);
 
@@ -73,7 +73,7 @@ export default function ProductDetail() {
   // Debounce API call
   useEffect(() => {
     if (!componentsConfig.length) return;
-    
+
     // Check xem tất cả component đã chọn đủ vật tư, độ dày, sơn chưa
     const isFullyConfigured = componentsConfig.every(
       c => c.material_id && c.thickness_id && c.paint_id && c.width > 0 && c.height > 0
@@ -147,15 +147,15 @@ export default function ProductDetail() {
         {/* Left: Visual */}
         <div className="space-y-4">
           <div className="rounded-2xl overflow-hidden bg-surface-container aspect-[4/3] shadow-sm border border-outline-variant/30 flex items-center justify-center relative group">
-             {mainImage ? (
-               <img 
-                 src={mainImage} 
-                 alt={product.product_name}
-                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-               />
-             ) : (
-               <div className="text-on-surface-variant/50 font-medium">Chưa có hình ảnh</div>
-             )}
+            {mainImage ? (
+              <img
+                src={mainImage}
+                alt={product.product_name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <div className="text-on-surface-variant/50 font-medium">Chưa có hình ảnh</div>
+            )}
           </div>
 
           {/* Dàn ảnh Thumbnails */}
@@ -182,24 +182,24 @@ export default function ProductDetail() {
         {/* Right: Configurator */}
         <div className="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/30">
           <h2 className="text-xl font-black text-on-surface mb-4">Cấu hình linh kiện</h2>
-          
+
           <div className="space-y-3 mb-6">
             {componentsConfig.map((comp, idx) => (
               <div key={idx} className="border border-outline-variant/40 rounded-xl overflow-hidden transition-all duration-300">
-                <button 
+                <button
                   onClick={() => setExpandedIndex(expandedIndex === idx ? -1 : idx)}
                   className="w-full flex items-center justify-between p-4 bg-surface-container/30 hover:bg-surface-container/60 transition-colors"
                 >
                   <span className="font-bold text-on-surface">{comp.component_name}</span>
                   <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${expandedIndex === idx ? 'rotate-180' : ''}`} />
                 </button>
-                
+
                 <div className={`overflow-hidden transition-all duration-300 ${expandedIndex === idx ? 'max-h-[500px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-xs font-bold text-on-surface-variant mb-1">Dài (mm)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={comp.height}
                         onChange={(e) => handleConfigChange(idx, 'height', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
@@ -207,8 +207,8 @@ export default function ProductDetail() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-on-surface-variant mb-1">Rộng (mm)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={comp.width}
                         onChange={(e) => handleConfigChange(idx, 'width', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
@@ -218,19 +218,19 @@ export default function ProductDetail() {
 
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại vật tư</label>
-                      <select 
-                        value={comp.material_id}
-                        onChange={(e) => handleConfigChange(idx, 'material_id', e.target.value)}
-                        className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                      >
-                        <option value="">-- Chọn vật tư --</option>
-                        {materials.map(m => <option key={m.id} value={m.id}>{m.material_name}</option>)}
-                      </select>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                        Loại vật tư
+                      </label>
+                      <div className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold text-on-surface/70 border-none cursor-not-allowed">
+                        {
+                          materials.find(m => String(m.id) === String(comp.material_id))?.material_name
+                          || "Chưa xác định"
+                        }
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-on-surface-variant mb-1">Độ dày</label>
-                      <select 
+                      <select
                         value={comp.thickness_id}
                         onChange={(e) => handleConfigChange(idx, 'thickness_id', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
@@ -241,7 +241,7 @@ export default function ProductDetail() {
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-on-surface-variant mb-1">Loại sơn</label>
-                      <select 
+                      <select
                         value={comp.paint_id}
                         onChange={(e) => handleConfigChange(idx, 'paint_id', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
@@ -257,53 +257,53 @@ export default function ProductDetail() {
           </div>
 
           <div className="mb-6">
-             <label className="block text-xs font-bold text-on-surface-variant mb-2">Ghi chú yêu cầu riêng</label>
-             <textarea 
-               value={note}
-               onChange={(e) => setNote(e.target.value)}
-               placeholder="Khoét lỗ khóa từ, uốn vòm..."
-               className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-medium border-none focus:ring-2 focus:ring-primary outline-none resize-none h-24"
-             />
+            <label className="block text-xs font-bold text-on-surface-variant mb-2">Ghi chú yêu cầu riêng</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Khoét lỗ khóa từ, uốn vòm..."
+              className="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-medium border-none focus:ring-2 focus:ring-primary outline-none resize-none h-24"
+            />
           </div>
 
           {/* Pricing Section */}
           <div className="bg-primary/5 rounded-2xl p-5 border border-primary/20 relative overflow-hidden">
-             {isCalculating && (
-               <div className="absolute inset-0 bg-surface/50 backdrop-blur-sm flex items-center justify-center z-10">
-                 <Loader2 className="animate-spin text-primary w-6 h-6" />
-               </div>
-             )}
-             <div className="text-sm font-bold text-primary mb-1">Giá tạm tính</div>
-             <div className="text-4xl font-black text-on-surface mb-4">
-               {priceData ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceData.total_amount) : '--- ₫'}
-             </div>
-             
-             {priceData && (
-               <div className="space-y-1.5 pt-4 border-t border-primary/20">
-                 {priceData.breakdown_costs.map((b, i) => (
-                   <div key={i} className="flex justify-between text-xs font-medium text-on-surface-variant">
-                     <span>{b.name}</span>
-                     <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.amount)}</span>
-                   </div>
-                 ))}
-               </div>
-             )}
+            {isCalculating && (
+              <div className="absolute inset-0 bg-surface/50 backdrop-blur-sm flex items-center justify-center z-10">
+                <Loader2 className="animate-spin text-primary w-6 h-6" />
+              </div>
+            )}
+            <div className="text-sm font-bold text-primary mb-1">Giá tạm tính</div>
+            <div className="text-4xl font-black text-on-surface mb-4">
+              {priceData ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceData.total_amount) : '--- ₫'}
+            </div>
+
+            {priceData && (
+              <div className="space-y-1.5 pt-4 border-t border-primary/20">
+                {priceData.breakdown_costs.map((b, i) => (
+                  <div key={i} className="flex justify-between text-xs font-medium text-on-surface-variant">
+                    <span>{b.name}</span>
+                    <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
-             <button 
-               onClick={handleAddToCart}
-               className="flex-1 bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
-             >
-               <ShoppingCart className="w-5 h-5" />
-               Thêm vào giỏ hàng
-             </button>
-             <button 
-               onClick={handleSaveFavorite}
-               className="flex-1 sm:flex-none sm:w-14 bg-surface-container text-rose-500 font-bold py-3.5 px-4 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-center shadow-sm"
-             >
-               <Save className="w-5 h-5" />
-             </button>
+            <button
+              onClick={handleAddToCart}
+              className="flex-1 bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              Thêm vào giỏ hàng
+            </button>
+            <button
+              onClick={handleSaveFavorite}
+              className="flex-1 sm:flex-none sm:w-14 bg-surface-container text-rose-500 font-bold py-3.5 px-4 rounded-xl hover:bg-rose-50 transition-colors flex items-center justify-center shadow-sm"
+            >
+              <Save className="w-5 h-5" />
+            </button>
           </div>
 
         </div>

@@ -60,7 +60,7 @@ export default function ManageInvalidBatches() {
       console.error(err);
       setError(
         err?.response?.data?.message ||
-          "Không thể kết nối đến máy chủ hoặc API chưa được thiết lập.",
+        "Không thể kết nối đến máy chủ hoặc API chưa được thiết lập.",
       );
       showError("Không thể tải danh sách lô hàng lỗi từ hệ thống.");
       setBatches([]); // Đảm bảo clear danh sách nếu lỗi xảy ra
@@ -169,10 +169,10 @@ export default function ManageInvalidBatches() {
             const errorObj = JSON.parse(err.response.data);
             showError(errorObj.message || "Lỗi từ máy chủ khi xuất file.");
             return;
-          } catch (e) {}
+          } catch (e) { }
         }
       }
-      
+
       showError("Không thể tải file excel lỗi. Chi tiết: " + err.message);
     }
   };
@@ -234,6 +234,7 @@ export default function ManageInvalidBatches() {
               <option value="APPROVED">Đã Xác Nhận (APPROVED)</option>
               <option value="INVALID">Lỗi Định Dạng (INVALID)</option>
               <option value="REJECTED">Bị Từ Chối (REJECTED)</option>
+              <option value="PENDING">Đang Chờ (PENDING)</option>
             </select>
           </div>
 
@@ -309,11 +310,15 @@ export default function ManageInvalidBatches() {
                       </td>
                       <td className="p-4 text-center">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.18em] ${
-                            batch.status === "REJECTED"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.18em] 
+                            ${batch.status === "APPROVED"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : batch.status === "PENDING"
+                                ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+                                : batch.status === "REJECTED"
+                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                  : "bg-rose-50 text-rose-700 border border-rose-200"
+                            }`}
                         >
                           {batch.status || "INVALID"}
                         </span>
@@ -453,8 +458,8 @@ export default function ManageInvalidBatches() {
                                 <div className="text-rose-600 text-[12px] font-semibold whitespace-pre-line bg-rose-50/50 p-2.5 rounded-lg border border-rose-100">
                                   {errors && Object.keys(errors).length > 0
                                     ? Object.values(errors)
-                                        .map((err) => `• ${err}`)
-                                        .join("\n")
+                                      .map((err) => `• ${err}`)
+                                      .join("\n")
                                     : "Lỗi cấu trúc hoặc định dạng dữ liệu không đồng nhất."}
                                 </div>
                               </td>

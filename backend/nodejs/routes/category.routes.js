@@ -4,8 +4,8 @@ const categoryController = require("../controllers/category.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const adminMiddleware = require("../middlewares/admin.middleware");
 
-// 1. GET: Dành cho mọi user đã đăng nhập (FE cần gọi để lấy danh sách làm Dropdown filter)
-router.get("/", authMiddleware, categoryController.getAll);
+// 1. GET: Dành cho mọi user (Public để FE làm Dropdown filter cho cả khách vãng lai)
+router.get("/", categoryController.getAll);
 
 // 2. POST, PUT, DELETE: Khóa chặt, chỉ Admin được đụng vào
 router.post("/", authMiddleware, adminMiddleware, categoryController.create);

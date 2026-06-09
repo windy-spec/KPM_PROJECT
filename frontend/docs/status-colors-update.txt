@@ -1,0 +1,44 @@
+BÁO CÁO CẬP NHẬT MÀU SẮC TRẠNG THÁI LÔ HÀNG (FRONTEND)
+======================================================
+
+1. FILE THAY ĐỔI
+   - Đường dẫn file: frontend/src/pages/admin/ManageInvalidBatches.jsx
+   - Vị trí thay đổi: Trong hàm render bảng danh sách các lô hàng nhập khẩu (dòng ~310).
+
+2. CHI TIẾT THAY ĐỔI
+   Trước đây, cột trạng thái chỉ kiểm tra nếu trạng thái là "REJECTED" thì hiển thị màu cam (amber), còn lại mặc định hiển thị màu đỏ (rose) cho trạng thái lỗi "INVALID".
+   
+   Nay, hệ thống đã được cập nhật để hiển thị màu sắc tương ứng đầy đủ cho các trạng thái sau:
+   - Trạng thái PENDING (Đang Chờ): Hiển thị màu VÀNG.
+     * Class Tailwind: bg-yellow-50 text-yellow-700 border border-yellow-200
+   - Trạng thái APPROVED (Đã Xác Nhận): Hiển thị màu XANH LÁ.
+     * Class Tailwind: bg-emerald-50 text-emerald-700 border border-emerald-200
+   - Trạng thái REJECTED (Bị Từ Chối): Hiển thị màu CAM.
+     * Class Tailwind: bg-amber-50 text-amber-700 border border-amber-200
+   - Trạng thái INVALID (Lỗi Định Dạng) hoặc các lỗi khác: Hiển thị màu ĐỎ.
+     * Class Tailwind: bg-rose-50 text-rose-700 border border-rose-200
+
+3. ĐOẠN CODE ĐÃ CẬP NHẬT
+   Trong file ManageInvalidBatches.jsx:
+   ```jsx
+   <td className="p-4 text-center">
+     <span
+       className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.18em] ${
+         batch.status === "APPROVED"
+           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+           : batch.status === "PENDING"
+           ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
+           : batch.status === "REJECTED"
+           ? "bg-amber-50 text-amber-700 border border-amber-200"
+           : "bg-rose-50 text-rose-700 border border-rose-200"
+       }`}
+     >
+       {batch.status || "INVALID"}
+     </span>
+   </td>
+   ```
+
+4. HƯỚNG DẪN KIỂM TRA (CHỈ LÀM FRONTEND)
+   - Đảm bảo npm run dev của frontend vẫn đang chạy tốt.
+   - Truy cập vào mục quản lý lô hàng lỗi /admin/invalid-batches (hoặc tùy thuộc vào menu điều hướng).
+   - Chọn bộ lọc trạng thái "Đang Chờ (PENDING)" hoặc "Đã Xác Nhận (APPROVED)" hoặc tạo dữ liệu giả lập từ server trả về các trạng thái này để kiểm tra màu sắc tương ứng.
