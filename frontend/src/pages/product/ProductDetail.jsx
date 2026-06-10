@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { productService } from '../../services/product.service';
 import { materialService } from '../../services/material.service';
 import { quotationService } from '../../services/quotation.service';
 import { toast } from 'react-toastify';
-import { ChevronDown, ArrowLeft, Loader2, Save, ShoppingCart } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Loader2, Save, ShoppingCart, Star, FileText, ClipboardList, CreditCard } from 'lucide-react';
 import { CATEGORY_BLUEPRINTS } from '../../config/categoryBlueprints';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [product, setProduct] = useState(null);
   const [materials, setMaterials] = useState([]);
@@ -23,6 +24,11 @@ export default function ProductDetail() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [note, setNote] = useState('');
   const [mainImage, setMainImage] = useState(null);
+  const [initialConfig, setInitialConfig] = useState(null);
+  const [isModified, setIsModified] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [expandedDesc, setExpandedDesc] = useState(false);
+  const [expandedSpecs, setExpandedSpecs] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -53,9 +59,10 @@ export default function ProductDetail() {
         // Khởi tạo config cho từng linh kiện từ Blueprint hoặc fallback
         const categoryCode = pData?.product_categories?.category_code;
         const blueprint = CATEGORY_BLUEPRINTS[categoryCode] || [];
+        let baseConfig = [];
 
         if (blueprint.length > 0) {
-          const initialConfig = blueprint.map(comp => ({
+          baseConfig = blueprint.map(comp => ({
             component_name: comp.name,
             width: 1000,
             height: 2000,
@@ -65,9 +72,8 @@ export default function ProductDetail() {
             allowed_materials: comp.allowed_materials || [],
             allow_paint: comp.allow_paint
           }));
-          setComponentsConfig(initialConfig);
         } else if (pData?.components && Array.isArray(pData.components)) {
-          const initialConfig = pData.components.map(comp => ({
+          baseConfig = pData.components.map(comp => ({
             component_name: comp.name || 'Linh kiện',
             width: comp.defaultWidth || 1000,
             height: comp.defaultHeight || 2000,
@@ -77,7 +83,32 @@ export default function ProductDetail() {
             allowed_materials: [],
             allow_paint: true
           }));
-          setComponentsConfig(initialConfig);
+        }
+
+        // Ánh xạ config từ favorite nếu có
+        const stateConfig = location.state?.quotationSpecs;
+        if (stateConfig && Array.isArray(stateConfig) && stateConfig.length > 0) {
+          const mergedConfig = baseConfig.map((comp, idx) => {
+            const s = stateConfig[idx];
+            if (s) {
+              return {
+                ...comp,
+                width: s.dimensions?.width || comp.width,
+                height: s.dimensions?.height || comp.height,
+                material_id: s.material_id || '',
+                thickness_id: s.thickness_id || '',
+                paint_id: s.paint_id || '',
+              };
+            }
+            return comp;
+          });
+          setComponentsConfig(mergedConfig);
+          setInitialConfig(JSON.stringify(baseConfig));
+          setIsModified(JSON.stringify(mergedConfig) !== JSON.stringify(baseConfig));
+          if (location.state?.note) setNote(location.state.note);
+        } else {
+          setComponentsConfig(baseConfig);
+          setInitialConfig(JSON.stringify(baseConfig));
         }
       } catch (error) {
         console.error("Error fetching product data:", error);
@@ -129,6 +160,9 @@ export default function ProductDetail() {
     const newConfig = [...componentsConfig];
     newConfig[index][field] = value;
     setComponentsConfig(newConfig);
+    if (initialConfig) {
+      setIsModified(JSON.stringify(newConfig) !== initialConfig);
+    }
   };
 
   const handleAddToCart = () => {
@@ -166,7 +200,8 @@ export default function ProductDetail() {
       await quotationService.requestCustomQuote({
         product_id: product.id,
         components: componentsConfig,
-        note: note
+        note: note,
+        quantity: quantity
       });
       toast.success("Đã gửi yêu cầu báo giá! Admin sẽ liên hệ lại với bạn.");
       navigate('/profile'); // Chuyển đến trang cá nhân
@@ -220,7 +255,54 @@ export default function ProductDetail() {
 
           <div>
             <h1 className="text-3xl font-black text-on-surface">{product.product_name}</h1>
-            <p className="text-sm font-mono text-on-surface-variant mt-1">Mã SP: {product.product_code}</p>
+            <p className="text-sm font-mono text-on-surface-variant mt-1 mb-6">Mã SP: {product.product_code}</p>
+            
+            {/* Accordions cho Thông số và Mô tả */}
+            <div className="space-y-3">
+              <div className="border border-outline-variant/40 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedSpecs(!expandedSpecs)}
+                  className="w-full flex items-center justify-between p-4 bg-surface-container/30 hover:bg-surface-container/60 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-primary" />
+                    <span className="font-bold text-on-surface">Thông số kỹ thuật</span>
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${expandedSpecs ? 'rotate-180' : ''}`} />
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ${expandedSpecs ? 'max-h-[1000px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
+                  {product.default_specs ? (
+                    <div className="text-sm text-on-surface-variant leading-relaxed">
+                      <p>Sản phẩm <strong>{product.product_name}</strong> sở hữu các thông số tiêu chuẩn sau:</p>
+                      <ul className="list-disc pl-5 mt-2 space-y-1">
+                        {Object.entries(product.default_specs).map(([key, value]) => (
+                          <li key={key}><strong>{key}:</strong> {value}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-on-surface-variant">Sản phẩm được gia công theo cấu hình linh kiện bên phải.</p>
+                  )}
+                </div>
+              </div>
+              <div className="border border-outline-variant/40 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedDesc(!expandedDesc)}
+                  className="w-full flex items-center justify-between p-4 bg-surface-container/30 hover:bg-surface-container/60 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-primary" />
+                    <span className="font-bold text-on-surface">Mô tả sản phẩm</span>
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${expandedDesc ? 'rotate-180' : ''}`} />
+                </button>
+                <div className={`overflow-hidden transition-all duration-300 ${expandedDesc ? 'max-h-[1000px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
+                  <p className="text-sm text-on-surface-variant leading-relaxed">
+                    {product.description || 'Chưa có mô tả cho sản phẩm này.'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -355,24 +437,56 @@ export default function ProductDetail() {
           </div>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={handleRequestQuote}
-              className="flex-[2] bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
-            >
-              Yêu cầu Báo giá
-            </button>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-on-surface font-bold hover:bg-surface-container-highest transition-colors"
+              >
+                -
+              </button>
+              <span className="w-8 text-center font-bold text-on-surface">{quantity}</span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-on-surface font-bold hover:bg-surface-container-highest transition-colors"
+              >
+                +
+              </button>
+            </div>
+            
+            {isModified ? (
+              <button
+                onClick={handleRequestQuote}
+                className="flex-[2] bg-primary text-white font-black py-3.5 px-4 rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-primary/30"
+              >
+                <ClipboardList className="w-5 h-5" />
+                Yêu cầu Báo giá
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate(`/checkout?direct=true&productId=${product.id}&quantity=${quantity}`)}
+                className="flex-[2] bg-[#ff6b00] text-white font-black py-3.5 px-4 rounded-xl hover:bg-[#ff6b00]/90 transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#ff6b00]/30"
+              >
+                <CreditCard className="w-5 h-5" />
+                Mua ngay
+              </button>
+            )}
+
             <button
               onClick={handleAddToCart}
-              className="flex-1 bg-surface-container-highest text-on-surface font-black py-3.5 px-4 rounded-xl hover:bg-outline-variant/30 transition-all flex items-center justify-center gap-2 shadow-sm"
+              disabled={isModified}
+              title={isModified ? "Vui lòng yêu cầu báo giá cho sản phẩm đã thay đổi thông số" : "Thêm vào giỏ hàng"}
+              className={`flex-1 font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${isModified ? 'bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant' : 'bg-surface-container-highest text-on-surface hover:bg-outline-variant/30'}`}
             >
               <ShoppingCart className="w-5 h-5" />
+              <span className="hidden sm:inline">Giỏ hàng</span>
             </button>
+            
             <button
               onClick={handleSaveFavorite}
               title="Lưu yêu thích"
               className="flex-none w-14 bg-pink-50 text-pink-500 font-bold py-3.5 px-4 rounded-xl hover:bg-pink-100 hover:text-pink-600 transition-colors flex items-center justify-center shadow-sm"
             >
-              <Save className="w-5 h-5" />
+              <Star className="w-5 h-5 fill-current" />
             </button>
           </div>
 

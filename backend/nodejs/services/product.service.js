@@ -39,18 +39,32 @@ class ProductService {
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const whereCondition = {};
+    const whereCondition = {
+      AND: []
+    };
+    
     if (category_id && category_id !== "null" && category_id !== "undefined") {
       const categories = category_id.split(",");
       if (categories.length > 0) {
-        whereCondition.category_id = { in: categories };
+        whereCondition.AND.push({
+          OR: [
+            { category_id: { in: categories } },
+            { product_categories: { parent_id: { in: categories } } }
+          ]
+        });
       }
     }
     if (search) {
-      whereCondition.OR = [
-        { product_code: { contains: search, mode: "insensitive" } },
-        { product_name: { contains: search, mode: "insensitive" } },
-      ];
+      whereCondition.AND.push({
+        OR: [
+          { product_code: { contains: search, mode: "insensitive" } },
+          { product_name: { contains: search, mode: "insensitive" } },
+        ]
+      });
+    }
+
+    if (whereCondition.AND.length === 0) {
+      delete whereCondition.AND;
     }
 
     const [products, totalItem] = await prisma.$transaction([

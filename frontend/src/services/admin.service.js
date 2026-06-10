@@ -99,7 +99,7 @@ const adminService = {
   },
 
   updateQuotationStatus(id, data) {
-    return apiClient.put(`/quotations/${id}`, data);
+    return apiClient.put(`/quotations/${id}/status`, data);
   },
 
   createQuotationAttachment(id, data) {

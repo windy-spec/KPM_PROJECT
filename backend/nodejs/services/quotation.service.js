@@ -1,5 +1,5 @@
 const prisma = require("../models/prisma");
-const { sendQuotationEmail } = require("../utils/mailer.utils");
+const { sendQuotationEmail, sendOrderConfirmationEmail } = require("../utils/mailer.utils");
 
 class QuotationService {
   // 1. LẤY DANH SÁCH BÁO GIÁ (Dành cho Admin/Sale xem tổng quan)
@@ -44,17 +44,43 @@ class QuotationService {
 
   // 3. CẬP NHẬT TRẠNG THÁI (VD: Từ "draft" sang "approved" hoặc "cancelled")
   async updateStatus(id, status) {
-    const validStatuses = ["draft", "pending_admin", "sent_to_customer", "approved", "rejected", "cancelled", "favorite"];
+    const validStatuses = ["draft", "pending_admin", "sent_to_customer", "approved", "customer_approved", "admin_confirmed", "rejected", "cancelled", "favorite"];
     if (!validStatuses.includes(status)) {
       throw new Error("Trạng thái không hợp lệ!");
     }
 
-    await this.getQuotationById(id); // Check xem có tồn tại không
+    const quotation = await this.getQuotationById(id);
 
-    return await prisma.quotations.update({
+    const updatedQuotation = await prisma.quotations.update({
       where: { id },
       data: { status },
+      include: { users: true }
     });
+
+    // Nếu Admin xác nhận lên đơn hàng -> Sinh ra Order và gửi email cho Khách hàng
+    if (status === "admin_confirmed") {
+      try {
+        // Tạo mã đơn hàng ngẫu nhiên
+        const orderCode = "ORD-" + Math.floor(1000 + Math.random() * 9000) + "-" + new Date().getFullYear();
+        
+        const newOrder = await prisma.orders.create({
+          data: {
+            quotation_id: id,
+            order_code: orderCode,
+            production_status: "confirmed"
+          }
+        });
+
+        // Gửi email báo khách hàng đơn đã được lên thành công
+        if (updatedQuotation.users && updatedQuotation.users.email) {
+          await sendOrderConfirmationEmail(updatedQuotation.users.email, newOrder, updatedQuotation);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tạo Đơn hàng hoặc gửi email:", err);
+      }
+    }
+
+    return updatedQuotation;
   }
 
   // 3.1 GỬI YÊU CẦU BÁO GIÁ (Khách hàng tạo request mới)
@@ -82,9 +108,9 @@ class QuotationService {
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
-        material_id: comp.material_id,
-        thickness_id: comp.thickness_id,
-        paint_id: comp.paint_id,
+        material_id: comp.material_id || null,
+        thickness_id: comp.thickness_id || null,
+        paint_id: comp.paint_id || null,
         dimensions: {
           product_id,
           width: parseFloat(comp.width),
@@ -263,9 +289,9 @@ class QuotationService {
         // Đẩy vào mảng specs để chuẩn bị lưu DB
         quotation_specs_data.push({
           component_name,
-          material_id,
-          thickness_id,
-          paint_id,
+          material_id: material_id || null,
+          thickness_id: thickness_id || null,
+          paint_id: paint_id || null,
           dimensions: {
             product_id,
             width: parseFloat(width),
@@ -394,9 +420,9 @@ class QuotationService {
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
-        material_id: comp.material_id,
-        thickness_id: comp.thickness_id,
-        paint_id: comp.paint_id,
+        material_id: comp.material_id || null,
+        thickness_id: comp.thickness_id || null,
+        paint_id: comp.paint_id || null,
         dimensions: {
           product_id,
           width: parseFloat(comp.width),

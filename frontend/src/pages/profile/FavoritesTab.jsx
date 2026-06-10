@@ -3,9 +3,11 @@ import { quotationService } from '../../services/quotation.service';
 import { Heart, Trash2, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 
 const FavoritesTab = () => {
   const navigate = useNavigate();
+  const [expandedSpecId, setExpandedSpecId] = useState(null);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,15 +69,33 @@ const FavoritesTab = () => {
                 <p className="text-xs text-on-surface-variant mt-1">Lưu lúc: {new Date(fav.created_at).toLocaleDateString('vi-VN')}</p>
               </div>
 
-              <div className="flex-1 bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/50 text-xs mb-4">
-                {fav.quotation_specs?.slice(0, 3).map((spec, idx) => (
-                  <div key={idx} className="flex items-start gap-2 mb-2 last:mb-0">
-                    <ChevronRight className="w-3 h-3 text-primary mt-0.5 shrink-0" />
-                    <span className="text-on-surface font-medium line-clamp-1">{spec.component_name}</span>
-                  </div>
-                ))}
+              <div className="flex-1 bg-surface-container-lowest p-2 rounded-xl border border-outline-variant/50 text-xs mb-4 space-y-2">
+                {fav.quotation_specs?.slice(0, 3).map((spec, idx) => {
+                  const isExpanded = expandedSpecId === `${fav.id}-${idx}`;
+                  return (
+                    <div key={idx} className="border border-outline-variant/30 rounded-lg overflow-hidden">
+                      <button 
+                        onClick={() => setExpandedSpecId(isExpanded ? null : `${fav.id}-${idx}`)}
+                        className="w-full flex items-center justify-between p-2 bg-surface hover:bg-surface-container transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ChevronRight className={`w-3 h-3 text-primary shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          <span className="text-on-surface font-medium line-clamp-1 text-left">{spec.component_name}</span>
+                        </div>
+                      </button>
+                      <div className={`overflow-hidden transition-all duration-300 bg-surface-container-lowest ${isExpanded ? 'max-h-40 border-t border-outline-variant/30 p-2' : 'max-h-0'}`}>
+                        <div className="space-y-1 text-[11px] text-on-surface-variant">
+                          <p><strong>Kích thước:</strong> {spec.dimensions?.width} x {spec.dimensions?.height} mm</p>
+                          {spec.materials && <p><strong>Vật tư:</strong> {spec.materials.material_name}</p>}
+                          {spec.material_thickness && <p><strong>Độ dày:</strong> {spec.material_thickness.thickness_value}</p>}
+                          {spec.paint_types && <p><strong>Loại sơn:</strong> {spec.paint_types.paint_name}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
                 {fav.quotation_specs?.length > 3 && (
-                  <div className="text-xs font-bold text-primary italic ml-5">
+                  <div className="text-xs font-bold text-primary italic ml-2">
                     + {fav.quotation_specs.length - 3} linh kiện khác...
                   </div>
                 )}
@@ -87,7 +107,7 @@ const FavoritesTab = () => {
                   <p className="text-lg font-black text-primary">{formatCurrency(fav.total_quoted_price)}</p>
                 </div>
                 <button 
-                  onClick={() => navigate(`/product/${fav.quotation_specs?.[0]?.dimensions?.product_id}`)} 
+                  onClick={() => navigate(`/product/${fav.quotation_specs?.[0]?.dimensions?.product_id}`, { state: { quotationSpecs: fav.quotation_specs, note: fav.quotation_specs?.[0]?.note } })} 
                   className="px-4 py-2 text-xs font-bold bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
                 >
                   Xem Sản Phẩm

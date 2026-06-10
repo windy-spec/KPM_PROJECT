@@ -7,6 +7,7 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
     product_code: "",
     product_name: "",
     category_id: "",
+    description: "",
     default_specs: "",
     components: "",
     ...initial,
@@ -343,7 +344,20 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2 mt-4">
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Mô tả chi tiết (Description)
+              </label>
+              <textarea
+                value={form.description || ""}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Nhập mô tả sản phẩm..."
+                rows={4}
+                className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mt-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
                   Default specs

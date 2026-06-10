@@ -53,6 +53,7 @@ const normalizeProduct = (item) => {
 const AdminProductPanel = () => {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
+  const [parentCategory, setParentCategory] = useState('');
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -475,22 +476,43 @@ const AdminProductPanel = () => {
         <div className="px-4 md:px-5 py-3 border-b border-outline-variant/40 bg-surface-container/10 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <select
-              value={category}
+              value={parentCategory}
               onChange={(e) => {
-                const selectedCat = e.target.value;
-                setCategory(selectedCat); // Cập nhật state danh mục
-                setPage(1);               // Reset về trang 1
-                load({ page: 1, categoryOverride: selectedCat }); // Tự động gọi hàm load với category mới
+                const selectedParent = e.target.value;
+                setParentCategory(selectedParent);
+                setCategory('');
+                setPage(1);
+                load({ page: 1, categoryOverride: selectedParent });
               }}
               className="min-w-[160px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none"
             >
-              <option value="">Tất cả danh mục</option>
-              {categories.map((cat) => (
-                <option key={cat.id || cat._id || cat.category_code} value={cat.id || cat._id || cat.category_code}>
-                    {(cat.category_code || cat.code || '-') + ' - ' + (cat.category_name || cat.name || cat.title || 'Danh mục')}
+              <option value="">Tất cả danh mục cha</option>
+              {categories.filter(c => c.level === 0).map((cat) => (
+                <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                  {cat.category_name || cat.name || cat.title}
                 </option>
               ))}
             </select>
+
+            {parentCategory && (
+              <select
+                value={category}
+                onChange={(e) => {
+                  const selectedCat = e.target.value;
+                  setCategory(selectedCat);
+                  setPage(1);
+                  load({ page: 1, categoryOverride: selectedCat || parentCategory });
+                }}
+                className="min-w-[160px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none"
+              >
+                <option value="">Tất cả danh mục con</option>
+                {categories.filter(c => c.level === 1 && c.parent_id === parentCategory).map((cat) => (
+                  <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                    {cat.category_name || cat.name || cat.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <button
