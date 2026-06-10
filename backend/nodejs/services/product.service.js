@@ -39,18 +39,32 @@ class ProductService {
     const skip = (Number(page) - 1) * Number(limit);
     const take = Number(limit);
 
-    const whereCondition = {};
+    const whereCondition = {
+      AND: []
+    };
+    
     if (category_id && category_id !== "null" && category_id !== "undefined") {
       const categories = category_id.split(",");
       if (categories.length > 0) {
-        whereCondition.category_id = { in: categories };
+        whereCondition.AND.push({
+          OR: [
+            { category_id: { in: categories } },
+            { product_categories: { parent_id: { in: categories } } }
+          ]
+        });
       }
     }
     if (search) {
-      whereCondition.OR = [
-        { product_code: { contains: search, mode: "insensitive" } },
-        { product_name: { contains: search, mode: "insensitive" } },
-      ];
+      whereCondition.AND.push({
+        OR: [
+          { product_code: { contains: search, mode: "insensitive" } },
+          { product_name: { contains: search, mode: "insensitive" } },
+        ]
+      });
+    }
+
+    if (whereCondition.AND.length === 0) {
+      delete whereCondition.AND;
     }
 
     const [products, totalItem] = await prisma.$transaction([
@@ -61,12 +75,17 @@ class ProductService {
         orderBy: { created_at: "desc" },
         include: {
           product_categories: {
-            select: { category_name: true, parent_id: true },
+            select: { 
+              category_name: true, 
+              parent_id: true,
+              parent_category: {
+                select: { category_name: true }
+              }
+            },
           },
           product_images: {
-            where: { is_primary: true },
-            take: 1,
-            select: { id: true, image_url: true },
+            select: { id: true, image_url: true, is_primary: true },
+            orderBy: { is_primary: "desc" },
           },
         },
       }),
@@ -129,11 +148,27 @@ class ProductService {
     });
   }
 
+  async deleteProductImage(productId, imageId) {
+    const image = await prisma.product_images.findFirst({
+      where: { id: imageId, product_id: productId },
+    });
+    if (!image) throw new Error("Không tìm thấy ảnh!");
+    
+    // Nếu là ảnh chính, không cho xóa trực tiếp bằng route này (hoặc có thể tự xử lý logic)
+    if (image.is_primary) {
+      throw new Error("Không thể xóa ảnh chính của sản phẩm!");
+    }
+
+    return await prisma.product_images.delete({
+      where: { id: imageId },
+    });
+  }
+
   async getProductById(id) {
     const product = await prisma.products.findUnique({
       where: { id },
       include: {
-        product_categories: { select: { category_name: true } },
+        product_categories: true,
         product_images: { orderBy: { is_primary: "desc" } },
       },
     });

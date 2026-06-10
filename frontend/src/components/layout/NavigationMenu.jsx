@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, Drill, Hammer, LayoutPanelLeft, Ruler, Settings } from 'lucide-react';
+import { categoryService } from '../../services/category.service';
 
 const NavigationMenu = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 0);
-
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
-
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    categoryService.getCategories()
+      .then(res => {
+        const data = res.data?.data || res.data || [];
+        setCategories(data);
+      })
+      .catch(err => console.error('Error fetching categories:', err));
   }, []);
 
   const menuItems = [
@@ -49,12 +58,21 @@ const NavigationMenu = () => {
                 </button>
               )}
               
-              {/* Dropdown giả lập */}
+              {/* Dropdown động */}
               {item.hasSub && (
                 <div className="absolute top-full left-0 w-64 bg-white border border-outline-variant shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60] py-2 rounded-b-lg">
-                  <Link to="/products" className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">Sắt mỹ nghệ</Link>
-                  <Link to="/products" className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">Kết cấu nhà tiền chế</Link>
-                  <Link to="/products" className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">Phụ kiện cơ khí</Link>
+                  {index === 0 && categories.length > 0 ? (
+                    categories.map(cat => (
+                      <Link key={cat.id || cat._id || cat.category_code} to={`/products?category=${cat.id || cat._id}`} className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">
+                        {cat.category_name || cat.name}
+                      </Link>
+                    ))
+                  ) : (
+                    <>
+                      <Link to="/products" className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">Dịch vụ gia công CNC</Link>
+                      <Link to="/products" className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary">Gia công bản mã</Link>
+                    </>
+                  )}
                 </div>
               )}
             </li>

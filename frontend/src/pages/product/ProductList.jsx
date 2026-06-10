@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import ProductCard from '../../components/common/ProductCard';
 import SidebarFilter from '../../components/layout/SidebarFilter';
 import { productService } from '../../services/product.service';
 
 const ProductList = () => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialCategory = searchParams.get('category');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, totalPage: 1, totalItem: 0 });
-  const [filters, setFilters] = useState({ categories: [] });
+  const [filters, setFilters] = useState({ categories: initialCategory ? [initialCategory] : [] });
 
   const fetchProducts = async (page = 1) => {
     setLoading(true);
@@ -24,6 +28,12 @@ const ProductList = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Khởi tạo lại filter nếu URL query param thay đổi
+    const urlCategory = new URLSearchParams(location.search).get('category');
+    setFilters({ categories: urlCategory ? [urlCategory] : [] });
+  }, [location.search]);
 
   useEffect(() => {
     fetchProducts(1);
@@ -62,7 +72,10 @@ const ProductList = () => {
         
         {/* CỘT TRÁI: SidebarFilter */}
         <div className="lg:col-span-1">
-          <SidebarFilter onFilterChange={handleFilterChange} />
+          <SidebarFilter 
+            onFilterChange={handleFilterChange} 
+            initialCategoryIds={filters.categories} 
+          />
         </div>
 
         {/* CỘT PHẢI: LƯỚI SẢN PHẨM */}

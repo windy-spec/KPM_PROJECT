@@ -27,23 +27,33 @@ const defaultWarnings = [
   { name: 'Kính 10mm cường lực', remaining: 'Còn 5m²', note: 'Liên quan đến 4 đơn hàng đang chờ', action: 'Đặt hàng ngay' },
 ];
 
-const normalizeProduct = (item) => ({
-  id: item.id || item._id || Math.random().toString(36).slice(2, 10),
-  image:
-    item.product_images?.find((img) => img.is_primary)?.image_url ||
-    item.product_images?.[0]?.image_url ||
-    '',
-  code: item.product_code || item.sku || item.code || '-',
-  name: item.product_name || item.name || item.title || 'Sản phẩm',
-  categoryId: item.category_id || item.categoryId || '',
-  category: item.product_categories?.category_name || item.category?.name || item.category?.title || item.category || '-',
-  specs: item.default_specs || null,
-  createdAt: item.created_at || item.createdAt || null,
-});
+const normalizeProduct = (item) => {
+  let catName = item.product_categories?.category_name || item.category?.name || item.category?.title || item.category || '-';
+  if (item.product_categories?.parent_category?.category_name) {
+    catName = `${item.product_categories.parent_category.category_name} / ${catName}`;
+  }
+  
+  return {
+    id: item.id || item._id || Math.random().toString(36).slice(2, 10),
+    image:
+      item.product_images?.find((img) => img.is_primary)?.image_url ||
+      item.product_images?.[0]?.image_url ||
+      '',
+    images: item.product_images || [],
+    code: item.product_code || item.sku || item.code || '-',
+    name: item.product_name || item.name || item.title || 'Sản phẩm',
+    categoryId: item.category_id || item.categoryId || '',
+    category: catName,
+    specs: item.default_specs || null,
+    components: item.components || [],
+    createdAt: item.created_at || item.createdAt || null,
+  };
+};
 
 const AdminProductPanel = () => {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('');
+  const [parentCategory, setParentCategory] = useState('');
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -76,8 +86,20 @@ const AdminProductPanel = () => {
       const productData = productRes.data?.data || productRes.data?.products || productRes.data || [];
       const categoryData = categoryRes.data?.data || categoryRes.data || [];
 
+      const flatCategories = [];
+      if (Array.isArray(categoryData)) {
+        categoryData.forEach(parent => {
+          flatCategories.push({ ...parent, level: 0 });
+          if (parent.sub_categories && parent.sub_categories.length > 0) {
+            parent.sub_categories.forEach(sub => {
+              flatCategories.push({ ...sub, level: 1, parent_id: parent.id || parent._id });
+            });
+          }
+        });
+      }
+
       setItems(Array.isArray(productData) ? productData.map(normalizeProduct) : []);
-      setCategories(Array.isArray(categoryData) ? categoryData : []);
+      setCategories(flatCategories);
       
       // Bắt chính xác totalItem từ backend trả về
       setTotal(
@@ -122,12 +144,19 @@ const AdminProductPanel = () => {
           : it.specs
             ? JSON.stringify(it.specs, null, 2)
             : '',
+      components:
+        typeof it.components === 'string'
+          ? it.components
+          : (it.components && it.components.length > 0)
+            ? JSON.stringify(it.components, null, 2)
+            : '',
       image: it.image || '',
+      images: it.images || [],
     });
     setShowForm(true);
   };
 
-  const parseDefaultSpecs = (value) => {
+  const parseJson = (value) => {
     const text = String(value || '').trim();
     if (!text) return null;
 
@@ -170,6 +199,26 @@ const AdminProductPanel = () => {
 
     setBatchReviewLoading(true);
     setBatchReviewError('');
+    const fetchCategories = async () => {
+    try {
+      const res = await adminService.getCategories({ limit: 100 });
+      const data = res.data?.data || res.data || [];
+      const flat = [];
+      if (Array.isArray(data)) {
+        data.forEach(parent => {
+          flat.push({ ...parent, level: 0 });
+          if (parent.sub_categories && parent.sub_categories.length > 0) {
+            parent.sub_categories.forEach(sub => {
+              flat.push({ ...sub, level: 1, parent_id: parent.id || parent._id });
+            });
+          }
+        });
+      }
+      setCategories(flat);
+    } catch (err) {
+      console.error(err);
+    }
+  };
     setShowBatchReviewModal(true);
 
     try {
@@ -271,13 +320,14 @@ const AdminProductPanel = () => {
     }
   };
 
-  const handleSave = async (form, imageFile) => {
+  const handleSave = async (form, primaryImage, secondaryImages, deletedImageIds) => {
     try {
       const payload = {
         category_id: form.category_id,
         product_code: form.product_code,
         product_name: form.product_name,
-        default_specs: parseDefaultSpecs(form.default_specs),
+        default_specs: parseJson(form.default_specs),
+        components: parseJson(form.components) || [],
       };
 
       const saveResponse = editing && editing.id
@@ -287,8 +337,24 @@ const AdminProductPanel = () => {
       const savedProduct = saveResponse.data?.data || saveResponse.data || null;
       const productId = savedProduct?.id || savedProduct?._id || editing?.id;
 
-      if (productId && imageFile) {
-        await adminService.uploadProductImage(productId, imageFile, true);
+      if (productId) {
+        const uploadPromises = [];
+        if (primaryImage) {
+          uploadPromises.push(adminService.uploadProductImage(productId, primaryImage, true));
+        }
+        if (secondaryImages && secondaryImages.length > 0) {
+          for (const file of secondaryImages) {
+            uploadPromises.push(adminService.uploadProductImage(productId, file, false));
+          }
+        }
+        if (deletedImageIds && deletedImageIds.length > 0) {
+          for (const imgId of deletedImageIds) {
+            uploadPromises.push(adminService.deleteProductImage(productId, imgId));
+          }
+        }
+        if (uploadPromises.length > 0) {
+          await Promise.all(uploadPromises);
+        }
       }
 
       setShowForm(false);
@@ -410,22 +476,43 @@ const AdminProductPanel = () => {
         <div className="px-4 md:px-5 py-3 border-b border-outline-variant/40 bg-surface-container/10 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <select
-              value={category}
+              value={parentCategory}
               onChange={(e) => {
-                const selectedCat = e.target.value;
-                setCategory(selectedCat); // Cập nhật state danh mục
-                setPage(1);               // Reset về trang 1
-                load({ page: 1, categoryOverride: selectedCat }); // Tự động gọi hàm load với category mới
+                const selectedParent = e.target.value;
+                setParentCategory(selectedParent);
+                setCategory('');
+                setPage(1);
+                load({ page: 1, categoryOverride: selectedParent });
               }}
               className="min-w-[160px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none"
             >
-              <option value="">Tất cả danh mục</option>
-              {categories.map((cat) => (
-                <option key={cat.id || cat._id || cat.category_code} value={cat.id || cat._id || cat.category_code}>
-                    {(cat.category_code || cat.code || '-') + ' - ' + (cat.category_name || cat.name || cat.title || 'Danh mục')}
+              <option value="">Tất cả danh mục cha</option>
+              {categories.filter(c => c.level === 0).map((cat) => (
+                <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                  {cat.category_name || cat.name || cat.title}
                 </option>
               ))}
             </select>
+
+            {parentCategory && (
+              <select
+                value={category}
+                onChange={(e) => {
+                  const selectedCat = e.target.value;
+                  setCategory(selectedCat);
+                  setPage(1);
+                  load({ page: 1, categoryOverride: selectedCat || parentCategory });
+                }}
+                className="min-w-[160px] rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none"
+              >
+                <option value="">Tất cả danh mục con</option>
+                {categories.filter(c => c.level === 1 && c.parent_id === parentCategory).map((cat) => (
+                  <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                    {cat.category_name || cat.name || cat.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <button
@@ -443,9 +530,10 @@ const AdminProductPanel = () => {
               <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
                 <th className="p-4 pl-6 w-[70px]">STT</th>
                 <th className="p-4">Thông tin sản phẩm</th>
-                <th className="p-4 w-[120px]">Danh mục</th>
-                <th className="p-4 w-[180px]">Thông số mặc định</th>
-                <th className="p-4 w-[140px]">Ngày tạo</th>
+                <th className="p-4 w-[140px]">Danh mục</th>
+                <th className="p-4 w-[160px]">Thành phần cấu tạo</th>
+                <th className="p-4 w-[160px]">Thông số mặc định</th>
+                <th className="p-4 w-[120px]">Ngày tạo</th>
                 <th className="p-4 pr-6 text-center w-[120px]">Thao tác</th>
               </tr>
             </thead>
@@ -475,12 +563,26 @@ const AdminProductPanel = () => {
                   </td>
 
                   <td className="p-4">
-                    <span className="inline-flex items-center rounded-md bg-surface-container px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
+                    <span className="inline-flex items-center rounded-md bg-surface-container px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-teal-700 whitespace-nowrap">
                       {it.category}
                     </span>
                   </td>
 
-                  <td className="p-4 max-w-[260px]">
+                  <td className="p-4">
+                    <div className="flex flex-wrap gap-1">
+                      {Array.isArray(it.components) && it.components.length > 0 ? (
+                        it.components.map((comp, i) => (
+                          <span key={i} className="inline-flex items-center rounded-md bg-blue-50 border border-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                            {comp.name || comp.component_name || 'Component'}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-on-surface-variant/50 italic">-</span>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="p-4 max-w-[220px]">
                     <div className="line-clamp-2 text-[11px] text-on-surface-variant/75 font-mono">
                       {typeof it.specs === 'string' ? it.specs : JSON.stringify(it.specs || {}, null, 0)}
                     </div>

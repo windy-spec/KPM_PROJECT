@@ -6,12 +6,29 @@ import { showError } from '../../utils/notify';
 function StatusBadge({ status }) {
   const map = {
     draft: 'bg-amber-50 text-amber-700 border-amber-200',
+    pending_admin: 'bg-amber-100 text-amber-800 border-amber-300',
+    sent_to_customer: 'bg-blue-50 text-blue-700 border-blue-200',
     approved: 'bg-teal-50 text-teal-700 border-teal-200',
+    customer_approved: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    admin_confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
     cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
+    favorite: 'bg-pink-50 text-pink-700 border-pink-200',
+  };
+  const labelMap = {
+    draft: 'Nháp',
+    pending_admin: 'Chờ duyệt',
+    sent_to_customer: 'Chờ KH chốt',
+    approved: 'KH đã xác nhận',
+    customer_approved: 'KH đã xác nhận',
+    admin_confirmed: 'Đã lên đơn hàng',
+    rejected: 'Từ chối',
+    cancelled: 'Đã hủy',
+    favorite: 'Yêu thích',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border ${map[status] || 'bg-surface-container text-on-surface-variant border-outline-variant/40'}`}>
-      {status || 'draft'}
+      {labelMap[status] || status || 'draft'}
     </span>
   );
 }
@@ -91,7 +108,7 @@ export default function QuotationList({ onOpen }) {
                   {new Date(r.created_at || r.createdAt || Date.now()).toLocaleString('vi-VN')}
                 </td>
                 <td className="p-4 font-black text-on-surface text-[13px]">
-                  {formatVND(r.total_amount ?? r.total)}
+                  {formatVND(r.total_quoted_price ?? r.total_amount ?? r.total)}
                 </td>
                 <td className="p-4">
                   <StatusBadge status={r.status} />

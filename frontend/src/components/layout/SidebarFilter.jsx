@@ -2,22 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 import { categoryService } from '../../services/category.service';
 
-const SidebarFilter = ({ onFilterChange }) => {
+const SidebarFilter = ({ onFilterChange, initialCategoryIds = [] }) => {
   const [categories, setCategories] = useState([]);
   const [expandedParents, setExpandedParents] = useState({});
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState(initialCategoryIds);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await categoryService.getCategories();
-        setCategories(res.data?.data || res.data || []);
+        const fetchedCategories = res.data?.data || res.data || [];
+        setCategories(fetchedCategories);
+
+        // Tự động mở rộng danh mục cha nếu đang có initialCategoryIds
+        if (initialCategoryIds && initialCategoryIds.length > 0) {
+          const initialExpanded = {};
+          fetchedCategories.forEach(parent => {
+            if (initialCategoryIds.includes(parent.id)) {
+              initialExpanded[parent.id] = true;
+            }
+            if (parent.sub_categories?.some(child => initialCategoryIds.includes(child.id))) {
+              initialExpanded[parent.id] = true;
+            }
+          });
+          setExpandedParents(prev => ({ ...prev, ...initialExpanded }));
+        }
+
       } catch (error) {
         console.error("Lỗi lấy danh mục", error);
       }
     };
     fetchCategories();
-  }, []);
+  }, [initialCategoryIds]);
+
+  useEffect(() => {
+    if (initialCategoryIds && initialCategoryIds.length > 0) {
+      setSelectedCategoryIds(initialCategoryIds);
+    }
+  }, [initialCategoryIds]);
 
   const toggleParent = (parentId) => {
     setExpandedParents(prev => ({

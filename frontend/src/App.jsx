@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { ToastContainer } from 'react-toastify';
 import MainLayout from './components/layout/MainLayout';
 import Home from './pages/client/Home';
@@ -106,6 +107,28 @@ const routeMap = [
   },
 ];
 
+function GlobalLoading() {
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleLoading = (e) => {
+      setIsLoading(e.detail.isLoading);
+    };
+    window.addEventListener('api-loading', handleLoading);
+    return () => window.removeEventListener('api-loading', handleLoading);
+  }, []);
+
+  if (!isLoading) return null;
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-slate-950/40 backdrop-blur-sm transition-all duration-300">
+      <div className="bg-white rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-200">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <p className="text-sm font-bold text-on-surface uppercase tracking-widest">Đang xử lý...</p>
+      </div>
+    </div>
+  );
+}
 
 function AppRoutes() {
   const location = useLocation();
@@ -127,6 +150,7 @@ function AppRoutes() {
 
   return (
     <div className="page-transition-shell">
+      <GlobalLoading />
       {/* Giao diện Popup Hết phiên đăng nhập cực đẹp */}
       {sessionExpired && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-surface/60 backdrop-blur-md p-4">

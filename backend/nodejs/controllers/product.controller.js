@@ -84,6 +84,17 @@ class ProductController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  async deleteImage(req, res) {
+    try {
+      const { id, imageId } = req.params;
+      await productService.deleteProductImage(id, imageId);
+      res.status(200).json({ success: true, message: "Xóa ảnh thành công" });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
   async getById(req, res) {
     try {
       const { id } = req.params;
