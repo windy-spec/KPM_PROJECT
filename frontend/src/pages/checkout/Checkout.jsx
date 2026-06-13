@@ -8,7 +8,8 @@ import {
     FileText,
     ShoppingBag,
     ArrowLeft,
-    CheckCircle2
+    CheckCircle2,
+    QrCode
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -196,8 +197,8 @@ const Checkout = () => {
                             <div className="space-y-3">
                                 {/* Lựa chọn 1: Chuyển khoản */}
                                 <label className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'bank_transfer'
-                                        ? 'border-primary bg-primary/[0.02]'
-                                        : 'border-outline-variant/60 hover:bg-surface-container/10'
+                                    ? 'border-primary bg-primary/[0.02]'
+                                    : 'border-outline-variant/60 hover:bg-surface-container/10'
                                     }`}>
                                     <input
                                         type="radio"
@@ -215,10 +216,34 @@ const Checkout = () => {
                                     </div>
                                 </label>
 
-                                {/* Lựa chọn 2: COD */}
+                                {/* Lựa chọn 2: Ví MoMo */}
+                                <label className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'momo'
+                                    ? 'border-primary bg-primary/[0.02]'
+                                    : 'border-outline-variant/60 hover:bg-surface-container/10'
+                                    }`}>
+                                    <input
+                                        type="radio"
+                                        name="paymentMethod"
+                                        value="momo"
+                                        checked={paymentMethod === 'momo'}
+                                        onChange={() => setPaymentMethod('momo')}
+                                        className="mt-1 accent-primary"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-on-surface">Thanh toán qua Ví điện tử MoMo</span>
+                                            <span className="bg-[#A50064] text-white text-[10px] px-1.5 py-0.5 rounded font-black uppercase">MoMo</span>
+                                        </div>
+                                        <p className="text-xs text-on-surface-variant/70 mt-1">
+                                            Hệ thống sẽ điều hướng bạn sang trang thanh toán MoMo để quét mã QR hoặc đăng nhập thanh toán an toàn.
+                                        </p>
+                                    </div>
+                                </label>
+
+                                {/* Lựa chọn 3: COD */}
                                 <label className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'cod'
-                                        ? 'border-primary bg-primary/[0.02]'
-                                        : 'border-outline-variant/60 hover:bg-surface-container/10'
+                                    ? 'border-primary bg-primary/[0.02]'
+                                    : 'border-outline-variant/60 hover:bg-surface-container/10'
                                     }`}>
                                     <input
                                         type="radio"

@@ -2,7 +2,7 @@
 
 @theme {
   /* KPM BRAND COLORS */
-  
+
   /* Màu chính (Teal/Xanh mòng két) */
   --color-primary: #006565;
   --color-primary-container: #008080;
@@ -19,7 +19,7 @@
   --color-surface: #f8fafa;
   --color-surface-container: #eceeee;
   --color-surface-variant: #e1e3e3;
-  
+
   /* Màu bổ trợ */
   --color-outline: #6e7979;
   --color-outline-variant: #bdc9c8;
@@ -35,7 +35,7 @@
   position: relative;
 }
 
-.page-transition-shell > * {
+.page-transition-shell>* {
   animation: page-enter 180ms ease-out;
   will-change: opacity, transform;
   transform: translateZ(0);
@@ -55,10 +55,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-transition-shell > * {
+  .page-transition-shell>* {
     animation: none;
     transform: none;
     will-change: auto;
     contain: auto;
+  }
+}
+
+@media screen and (min-width: 1280px) {
+  html {
+    /* Thu nhỏ toàn bộ layout xuống 85% hoặc 90% tùy bạn cấu hình */
+    zoom: 0.88;
   }
 }
