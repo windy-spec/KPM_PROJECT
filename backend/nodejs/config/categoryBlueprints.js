@@ -100,4 +100,4 @@ const CATEGORY_BLUEPRINTS = {
   ]
 };
 
-export { CATEGORY_BLUEPRINTS };
+module.exports = { CATEGORY_BLUEPRINTS };

@@ -57,9 +57,12 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
     // Attempt to match blueprint key. Typically format is "RootCode-category-code" or similar.
     // For simplicity, let's just check all blueprint keys that include the root code or category code
     const keys = Object.keys(CATEGORY_BLUEPRINTS);
+    const exactMatch = keys.find(k => k === currentCat.category_code);
+    if (exactMatch) return CATEGORY_BLUEPRINTS[exactMatch];
+
     const matchedKey = keys.find(k => 
-      k.toLowerCase().includes(currentCat.category_code?.toLowerCase()) ||
-      k.toLowerCase().includes(rootCat.category_code?.toLowerCase())
+      (currentCat.category_code && k.toLowerCase().includes(currentCat.category_code.toLowerCase())) ||
+      (rootCat.category_code && k.toLowerCase().includes(rootCat.category_code.toLowerCase()))
     );
 
     if (matchedKey) return CATEGORY_BLUEPRINTS[matchedKey];
@@ -219,7 +222,15 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                     className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                   >
                     <option value="">-- Chọn loại vật tư --</option>
-                    {materials.map((m) => (
+                    {materials
+                      .filter(m => {
+                        const bp = availableBlueprints.find(b => b.name === comp.name);
+                        if (bp && bp.allowed_materials) {
+                          return bp.allowed_materials.includes(m.material_code);
+                        }
+                        return true;
+                      })
+                      .map((m) => (
                       <option key={m.id} value={m.material_code}>
                         {m.material_name} ({m.material_code})
                       </option>

@@ -66,12 +66,11 @@ class ImportService {
       let hiddenSheet = workbook.getWorksheet("HiddenData");
       if (!hiddenSheet) {
         hiddenSheet = workbook.addWorksheet("HiddenData", { state: "hidden" });
-      } else {
-        hiddenSheet.spliceRows(1, hiddenSheet.rowCount);
+        categoryCodes.forEach((code, index) => {
+          hiddenSheet.getCell(`A${index + 1}`).value = code;
+        });
       }
-      categoryCodes.forEach((code, index) => {
-        hiddenSheet.getCell(`A${index + 1}`).value = code;
-      });
+      // NẾU HIDDENDATA ĐÃ TỒN TẠI (DO USER TẠO TỪ TRƯỚC), GIỮ NGUYÊN 100% KHÔNG CHẠM VÀO
 
       const dropdownValidation = {
         type: "list",
@@ -128,6 +127,7 @@ class ImportService {
       price_adjustment: (row[6] || "").toString().trim(),
       primary_image_url: (row[7] || "").toString().trim(),
       other_image_urls: (row[8] || "").toString().trim(),
+      base_price: (row[9] || "").toString().trim(),
     }));
 
     const batch = await prisma.import_batches.create({
@@ -358,6 +358,10 @@ class ImportService {
             ? parseFloat(rowData.price_adjustment)
             : 0;
 
+          const parsedBasePrice = (rowData.base_price && !isNaN(parseFloat(rowData.base_price)))
+            ? parseFloat(rowData.base_price)
+            : 0;
+
           const newProduct = await tx.products.create({
             data: {
               product_code: rowData.product_code,
@@ -366,6 +370,7 @@ class ImportService {
               default_specs: parsedSpecs, // Đã phân rã thành JSON Object
               components: parsedComponents, // Đã phân rã mảng dữ liệu (Hiển thị UI)
               price_adjustment: parsedPriceAdjustment,
+              base_price: parsedBasePrice,
             },
           });
 
@@ -469,7 +474,7 @@ class ImportService {
       );
     }
 
-    const errorHeaderCell = worksheet.getCell("J4");
+    const errorHeaderCell = worksheet.getCell("K4");
     errorHeaderCell.value =
       "🚨 CHI TIẾT LỖI (SỬA XONG CÓ THỂ UP LẠI NGUYÊN FILE NÀY)";
     errorHeaderCell.font = { bold: true, color: { argb: "FFFFFF" } };
@@ -479,8 +484,8 @@ class ImportService {
       fgColor: { argb: "C00000" },
     };
 
-    worksheet.getColumn("J").width = 50;
-    worksheet.getColumn("J").alignment = { wrapText: true, vertical: "middle" };
+    worksheet.getColumn("K").width = 50;
+    worksheet.getColumn("K").alignment = { wrapText: true, vertical: "middle" };
 
     // --- FIX EXCELS SHARED FORMULA BUG ---
     // spliceRows của exceljs bị lỗi không xóa sạch các clone của Shared Formula.
@@ -514,7 +519,8 @@ class ImportService {
         rowData.price_adjustment, // Cột G
         rowData.primary_image_url, // Cột H
         rowData.other_image_urls, // Cột I
-        errorString, // Cột J
+        rowData.base_price, // Cột J
+        errorString, // Cột K
       ];
       currentRow++;
     });

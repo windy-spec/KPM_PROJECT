@@ -56,32 +56,42 @@ export default function ProductDetail() {
         setPaints(paintRes.data?.data || paintRes.data || []);
         setLaborRates(laborRes.data?.data || laborRes.data || []);
 
-        // Khởi tạo config cho từng linh kiện từ Blueprint hoặc fallback
+        // Khởi tạo config cho từng linh kiện từ DB (pData.components)
         const categoryCode = pData?.product_categories?.category_code;
         const blueprint = CATEGORY_BLUEPRINTS[categoryCode] || [];
         let baseConfig = [];
 
-        if (blueprint.length > 0) {
+        if (pData?.components && Array.isArray(pData.components) && pData.components.length > 0) {
+          baseConfig = pData.components.map(comp => {
+            // Cố gắng tìm blueprint tương ứng để lấy allowed_materials
+            const bpMatch = blueprint.find(b => b.name === comp.name);
+            return {
+              component_name: comp.name || 'Linh kiện',
+              length: comp.length || '',
+              width: comp.width || '',
+              height: comp.height || '',
+              unit: comp.unit || 'mm',
+              default_material: comp.default_material || '',
+              material_id: '',
+              thickness_id: '',
+              paint_id: '',
+              allowed_materials: bpMatch ? (bpMatch.allowed_materials || []) : [],
+              allow_paint: bpMatch ? bpMatch.allow_paint : true
+            };
+          });
+        } else if (blueprint.length > 0) {
           baseConfig = blueprint.map(comp => ({
             component_name: comp.name,
+            length: 2000,
             width: 1000,
-            height: 2000,
+            height: '',
+            unit: 'mm',
+            default_material: '',
             material_id: '',
             thickness_id: '',
             paint_id: '',
             allowed_materials: comp.allowed_materials || [],
             allow_paint: comp.allow_paint
-          }));
-        } else if (pData?.components && Array.isArray(pData.components)) {
-          baseConfig = pData.components.map(comp => ({
-            component_name: comp.name || 'Linh kiện',
-            width: comp.defaultWidth || 1000,
-            height: comp.defaultHeight || 2000,
-            material_id: '',
-            thickness_id: '',
-            paint_id: '',
-            allowed_materials: [],
-            allow_paint: true
           }));
         }
 
@@ -93,6 +103,7 @@ export default function ProductDetail() {
             if (s) {
               return {
                 ...comp,
+                length: s.dimensions?.length || comp.length,
                 width: s.dimensions?.width || comp.width,
                 height: s.dimensions?.height || comp.height,
                 material_id: s.material_id || '',
@@ -125,7 +136,7 @@ export default function ProductDetail() {
 
     // Check xem tất cả component đã chọn đủ vật tư, độ dày, sơn chưa
     const isFullyConfigured = componentsConfig.every(c => {
-      if (!c.material_id || c.width <= 0 || c.height <= 0) return false;
+      if (!c.material_id) return false;
       const hasThicknesses = thicknesses.some(t => String(t.material_id) === String(c.material_id));
       if (hasThicknesses && !c.thickness_id) return false;
       if (c.allow_paint && !c.paint_id) return false;
@@ -145,7 +156,12 @@ export default function ProductDetail() {
           components: componentsConfig
         };
         const res = await quotationService.calculateRealtime(payload);
-        setPriceData(res.data?.data || res.data);
+        if (res.data?.success === false) {
+          toast.error(res.data.message || "Lỗi khi tính giá");
+          setPriceData(null);
+        } else {
+          setPriceData(res.data?.data || res.data);
+        }
       } catch (error) {
         toast.error(error.response?.data?.message || "Lỗi khi tính giá");
       } finally {
@@ -296,10 +312,15 @@ export default function ProductDetail() {
                   </div>
                   <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${expandedDesc ? 'rotate-180' : ''}`} />
                 </button>
-                <div className={`overflow-hidden transition-all duration-300 ${expandedDesc ? 'max-h-[1000px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
-                  <p className="text-sm text-on-surface-variant leading-relaxed">
-                    {product.description || 'Chưa có mô tả cho sản phẩm này.'}
-                  </p>
+                <div className={`overflow-hidden transition-all duration-300 ${expandedDesc ? 'max-h-[1000px] border-t border-outline-variant/40 p-4 overflow-y-auto custom-scrollbar' : 'max-h-0'}`}>
+                  {product.description ? (
+                    <div 
+                      className="text-sm text-on-surface-variant leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
+                  ) : (
+                    <p className="text-sm text-on-surface-variant leading-relaxed">Chưa có mô tả cho sản phẩm này.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -322,22 +343,31 @@ export default function ProductDetail() {
                 </button>
 
                 <div className={`overflow-hidden transition-all duration-300 ${expandedIndex === idx ? 'max-h-[500px] border-t border-outline-variant/40 p-4' : 'max-h-0'}`}>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Dài (mm)</label>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Dài ({comp.unit})</label>
                       <input
                         type="number"
-                        value={comp.height}
-                        onChange={(e) => handleConfigChange(idx, 'height', e.target.value)}
+                        value={comp.length}
+                        onChange={(e) => handleConfigChange(idx, 'length', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Rộng (mm)</label>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Rộng ({comp.unit})</label>
                       <input
                         type="number"
                         value={comp.width}
                         onChange={(e) => handleConfigChange(idx, 'width', e.target.value)}
+                        className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface-variant mb-1">Cao ({comp.unit})</label>
+                      <input
+                        type="number"
+                        value={comp.height}
+                        onChange={(e) => handleConfigChange(idx, 'height', e.target.value)}
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
@@ -419,9 +449,14 @@ export default function ProductDetail() {
                 <Loader2 className="animate-spin text-primary w-6 h-6" />
               </div>
             )}
-            <div className="text-sm font-bold text-primary mb-1">Giá tạm tính</div>
+            <div className="text-sm font-bold text-primary mb-1">
+              {isModified ? 'Giá tạm tính' : 'Giá bán tiêu chuẩn'}
+            </div>
             <div className="text-4xl font-black text-on-surface mb-4">
-              {priceData ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceData.total_amount) : '--- ₫'}
+              {isModified 
+                ? (priceData ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceData.total_amount) : '--- ₫')
+                : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.base_price || 0)
+              }
             </div>
 
             {priceData && (

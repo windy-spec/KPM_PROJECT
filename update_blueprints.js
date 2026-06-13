@@ -100,4 +100,8 @@ const CATEGORY_BLUEPRINTS = {
   ]
 };
 
-export { CATEGORY_BLUEPRINTS };
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = CATEGORY_BLUEPRINTS;
+} else {
+  export { CATEGORY_BLUEPRINTS };
+}

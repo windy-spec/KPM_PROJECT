@@ -356,7 +356,7 @@ class QuotationService {
     // 2. Lặp tính giá cho từng linh kiện
     for (const comp of components) {
       const { component_name, width, height, material_id, thickness_id, paint_id } = comp;
-      const area = (parseFloat(width) / 1000) * (parseFloat(height) / 1000);
+      const area = (parseFloat(width || 0) / 1000) * (parseFloat(height || 0) / 1000);
       total_area += area;
 
       const [material, thickness, paint] = await Promise.all([
@@ -369,10 +369,10 @@ class QuotationService {
         throw new Error(`Dữ liệu vật tư không hợp lệ cho linh kiện: ${component_name}`);
       }
 
-      const mat_multiplier = thickness ? parseFloat(thickness.price_multiplier) : 1.0;
-      const mat_base_price = parseFloat(material.base_price);
+      const mat_multiplier = thickness ? parseFloat(thickness.price_multiplier || 1) : 1.0;
+      const mat_base_price = parseFloat(material.base_price || 0);
       const material_price = mat_base_price * mat_multiplier * area;
-      const paint_price = paint ? parseFloat(paint.price_per_sqm) * area : 0;
+      const paint_price = paint ? parseFloat(paint.price_per_sqm || 0) * area : 0;
 
       total_material_price += material_price;
       total_paint_price += paint_price;
@@ -386,7 +386,7 @@ class QuotationService {
     }
 
     // 3. Tính tiền nhân công tổng
-    const labor_price = laborRate ? parseFloat(laborRate.rate_amount) * total_area : 0;
+    const labor_price = laborRate ? parseFloat(laborRate.rate_amount || 0) * total_area : 0;
 
     const total_price = base_product_price + total_material_price + labor_price + total_paint_price;
 

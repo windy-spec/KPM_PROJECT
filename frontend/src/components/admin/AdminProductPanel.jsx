@@ -46,6 +46,7 @@ const normalizeProduct = (item) => {
     category: catName,
     specs: item.default_specs || null,
     components: item.components || [],
+    base_price: item.base_price || 0,
     createdAt: item.created_at || item.createdAt || null,
   };
 };
@@ -150,6 +151,7 @@ const AdminProductPanel = () => {
           : (it.components && it.components.length > 0)
             ? JSON.stringify(it.components, null, 2)
             : '',
+      base_price: it.base_price || '',
       image: it.image || '',
       images: it.images || [],
     });
@@ -328,6 +330,7 @@ const AdminProductPanel = () => {
         product_name: form.product_name,
         default_specs: parseJson(form.default_specs),
         components: parseJson(form.components) || [],
+        base_price: form.base_price ? parseFloat(form.base_price) : 0,
       };
 
       const saveResponse = editing && editing.id
@@ -533,6 +536,7 @@ const AdminProductPanel = () => {
                 <th className="p-4 w-[140px]">Danh mục</th>
                 <th className="p-4 w-[160px]">Thành phần cấu tạo</th>
                 <th className="p-4 w-[160px]">Thông số mặc định</th>
+                <th className="p-4 w-[120px]">Giá bán gốc</th>
                 <th className="p-4 w-[120px]">Ngày tạo</th>
                 <th className="p-4 pr-6 text-center w-[120px]">Thao tác</th>
               </tr>
@@ -588,6 +592,12 @@ const AdminProductPanel = () => {
                     </div>
                   </td>
 
+                  <td className="p-4">
+                    <span className="font-bold text-primary whitespace-nowrap">
+                      {it.base_price ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(it.base_price) : '-'}
+                    </span>
+                  </td>
+
                   <td className="p-4 text-on-surface-variant/70">
                     {it.createdAt ? new Date(it.createdAt).toLocaleDateString('vi-VN') : '-'}
                   </td>
@@ -618,7 +628,7 @@ const AdminProductPanel = () => {
 
               {items.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-on-surface-variant/60">
+                  <td colSpan={8} className="p-8 text-center text-sm text-on-surface-variant/60">
                     Không tìm thấy sản phẩm phù hợp.
                   </td>
                 </tr>
