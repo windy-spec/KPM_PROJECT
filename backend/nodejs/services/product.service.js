@@ -9,6 +9,7 @@ class ProductService {
       product_name,
       default_specs,
       components,
+      base_price,
     } = data;
 
     if (!category_id) throw new Error("Vui lòng chọn danh mục (category_id)!");
@@ -30,6 +31,7 @@ class ProductService {
         product_name,
         default_specs,
         components: components || [], // Nhét components vào đây!
+        base_price: base_price ? parseFloat(base_price) : 0,
       },
     });
   }
@@ -110,6 +112,7 @@ class ProductService {
       product_name,
       default_specs,
       components,
+      base_price,
     } = data;
 
     const existing = await prisma.products.findUnique({ where: { id } });
@@ -123,6 +126,7 @@ class ProductService {
         product_name,
         default_specs,
         components,
+        base_price: base_price !== undefined ? parseFloat(base_price) : undefined,
       },
     });
   }

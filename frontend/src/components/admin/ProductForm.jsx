@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Portal from "../common/Portal";
 import { ImagePlus, Tag, X } from "lucide-react";
+import ProductComponentsEditor from "./ProductComponentsEditor";
 
 const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
   const [form, setForm] = useState({
@@ -10,6 +11,7 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
     description: "",
     default_specs: "",
     components: "",
+    base_price: "",
     ...initial,
   });
   const [imageFile, setImageFile] = useState(null);
@@ -376,22 +378,15 @@ const ProductForm = ({ initial = {}, categories = [], onCancel, onSave }) => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Components (Các bộ phận)
-                </label>
-                <textarea
-                  value={form.components || ""}
-                  onChange={(e) =>
-                    setForm({ ...form, components: e.target.value })
-                  }
-                  placeholder='VD: [{"name": "Cánh cổng", "quantity": 2}]'
-                  rows={5}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary font-mono"
+              <div className="md:col-span-2">
+                <ProductComponentsEditor 
+                  value={form.components || ""} 
+                  onChange={(val) => setForm({ ...form, components: val })} 
+                  categoryId={form.category_id} 
+                  categories={categories}
+                  basePrice={form.base_price || ""}
+                  setBasePrice={(val) => setForm({ ...form, base_price: val })}
                 />
-                <p className="text-[11px] text-on-surface-variant/60">
-                  Nhập JSON mảng (Array) các bộ phận.
-                </p>
               </div>
             </div>
           </div>
