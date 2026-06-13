@@ -15,6 +15,8 @@ import RoleGuard from './components/auth/RoleGuard';
 import PublicGuard from './components/auth/PublicGuard';
 import Checkout from './pages/checkout/Checkout';
 import Cart from './pages/cart/Cart';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import TermsOfService from './pages/legal/TermsOfService';
 
 const routeMap = [
   {
@@ -22,6 +24,22 @@ const routeMap = [
     element: (
       <MainLayout>
         <Home />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/terms-of-service',
+    element: (
+      <MainLayout>
+        <TermsOfService />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/privacy-policy',
+    element: (
+      <MainLayout>
+        <PrivacyPolicy />
       </MainLayout>
     ),
   },

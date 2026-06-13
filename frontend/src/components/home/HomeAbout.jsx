@@ -4,7 +4,7 @@ import factoryVideo from '../../assets/video/factory.mp4'
 
 const HomeAbout = () => {
     return (
-        <section className="py-16 px-4 max-w-[1280px] mx-auto">
+        <section id="home-about" className="py-16 px-4 max-w-[1280px] mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
 
                 {/* BÊN TRÁI: KHUNG VIDEO MP4 TỰ PHÁT TRỰC TIẾP TẠI TRANG CHỦ */}
