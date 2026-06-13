@@ -8,6 +8,7 @@ import {
   Send,
   Globe
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
@@ -124,7 +125,7 @@ const Footer = () => {
               <span className="font-bold">0900 123 456</span>
             </a>
 
-            <a href="mailto:contact@kpm.vn" className="flex items-center gap-3 group hover:text-[#c6e9e9] transition-colors w-max">
+            <a href="mailto:windyspec30@gmail.com" className="flex items-center gap-3 group hover:text-[#c6e9e9] transition-colors w-max">
               <Mail className="w-4 h-4 shrink-0 text-[#008080] group-hover:scale-110 transition-transform" />
               <span>contact@kpm.vn</span>
             </a>
@@ -156,8 +157,8 @@ const Footer = () => {
       <div className="max-w-[1280px] mx-auto px-5 mt-4 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#e3fffe] font-medium">
         <p>© {new Date().getFullYear()} KPM MECHANICAL. Bảo lưu mọi quyền.</p>
         <div className="flex gap-6">
-          <a href="#" className="hover:text-white transition-colors">Điều khoản dịch vụ</a>
-          <a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a>
+          <a href="/terms-of-service" className="hover:text-white transition-colors">Điều khoản dịch vụ</a>
+          <a href="/privacy-policy" className="hover:text-white transition-colors">Chính sách bảo mật</a>
         </div>
       </div>
     </footer>

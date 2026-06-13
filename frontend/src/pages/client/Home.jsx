@@ -7,8 +7,27 @@ import CoreValues from '../../components/home/CoreValues';
 import HowItWorks from '../../components/home/HowItWorks';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const Home = () => {
+
+  const location = useLocation();
+
+  useEffect(() => {
+    // Nếu URL có chứa ký tự '#' (ví dụ: /#home-categories)
+    if (location.hash) {
+      // Loại bỏ ký tự '#' ở đầu để lấy được ID chuẩn (ví dụ: 'home-categories')
+      const targetId = location.hash.replace('#', '');
+
+      setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [location]);
+
   return (
     <div className="min-h-screen bg-surface selection:bg-primary/20 flex flex-col pb-16 md:pb-24">
 
@@ -18,7 +37,10 @@ const Home = () => {
       </div>
 
       {/* 2. VIDEO + MÔ TẢ BẢN THÂN (HomeAbout) - Bọc dải nền nhẹ tạo chiều sâu */}
-      <div className="w-full bg-surface-container/30 border-y border-outline-variant/20 mt-16 md:mt-24 py-12 md:py-16">
+      <div
+        id="home-about"
+        className="w-full bg-surface-container/30 border-y border-outline-variant/20 mt-16 md:mt-24 py-12 md:py-16 scroll-mt-32"
+      >
         <div className="max-w-[1280px] mx-auto w-full px-5">
           <HomeAbout />
         </div>
