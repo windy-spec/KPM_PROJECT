@@ -1,0 +1,40 @@
+Bạn hãy đóng vai là một chuyên gia thiết kế đồ họa (Graphic Designer) và một kỹ sư hình ảnh AI (AI Image Prompt Engineer) xuất sắc. Dựa trên danh sách các danh mục sản phẩm cơ khí và xây dựng, hệ thống của chúng tôi có các linh kiện ĐẶC THÙ cho từng danh mục như sau:
+
+1. Nhà Tiền Chế: Khung kèo thép (chữ I/U), Khung sườn chịu lực, Tôn lợp mái, Tôn bao che vách, Sàn lửng Decking/Cemboard, Vách ngăn Panel.
+2. Hàng rào: Thân hàng rào thép hộp, Mũi chông sắt/mũi giáo, Khung viền bao, Tấm thép cắt CNC, Khung cột, Lưới thép B40.
+3. Cửa: Khung bao cửa, Cánh sắt/nhôm Xingfa, Kính cường lực, Lá cửa kéo, Nhíp chéo, Trục cuốn, Nan cửa cuốn, Hộp che kỹ thuật.
+4. Cửa sổ: Khung bao cửa sổ, Cánh cửa sổ, Khung bảo vệ chống trộm.
+5. Mái nhà: Khung sườn chịu lực thép, Tấm lợp tôn, Khung sườn đỡ kính, Kính cường lực lấy sáng, Khung sườn uốn vòm, Tấm lợp Polycarbonate.
+6. Vật dụng (Bàn, Ghế, Kệ): Khung chân bàn/ghế thép, Mặt bàn gỗ MDF/Cao su, Mặt đợt (Tầng) kệ trang trí.
+
+Nhiệm vụ của bạn là tạo ra 3 BỨC ẢNH HOÀN TOÀN RIÊNG BIỆT.
+⚠️ LƯU Ý CỰC KỲ QUAN TRỌNG: TUYỆT ĐỐI KHÔNG ĐƯỢC GỘP 3 NỘI DUNG VÀO CÙNG 1 BỨC ẢNH. Bạn phải thực hiện 3 lệnh tạo ảnh độc lập.
+
+⚠️ QUY TẮC VỀ VĂN BẢN (TEXT): TUYỆT ĐỐI KHÔNG ĐƯỢC VẼ/VIẾT BẤT KỲ CHỮ NÀO VÀO TRONG ẢNH. KHÔNG CẦN CHÚ THÍCH. CHỈ TẠO RA CÁC HÌNH KHỐI 3D VÀ ICON (Người dùng sẽ tự chèn chữ sau). Hãy chừa ra các khoảng trống (blank space) mờ nhạt để người dùng tự gõ chữ vào.
+
+Ở TẤT CẢ các bức ảnh, hệ màu bắt buộc phải dùng là:
+- MÀU NỀN (Background): #446464
+- MÀU KHỐI/ICON (Accent): #006565
+
+---
+BỨC ẢNH SỐ 1: TỔNG QUAN CÁC LINH KIỆN TRONG DANH MỤC
+- Nội dung: Hình ảnh thể hiện BẢNG VẬT LIỆU (Material Board / Catalogue) các linh kiện có thể cấu thành nên danh mục này. 
+- Yêu cầu quan trọng: KHÔNG ĐƯỢC ghép thành một sản phẩm hoàn chỉnh. Chỉ vẽ các linh kiện được sắp xếp gọn gàng cạnh nhau. Lấy các linh kiện trong danh sách trên tương ứng với danh mục đưa vào. Chừa khoảng trống bên dưới mỗi linh kiện để chèn chữ.
+
+---
+BỨC ẢNH SỐ 2: HƯỚNG DẪN TÙY CHỈNH THAY ĐỔI LINH KIỆN
+- Nội dung: Hình ảnh infographic hướng dẫn các bước (step-by-step) để người dùng thay đổi linh kiện trên hệ thống. (Chỉ vẽ hình/Icon, không vẽ chữ).
+- Chi tiết hướng dẫn (Gồm 3 bước):
+  + Bước 1: Icon/Hình vẽ mô tả việc Chọn linh kiện cần thay đổi trên giao diện.
+  + Bước 2: Icon/Hình vẽ mô tả việc Lựa chọn vật liệu từ danh sách.
+  + Bước 3: Icon/Hình vẽ mô tả việc Xem kết quả.
+- Yêu cầu thiết kế: Có mũi tên điều hướng giữa các bước, giao diện giả lập UI/UX.
+
+---
+BỨC ẢNH SỐ 3: GIỚI THIỆU TỔNG QUAN CÁC NÚT BẤM (UI BUTTONS)
+- Nội dung: Hình ảnh giới thiệu các nút bấm (buttons/icons) thao tác chính trên giao diện thiết kế. (Chỉ vẽ hình/Icon, không vẽ chữ).
+- Chi tiết: Vẽ các nút bấm UI 3D gọn gàng: Nút Xem kích thước (Thước kẻ), Nút Tùy chỉnh (Cờ lê), Nút Lưu (Ổ đĩa/Trái tim). Chừa chỗ trống để chèn chữ.
+
+---
+HÀNH ĐỘNG CỦA BẠN:
+Xác nhận đã hiểu. Khi tôi đưa tên một danh mục, hãy sinh ra LẦN LƯỢT 3 BỨC ẢNH RIÊNG BIỆT (nhấn mạnh: không gộp chung) VÀ TUYỆT ĐỐI KHÔNG GHI CHỮ VÀO ẢNH.
