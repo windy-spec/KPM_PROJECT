@@ -10,8 +10,8 @@ const NotFound = () => {
             <div className="max-w-md w-full text-center space-y-6 bg-white border border-outline-variant/70 rounded-[32px] p-8 md:p-12 shadow-sm">
 
                 {/* Icon cảnh báo */}
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 animate-pulse">
-                    <ShieldAlert className="w-8 h-8" />
+                <div className="mx-auto w-30 h-30 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 animate-pulse">
+                    <ShieldAlert className="w-24 h-24" />
                 </div>
 
                 {/* Mã lỗi */}

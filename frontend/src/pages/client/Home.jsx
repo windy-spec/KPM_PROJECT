@@ -5,6 +5,7 @@ import CategoryGrid from '../../components/home/CategoryGrid';
 import FeaturedProducts from '../../components/home/FeaturedProducts';
 import CoreValues from '../../components/home/CoreValues';
 import HowItWorks from '../../components/home/HowItWorks';
+import HeroStats from '../../components/home/HeroStats'
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
@@ -31,22 +32,25 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-surface selection:bg-primary/20 flex flex-col pb-16 md:pb-24">
 
-      {/* 1. HERO BANNER - Giữ nguyên khoảng nền thoáng trên cùng */}
-      <div className="max-w-[1280px] mx-auto w-full px-5 pt-6">
+      {/* 1. HERO BANNER */}
+      <div className="w-full">
         <Hero />
       </div>
 
-      {/* 2. VIDEO + MÔ TẢ BẢN THÂN (HomeAbout) - Bọc dải nền nhẹ tạo chiều sâu */}
+      {/* 2. THANH THÔNG SỐ NẰM NGANG */}
+      <HeroStats />
+
+      {/* 3. VIDEO + MÔ TẢ BẢN THÂN (HomeAbout) - Bọc dải nền nhẹ tạo chiều sâu */}
       <div
         id="home-about"
-        className="w-full bg-surface-container/30 border-y border-outline-variant/20 mt-16 md:mt-24 py-12 md:py-16 scroll-mt-32"
+        className="w-full bg-surface-container/30 border-y border-outline-variant/20 py-12 md:py-16 scroll-mt-32"
       >
         <div className="max-w-[1280px] mx-auto w-full px-5">
           <HomeAbout />
         </div>
       </div>
 
-      {/* 3. DANH MỤC SẢN PHẨM (CategoryGrid) */}
+      {/* 4. DANH MỤC SẢN PHẨM (CategoryGrid) */}
       <div className="max-w-[1280px] mx-auto w-full px-5 mt-16 md:mt-24">
         <section id="categories" className="scroll-mt-24">
           <div className="text-center max-w-2xl mx-auto mb-12">
@@ -69,7 +73,7 @@ const Home = () => {
         <div className="border-t border-outline-variant/40 w-full"></div>
       </div>
 
-      {/* 4. 6 SẢN PHẨM NỔI BẬT - Đã có nền nhẹ bên trong component */}
+      {/* 5. 6 SẢN PHẨM NỔI BẬT - Đã có nền nhẹ bên trong component */}
       <div className="max-w-[1280px] mx-auto w-full px-5 mt-16 md:mt-24">
         <FeaturedProducts />
       </div>
@@ -82,7 +86,7 @@ const Home = () => {
       {/* MAIN CONTENT AREA - Quản lý các Khối thông tin và Chốt Sale cuối trang */}
       <main className="max-w-[1280px] mx-auto w-full px-5 flex flex-col gap-16 md:gap-24 mt-16 md:mt-24">
 
-        {/* 5. CORE VALUE (Giá trị cốt lõi) */}
+        {/* 6. CORE VALUE (Giá trị cốt lõi) */}
         <section id="core-values" className="scroll-mt-24">
           {/* Thêm cụm tiêu đề chuẩn tiêu chuẩn UI thiết kế cơ khí giống danh mục */}
           <div className="text-center max-w-2xl mx-auto mb-12">
@@ -104,12 +108,12 @@ const Home = () => {
         {/* Đường cắt mờ phân tách giữa CoreValues và Quy trình */}
         <div className="border-t border-outline-variant/40 w-full"></div>
 
-        {/* 6. HOW IT WORK (Quy trình hoạt động) */}
+        {/* 7. HOW IT WORK (Quy trình hoạt động) */}
         <section id="how-it-works" className="scroll-mt-24">
           <HowItWorks />
         </section>
 
-        {/* 7. SẴN SÀNG NHẬN BÁO GIÁ (Banner chốt sale) */}
+        {/* 8. SẴN SÀNG NHẬN BÁO GIÁ (Banner chốt sale) */}
         <section className="relative rounded-[32px] overflow-hidden bg-primary px-8 py-20 text-center flex flex-col items-center justify-center shadow-lg shadow-primary/10">
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=2070')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
           <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">

@@ -1,14 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  ChevronDown,
-  Drill,
-  Hammer,
-  LayoutPanelLeft,
-  Ruler,
-  Settings,
-} from "lucide-react";
-import { categoryService } from "../../services/category.service";
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronDown, Drill, Hammer, LayoutPanelLeft, Ruler, Settings, Book, Heart } from 'lucide-react';
+import { categoryService } from '../../services/category.service';
 
 const NavigationMenu = () => {
   const navigate = useNavigate();
@@ -51,6 +44,8 @@ const NavigationMenu = () => {
 
   // ĐỊNH NGHĨA MENU: Thêm thoải mái các mục cần cuộn trang ở đây
   const menuItems = [
+    { title: 'Tất cả sản phẩm', icon: LayoutPanelLeft, hasSub: true, to: '/products' },
+    { title: 'Chính sách bảo hành', icon: Book, hasSub: false },
     {
       title: "Tất cả sản phẩm",
       icon: LayoutPanelLeft,
@@ -64,17 +59,17 @@ const NavigationMenu = () => {
       hasSub: false,
       onClick: (e) => handleScrollToSection(e, "home-about"),
     },
-    { title: "Yêu cầu báo giá", icon: Ruler, hasSub: false },
-    { title: "Thông số kỹ thuật", icon: Settings, hasSub: false },
+    { title: 'Yêu cầu báo giá', icon: Ruler, hasSub: false },
+    { title: 'Thuật ngữ chuyên ngành', icon: Settings, hasSub: false },
+    { title: 'Toi iu ong', icon: Heart, hasSub: true },
   ];
 
   return (
     <div
-      className={`w-full bg-white hidden md:block transition-all duration-200 ${
-        isScrolled
+      className={`w-full bg-white hidden md:block transition-all duration-200 ${isScrolled
           ? "border-b border-transparent shadow-none"
           : "border-b border-outline-variant"
-      }`}
+        }`}
     >
       <div className="max-w-[1280px] mx-auto px-5">
         <ul className="flex items-center gap-2">
