@@ -73,7 +73,7 @@ class OrderService {
         users: { connect: { id: userId } },
         total_amount: price * quantity,
         order_code: `KPM-ORD-${Date.now()}`,
-        production_status: "pending", // Đã sửa status thành production_status cho khớp DB
+        production_status: "pending",
       },
     });
 
