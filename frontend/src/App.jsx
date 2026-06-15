@@ -19,6 +19,8 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import NotFound from './pages/error/NotFound';
 import PaymentResult from "./pages/checkout/PaymentResult";
+import Specification from './pages/legal/Specification';
+import Warranty from './pages/legal/Warranty';
 import { CartProvider } from "./context/CartContext";
 
 const routeMap = [
@@ -43,6 +45,22 @@ const routeMap = [
     element: (
       <MainLayout>
         <PrivacyPolicy />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/specification",
+    element: (
+      <MainLayout>
+        <Specification />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/warranty",
+    element: (
+      <MainLayout>
+        <Warranty />
       </MainLayout>
     ),
   },
@@ -111,21 +129,20 @@ const routeMap = [
     ),
   },
   {
-<<<<<<< HEAD
     path: '/error',
     element: <NotFound />
   },
   {
     path: '*',
     element: <Navigate to="/error" replace />
-=======
+  },
+  {
     path: "/payment-result",
     element: (
       <MainLayout>
         <PaymentResult />
       </MainLayout>
     ),
->>>>>>> ead9b0d0f2bdd6738dfd2b90834e1a8213baf4be
   },
   {
     path: "/admin",

@@ -159,7 +159,7 @@ export default function ProductDetail() {
         console.error("Error fetching product data:", error);
         toast.error(
           "Không thể tải thông tin sản phẩm: " +
-            (error.response?.data?.message || error.message),
+          (error.response?.data?.message || error.message),
         );
         // navigate(-1); // Tạm ẩn để debug
       }
@@ -236,7 +236,7 @@ export default function ProductDetail() {
       const initialParsed = JSON.parse(initialConfig);
       setIsModified(
         JSON.stringify(pickRelevant(newConfig)) !==
-          JSON.stringify(pickRelevant(initialParsed)),
+        JSON.stringify(pickRelevant(initialParsed)),
       );
     }
   };
@@ -600,38 +600,38 @@ export default function ProductDetail() {
                         !comp.material_id ||
                         String(t.material_id) === String(comp.material_id),
                     ) && (
-                      <div>
-                        <label className="block text-xs font-bold text-on-surface-variant mb-1">
-                          Độ dày
-                        </label>
-                        <select
-                          value={comp.thickness_id}
-                          onChange={(e) =>
-                            handleConfigChange(
-                              idx,
-                              "thickness_id",
-                              e.target.value,
-                            )
-                          }
-                          className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                          disabled={!comp.material_id}
-                        >
-                          <option value="">-- Chọn độ dày --</option>
-                          {thicknesses
-                            .filter(
-                              (t) =>
-                                !comp.material_id ||
-                                String(t.material_id) ===
+                        <div>
+                          <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                            Độ dày
+                          </label>
+                          <select
+                            value={comp.thickness_id}
+                            onChange={(e) =>
+                              handleConfigChange(
+                                idx,
+                                "thickness_id",
+                                e.target.value,
+                              )
+                            }
+                            className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                            disabled={!comp.material_id}
+                          >
+                            <option value="">-- Chọn độ dày --</option>
+                            {thicknesses
+                              .filter(
+                                (t) =>
+                                  !comp.material_id ||
+                                  String(t.material_id) ===
                                   String(comp.material_id),
-                            )
-                            .map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.thickness_value}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    )}
+                              )
+                              .map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.thickness_value}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      )}
 
                     {comp.allow_paint && (
                       <div>
@@ -685,9 +685,18 @@ export default function ProductDetail() {
               htmlFor="agree-specs"
               className="text-sm font-medium text-on-surface-variant cursor-pointer leading-relaxed select-none"
             >
-              Tôi đã kiểm tra đủ các thông số và{" "}
               <a
-                href="/legal/warranty"
+                href="/specification"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-bold hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                Tôi đã kiểm tra đủ các thông số{" "}
+              </a>
+              và{" "}
+              <a
+                href="/warranty"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-bold hover:underline"
@@ -713,14 +722,14 @@ export default function ProductDetail() {
               {isModified
                 ? priceData
                   ? new Intl.NumberFormat("vi-VN", {
-                      style: "currency",
-                      currency: "VND",
-                    }).format(priceData.total_amount)
-                  : "--- ₫"
-                : new Intl.NumberFormat("vi-VN", {
                     style: "currency",
                     currency: "VND",
-                  }).format(product.base_price || 0)}
+                  }).format(priceData.total_amount)
+                  : "--- ₫"
+                : new Intl.NumberFormat("vi-VN", {
+                  style: "currency",
+                  currency: "VND",
+                }).format(product.base_price || 0)}
             </div>
 
             {priceData && (
