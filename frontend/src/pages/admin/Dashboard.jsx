@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -10,7 +10,7 @@ import {
   FileSignature,
   Ellipsis,
   ArrowDown,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,36 +19,40 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-} from 'recharts';
-import AdminSidebar from '../../components/admin/AdminSidebar';
-import AdminTopbar from '../../components/admin/AdminTopbar';
-import AdminProductPanel from '../../components/admin/AdminProductPanel';
-import ManageCategories from './ManageCategories';
-import ManageMaterials from './ManageMaterials';
-import ManageSettings from './ManageSettings';
-import PricingForm from '../quotations/PricingForm';
-import QuotationList from '../quotations/QuotationList';
-import QuotationDetail from '../quotations/QuotationDetail';
-import ManageMaterialTypes from '../../components/admin/ManageMaterialTypes';
-import ManageMaterialUnits from '../../components/admin/ManageMaterialUnits';
-import ManageInvalidBatches from './ManageInvalidBatches';
-import ManageOrders from './ManageOrders';
-import ManageUsers from './ManageUsers';
-import adminService from '../../services/admin.service';
+} from "recharts";
+import AdminSidebar from "../../components/admin/AdminSidebar";
+import AdminTopbar from "../../components/admin/AdminTopbar";
+import AdminProductPanel from "../../components/admin/AdminProductPanel";
+import ManageCategories from "./ManageCategories";
+import ManageMaterials from "./ManageMaterials";
+import ManageSettings from "./ManageSettings";
+import PricingForm from "../quotations/PricingForm";
+import QuotationList from "../quotations/QuotationList";
+import QuotationDetail from "../quotations/QuotationDetail";
+import ManageMaterialTypes from "../../components/admin/ManageMaterialTypes";
+import ManageMaterialUnits from "../../components/admin/ManageMaterialUnits";
+import ManageInvalidBatches from "./ManageInvalidBatches";
+import ManageOrders from "./ManageOrders";
+import ManageUsers from "./ManageUsers";
+import adminService from "../../services/admin.service";
 
 const topProducts = [
-  { label: 'Cổng Sắt CNC', percentage: 45 },
-  { label: 'Lan Can Cầu Thang', percentage: 25 },
-  { label: 'Kết Cấu Thép', percentage: 20 },
-  { label: 'Phụ Kiện Khác', percentage: 10 },
+  { label: "Cổng Sắt CNC", percentage: 45 },
+  { label: "Lan Can Cầu Thang", percentage: 25 },
+  { label: "Kết Cấu Thép", percentage: 20 },
+  { label: "Phụ Kiện Khác", percentage: 10 },
 ];
 
 const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
   <div className="bg-white border border-outline-variant/70 rounded-2xl p-5 shadow-sm min-h-[132px] flex flex-col justify-between">
     <div className="flex items-start justify-between gap-3">
       <div>
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">{title}</p>
-        <h3 className="mt-2 text-2xl md:text-[28px] font-black text-on-surface tracking-tight">{value}</h3>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+          {title}
+        </p>
+        <h3 className="mt-2 text-2xl md:text-[28px] font-black text-on-surface tracking-tight">
+          {value}
+        </h3>
       </div>
       <div className="w-10 h-10 rounded-xl bg-surface-container/70 flex items-center justify-center text-primary">
         <Icon className="w-5 h-5" />
@@ -56,11 +60,15 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
     </div>
 
     <div className="pt-3 mt-3 border-t border-dashed border-outline-variant/40 flex items-center justify-between gap-2">
-      <span className="text-[11px] font-semibold text-on-surface-variant/70">{subtext}</span>
+      <span className="text-[11px] font-semibold text-on-surface-variant/70">
+        {subtext}
+      </span>
       {trend ? (
         <span
           className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.18em] ${
-            tone === 'amber' ? 'bg-amber-50 text-amber-700' : 'bg-teal-50 text-teal-700'
+            tone === "amber"
+              ? "bg-amber-50 text-amber-700"
+              : "bg-teal-50 text-teal-700"
           }`}
         >
           {trend}
@@ -72,11 +80,11 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
 
 const Dashboard = () => {
   const location = useLocation();
-  
+  const navigate = useNavigate();
   // 1. Khởi tạo state ban đầu dựa trên URL hiện tại
   const getPanelFromUrl = () => {
     const queryParams = new URLSearchParams(location.search);
-    return queryParams.get('panel') || 'overview';
+    return queryParams.get("panel") || "overview";
   };
 
   const [activePanel, setActivePanel] = useState(getPanelFromUrl);
@@ -93,7 +101,7 @@ const Dashboard = () => {
         console.error(e);
       }
     };
-    if (activePanel === 'overview') {
+    if (activePanel === "overview") {
       fetchDashboard();
     }
   }, [activePanel]);
@@ -104,51 +112,60 @@ const Dashboard = () => {
     setActivePanel(currentPanel);
   }, [location.search]); // Mỗi khi query ?panel=... thay đổi, hàm này sẽ chạy
 
-  const formatMoney = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  const formatMoney = (val) =>
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(val);
 
-  const dynamicStats = dashboardData ? [
-    {
-      title: 'Doanh thu tháng',
-      value: formatMoney(dashboardData.stats.revenue.value),
-      subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
-      icon: CircleDollarSign,
-      trend: `${dashboardData.stats.revenue.change}% ↗`,
-      tone: 'teal',
-    },
-    {
-      title: 'Đơn hàng mới',
-      value: dashboardData.stats.orders.value,
-      subtext: 'Trong tháng này',
-      icon: ClipboardList,
-      trend: `${dashboardData.stats.orders.change}% ↗`,
-      tone: 'teal',
-    },
-    {
-      title: 'Tổng khách hàng',
-      value: dashboardData.stats.users.value,
-      subtext: 'Toàn quốc',
-      icon: UserRound,
-    },
-    {
-      title: 'Báo giá chờ duyệt',
-      value: dashboardData.stats.pendingQuotations.value,
-      subtext: 'Cần xử lý gấp',
-      icon: FileSignature,
-      trend: 'Cần xử lý',
-      tone: 'amber',
-    },
-  ] : [];
+  const dynamicStats = dashboardData
+    ? [
+        {
+          title: "Doanh thu tháng",
+          value: formatMoney(dashboardData.stats.revenue.value),
+          subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
+          icon: CircleDollarSign,
+          trend: `${dashboardData.stats.revenue.change}% ↗`,
+          tone: "teal",
+        },
+        {
+          title: "Đơn hàng mới",
+          value: dashboardData.stats.orders.value,
+          subtext: "Trong tháng này",
+          icon: ClipboardList,
+          trend: `${dashboardData.stats.orders.change}% ↗`,
+          tone: "teal",
+        },
+        {
+          title: "Tổng khách hàng",
+          value: dashboardData.stats.users.value,
+          subtext: "Toàn quốc",
+          icon: UserRound,
+        },
+        {
+          title: "Báo giá chờ duyệt",
+          value: dashboardData.stats.pendingQuotations.value,
+          subtext: "Cần xử lý gấp",
+          icon: FileSignature,
+          trend: "Cần xử lý",
+          tone: "amber",
+        },
+      ]
+    : [];
 
   return (
     <div className="min-h-screen bg-[#f6f8f8] text-on-surface">
       <div className="flex flex-col lg:flex-row min-h-screen">
-        <AdminSidebar activePanel={activePanel} onPanelChange={(p) => setActivePanel(p)} />
+        <AdminSidebar
+          activePanel={activePanel}
+          onPanelChange={(p) => setActivePanel(p)}
+        />
 
         <div className="flex-1 min-w-0 flex flex-col">
           <AdminTopbar />
 
           <main className="p-4 md:p-6 xl:p-8 space-y-6">
-            {activePanel === 'overview' && dashboardData && (
+            {activePanel === "overview" && dashboardData && (
               <>
                 <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                   {dynamicStats.map((item) => (
@@ -161,23 +178,56 @@ const Dashboard = () => {
                     <div className="flex items-start justify-between gap-4 mb-5">
                       <div className="flex items-center gap-2">
                         <ChartColumn className="w-4.5 h-4.5 text-primary" />
-                        <h2 className="text-sm font-black uppercase tracking-[0.22em]">Biến động doanh thu theo tuần</h2>
+                        <h2 className="text-sm font-black uppercase tracking-[0.22em]">
+                          Biến động doanh thu theo tuần
+                        </h2>
                       </div>
 
                       <div className="flex rounded-lg bg-surface-container/80 p-0.5 text-[10px] font-black uppercase tracking-[0.18em]">
-                        <button type="button" className="px-3 py-1.5 rounded-md bg-white text-primary shadow-sm">Tuần này</button>
-                        <button type="button" className="px-3 py-1.5 rounded-md text-on-surface-variant/60">Tháng trước</button>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 rounded-md bg-white text-primary shadow-sm"
+                        >
+                          Tuần này
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1.5 rounded-md text-on-surface-variant/60"
+                        >
+                          Tháng trước
+                        </button>
                       </div>
                     </div>
 
                     <div className="h-[280px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData.chartData} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8eded" />
-                          <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="#94a3b8" />
-                          <YAxis tickLine={false} axisLine={false} stroke="#94a3b8" />
-                          <Tooltip cursor={{ fill: '#f8fafc' }} />
-                          <Bar dataKey="revenue" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                        <BarChart
+                          data={dashboardData.chartData}
+                          margin={{ top: 12, right: 8, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            vertical={false}
+                            stroke="#e8eded"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tickLine={false}
+                            axisLine={false}
+                            stroke="#94a3b8"
+                          />
+                          <YAxis
+                            tickLine={false}
+                            axisLine={false}
+                            stroke="#94a3b8"
+                          />
+                          <Tooltip cursor={{ fill: "#f8fafc" }} />
+                          <Bar
+                            dataKey="revenue"
+                            fill="#0f766e"
+                            radius={[6, 6, 0, 0]}
+                            maxBarSize={32}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -190,18 +240,27 @@ const Dashboard = () => {
                   <div className="bg-white border border-outline-variant/70 rounded-2xl p-5 shadow-sm flex flex-col">
                     <div className="flex items-center gap-2 mb-5">
                       <Ellipsis className="w-4.5 h-4.5 text-primary rotate-90" />
-                      <h2 className="text-sm font-black uppercase tracking-[0.22em]">Tỷ lệ sản phẩm bán chạy</h2>
+                      <h2 className="text-sm font-black uppercase tracking-[0.22em]">
+                        Tỷ lệ sản phẩm bán chạy
+                      </h2>
                     </div>
 
                     <div className="space-y-4">
                       {topProducts.map((item) => (
                         <div key={item.label} className="space-y-1.5">
                           <div className="flex items-center justify-between gap-3 text-sm font-semibold">
-                            <span className="text-on-surface-variant">{item.label}</span>
-                            <span className="font-black text-on-surface">{item.percentage}%</span>
+                            <span className="text-on-surface-variant">
+                              {item.label}
+                            </span>
+                            <span className="font-black text-on-surface">
+                              {item.percentage}%
+                            </span>
                           </div>
                           <div className="h-2 rounded-full bg-surface-container overflow-hidden">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${item.percentage}%` }} />
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${item.percentage}%` }}
+                            />
                           </div>
                         </div>
                       ))}
@@ -218,13 +277,22 @@ const Dashboard = () => {
 
                 <section className="bg-white border border-outline-variant/70 rounded-2xl shadow-sm overflow-hidden">
                   <div className="p-5 border-b border-outline-variant/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <h2 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">Đơn hàng mới cập nhật</h2>
+                    <h2 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
+                      Đơn hàng mới cập nhật
+                    </h2>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <button type="button" className="px-3 py-2 border border-outline-variant rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-surface-container transition-colors">
-                        <span className="inline-block w-3.5 h-0.5 bg-on-surface-variant/60 rounded-full" /> Bộ lọc
+                      <button
+                        type="button"
+                        className="px-3 py-2 border border-outline-variant rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-surface-container transition-colors"
+                      >
+                        <span className="inline-block w-3.5 h-0.5 bg-on-surface-variant/60 rounded-full" />{" "}
+                        Bộ lọc
                       </button>
-                      <button type="button" className="px-3 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-container transition-all">
+                      <button
+                        type="button"
+                        className="px-3 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-container transition-all"
+                      >
                         Xuất Excel
                       </button>
                     </div>
@@ -245,27 +313,50 @@ const Dashboard = () => {
                       </thead>
                       <tbody className="divide-y divide-outline-variant/30 text-xs font-bold text-on-surface-variant">
                         {dashboardData.recentItems.map((order) => (
-                          <tr key={order.id} className="hover:bg-surface-container/20 transition-colors">
-                            <td className="p-4 pl-6 font-mono text-on-surface">{order.title}</td>
-                            <td className="p-4 text-on-surface">{order.user}</td>
-                            <td className="p-4 opacity-75">{new Date(order.date).toLocaleDateString('vi-VN')}</td>
-                            <td className="p-4 text-on-surface max-w-xs truncate">Sản phẩm KPM</td>
-                            <td className="p-4 font-black text-on-surface">{formatMoney(order.amount)}</td>
+                          <tr
+                            key={order.id}
+                            className="hover:bg-surface-container/20 transition-colors"
+                          >
+                            <td className="p-4 pl-6 font-mono text-on-surface">
+                              {order.title}
+                            </td>
+                            <td className="p-4 text-on-surface">
+                              {order.user}
+                            </td>
+                            <td className="p-4 opacity-75">
+                              {new Date(order.date).toLocaleDateString("vi-VN")}
+                            </td>
+                            <td className="p-4 text-on-surface max-w-xs truncate">
+                              Sản phẩm KPM
+                            </td>
+                            <td className="p-4 font-black text-on-surface">
+                              {formatMoney(order.amount)}
+                            </td>
                             <td className="p-4">
-                              <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] ${
-                                order.status === 'completed'
-                                  ? 'bg-teal-50 text-teal-700 border border-teal-100'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-100'
-                              }`}>
+                              <span
+                                className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] ${
+                                  order.status === "completed"
+                                    ? "bg-teal-50 text-teal-700 border border-teal-100"
+                                    : "bg-amber-50 text-amber-700 border border-amber-100"
+                                }`}
+                              >
                                 {order.status}
                               </span>
                             </td>
                             <td className="p-4 pr-6">
                               <div className="flex items-center justify-center gap-2">
-                                <button type="button" className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors" title="Chỉnh sửa">
+                                <button
+                                  type="button"
+                                  className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors"
+                                  title="Chỉnh sửa"
+                                >
                                   <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
                                 </button>
-                                <button type="button" className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors" title="Xem chi tiết">
+                                <button
+                                  type="button"
+                                  className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors"
+                                  title="Xem chi tiết"
+                                >
                                   <ChevronRight className="w-3.5 h-3.5" />
                                 </button>
                               </div>
@@ -279,78 +370,92 @@ const Dashboard = () => {
               </>
             )}
 
-            {activePanel === 'products' && (
+            {activePanel === "products" && (
               <section>
                 <AdminProductPanel />
               </section>
             )}
 
-            {activePanel === 'categories' && (
+            {activePanel === "categories" && (
               <section>
                 <ManageCategories />
               </section>
             )}
 
-            {activePanel === 'materials' && (
+            {activePanel === "materials" && (
               <section>
                 <ManageMaterials />
               </section>
             )}
 
-            {activePanel === 'material_types' && (
+            {activePanel === "material_types" && (
               <section>
                 <ManageMaterialTypes />
               </section>
             )}
 
-            {activePanel === 'material_units' && (
+            {activePanel === "material_units" && (
               <section>
                 <ManageMaterialUnits />
               </section>
             )}
 
-            {['settings', 'settings_thickness', 'settings_paint', 'settings_labor'].includes(activePanel) && (
+            {[
+              "settings",
+              "settings_thickness",
+              "settings_paint",
+              "settings_labor",
+            ].includes(activePanel) && (
               <section>
                 <ManageSettings activePanel={activePanel} />
               </section>
             )}
 
-            {activePanel === 'pricing' && (
+            {activePanel === "pricing" && (
               <section>
                 <PricingForm />
               </section>
             )}
 
-            {activePanel === 'quotations' && (
+            {activePanel === "quotations" && (
               <section>
-                <QuotationList onOpen={(id)=>{ setActivePanel('quotation_detail'); localStorage.setItem('activeQuotationId', id); }} />
+                <QuotationList
+                  onOpen={(id) => {
+                    setActivePanel("quotation_detail");
+                    localStorage.setItem("activeQuotationId", id);
+                  }}
+                />
               </section>
             )}
 
-            {activePanel === 'quotation_detail' && (
+            {activePanel === "quotation_detail" && (
               <section>
-                <QuotationDetail onBack={()=>{ setActivePanel('quotations'); localStorage.removeItem('activeQuotationId'); }} />
+                <QuotationDetail
+                  onBack={() => {
+                    setActivePanel("quotations");
+                    localStorage.removeItem("activeQuotationId");
+                  }}
+                />
               </section>
             )}
 
-            {activePanel === 'invalid_batches' && (
+            {activePanel === "invalid_batches" && (
               <section>
                 <ManageInvalidBatches />
               </section>
             )}
 
-            {activePanel === 'orders' &&(
+            {activePanel === "orders" && (
               <section>
                 <ManageOrders />
               </section>
             )}
 
-            {activePanel === 'users' &&(
+            {activePanel === "users" && (
               <section>
                 <ManageUsers />
               </section>
             )}
-
           </main>
         </div>
       </div>
