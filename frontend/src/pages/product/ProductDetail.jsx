@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { productService } from "../../services/product.service";
+import apiClient from "../../services/apiClient";
 import { materialService } from "../../services/material.service";
 import { quotationService } from "../../services/quotation.service";
 import cartService from "../../services/cart.service";
@@ -267,38 +268,37 @@ export default function ProductDetail() {
   const handleBuyNow = async () => {
     if (!isAgreed) return;
     try {
-      toast.info("Đang xử lý đơn hàng...");
+      toast.info("Đang khởi tạo đơn hàng...");
 
-      // 1. Ném sản phẩm vào giỏ hàng
-      await cartService.addToCart({
+      // 1. Gọi API tạo đơn hàng trực tiếp (Bypass Giỏ Hàng)
+      const payload = {
         product_id: product.id,
         quantity: quantity,
         price: product.base_price,
-      });
+      };
 
-      // 2. Lấy data giỏ hàng ra để format giao diện cho đẹp truyền sang Checkout
-      const cartRes = await cartService.getCart();
-      const formattedItems =
-        cartRes.data?.cart_items?.map((item) => ({
-          id: item.id,
-          product_id: item.product_id,
-          product_name: item.products?.product_name || product.product_name,
-          image: item.products?.product_images?.[0]?.image_url || mainImage,
-          material_name:
-            item.products?.materials?.material_name || "Tiêu chuẩn",
-          quantity: item.quantity,
-          price: parseFloat(item.price) || 0,
-        })) || [];
+      const res = await apiClient.post("/orders/direct", payload);
+      const createdOrderId = res.data?.data?.order_id;
 
-      // 3. Submit giỏ hàng luôn để backend sinh ra mã order_id cho phép thanh toán
-      const submitRes = await cartService.submitCart();
+      if (createdOrderId) {
+        // 2. Tạo một mảng data "giả lập" chỉ chứa đúng 1 sản phẩm này để hiển thị bên trang Checkout
+        const formattedItem = [
+          {
+            id: `direct-${Date.now()}`,
+            product_id: product.id,
+            product_name: product.product_name,
+            image: mainImage,
+            material_name: "Tiêu chuẩn",
+            quantity: quantity,
+            price: parseFloat(product.base_price) || 0,
+          },
+        ];
 
-      if (submitRes.order_id) {
-        // 4. Đá thẳng sang trang Checkout, mang theo mảng sản phẩm và order_id
+        // 3. Đá thẳng sang Checkout với đúng 1 món đó
         navigate("/checkout", {
           state: {
-            checkoutItems: formattedItems,
-            order_id: submitRes.order_id,
+            checkoutItems: formattedItem,
+            order_id: createdOrderId,
           },
         });
       } else {
@@ -313,11 +313,24 @@ export default function ProductDetail() {
       toast.warning("Vui lòng cấu hình đầy đủ trước khi lưu!");
       return;
     }
+
+    // Thêm prompt hỏi tên cấu hình
+    const title = window.prompt(
+      "Nhập tên cho thiết kế yêu thích của bạn:",
+      `Cấu hình ${product.product_name}`,
+    );
+    if (title === null) return; // Nếu khách bấm Cancel thì bỏ qua
+    if (!title.trim()) {
+      toast.warning("Tên thiết kế không được để trống!");
+      return;
+    }
+
     try {
       await quotationService.saveFavorite({
         product_id: product.id,
         components: componentsConfig,
         note: note,
+        title: title.trim(), // Truyền tên lên backend
       });
       toast.success("Đã lưu thiết kế vào mục yêu thích!");
     } catch (error) {

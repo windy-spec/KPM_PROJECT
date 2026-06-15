@@ -11,5 +11,5 @@ router.get("/my-orders", authenticateToken, orderController.getMyOrders);
 
 // Route xem chi tiết đơn hàng
 router.get("/:id", authenticateToken, orderController.getOrderById);
-
+router.post("/direct", authenticateToken, orderController.createDirect);
 module.exports = router;
