@@ -5,6 +5,7 @@ import apiClient from "../../services/apiClient";
 import { materialService } from "../../services/material.service";
 import { quotationService } from "../../services/quotation.service";
 import cartService from "../../services/cart.service";
+import { useCart } from "../../context/CartContext";
 import { toast } from "react-toastify";
 import {
   ChevronDown,
@@ -22,7 +23,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-
+  const { fetchCartCount } = useCart();
   const [product, setProduct] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [thicknesses, setThicknesses] = useState([]);
@@ -250,17 +251,14 @@ export default function ProductDetail() {
     }
 
     try {
-      // Gọi API thêm vào giỏ hàng thực tế
       await cartService.addToCart({
         product_id: product.id,
         quantity: quantity,
-        price: product.base_price, // Hàng nguyên bản (không modify) dùng base_price
+        price: product.base_price,
       });
 
       toast.success("Đã thêm vào giỏ hàng thành công!");
-
-      // Mẹo nhỏ: Nếu ông có dùng state global (Zustand/Redux/Context)
-      // để đếm số lượng giỏ hàng trên Header thì trigger nó ở đây nha.
+      fetchCartCount(); // GỌI Ở ĐÂY! SỐ TRÊN NAVBAR SẼ NHẢY NGAY LẬP TỨC!
     } catch (error) {
       toast.error(error.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
     }
@@ -270,7 +268,7 @@ export default function ProductDetail() {
     try {
       toast.info("Đang khởi tạo đơn hàng...");
 
-      // 1. Gọi API tạo đơn hàng trực tiếp (Bypass Giỏ Hàng)
+      // Gọi API mua trực tiếp
       const payload = {
         product_id: product.id,
         quantity: quantity,
@@ -281,7 +279,7 @@ export default function ProductDetail() {
       const createdOrderId = res.data?.data?.order_id;
 
       if (createdOrderId) {
-        // 2. Tạo một mảng data "giả lập" chỉ chứa đúng 1 sản phẩm này để hiển thị bên trang Checkout
+        // Tạo giỏ hàng "ảo" để mang sang trang Checkout
         const formattedItem = [
           {
             id: `direct-${Date.now()}`,
@@ -294,12 +292,8 @@ export default function ProductDetail() {
           },
         ];
 
-        // 3. Đá thẳng sang Checkout với đúng 1 món đó
         navigate("/checkout", {
-          state: {
-            checkoutItems: formattedItem,
-            order_id: createdOrderId,
-          },
+          state: { checkoutItems: formattedItem, order_id: createdOrderId },
         });
       } else {
         toast.error("Không tạo được đơn hàng!");

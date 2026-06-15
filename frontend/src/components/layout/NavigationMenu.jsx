@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronDown, Drill, Hammer, LayoutPanelLeft, Ruler, Settings, Book, Heart } from 'lucide-react';
+import { ChevronDown, Drill, Hammer, LayoutPanelLeft, Ruler, Settings, Book, Heart, ShoppingCart } from 'lucide-react';
 import { categoryService } from '../../services/category.service';
+import React, { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+
 
 const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [categories, setCategories] = useState([]);
+
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 0);
@@ -26,23 +30,18 @@ const NavigationMenu = () => {
       .catch((err) => console.error("Error fetching categories:", err));
   }, []);
 
-  // Hàm xử lý cuộn mượt mà đến section
   const handleScrollToSection = (e, targetId) => {
     e.preventDefault();
-
     if (location.pathname === "/") {
-      // Nếu đang ở trang chủ -> Tìm id và cuộn mượt xuống
       const element = document.getElementById(targetId);
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     } else {
-      // Nếu ở trang khác -> Điều hướng về trang chủ kèm theo dấu vết #targetId
       navigate(`/#${targetId}`);
     }
   };
 
-  // ĐỊNH NGHĨA MENU: Thêm thoải mái các mục cần cuộn trang ở đây
   const menuItems = [
     { title: 'Tất cả sản phẩm', icon: LayoutPanelLeft, hasSub: true, to: '/products' },
     { title: 'Chính sách bảo hành', icon: Book, hasSub: false },
@@ -67,16 +66,16 @@ const NavigationMenu = () => {
   return (
     <div
       className={`w-full bg-white hidden md:block transition-all duration-200 ${isScrolled
-          ? "border-b border-transparent shadow-none"
-          : "border-b border-outline-variant"
+        ? "border-b border-transparent shadow-none"
+        : "border-b border-outline-variant"
         }`}
     >
-      <div className="max-w-[1280px] mx-auto px-5">
+      {/* THAY ĐỔI Ở ĐÂY: Thêm flex justify-between và items-center */}
+      <div className="max-w-[1280px] mx-auto px-5 flex justify-between items-center">
         <ul className="flex items-center gap-2">
           {menuItems.map((item, index) => (
             <li key={index} className="group relative">
               {item.onClick ? (
-                // Các nút có sự kiện cuộn trang tự động
                 <button
                   onClick={item.onClick}
                   className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold text-on-surface-variant hover:text-primary hover:bg-surface-container transition-all cursor-pointer w-full text-left"
@@ -105,7 +104,6 @@ const NavigationMenu = () => {
                 </button>
               )}
 
-              {/* Dropdown động */}
               {item.hasSub && (
                 <div className="absolute top-full left-0 w-64 bg-white border border-outline-variant shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60] py-2 rounded-b-lg">
                   {index === 0 && categories.length > 0 ? (
@@ -139,6 +137,8 @@ const NavigationMenu = () => {
             </li>
           ))}
         </ul>
+
+
       </div>
     </div>
   );
