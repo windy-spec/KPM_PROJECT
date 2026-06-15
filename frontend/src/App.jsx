@@ -28,6 +28,10 @@ import NotFound from "./pages/error/NotFound";
 import PaymentResult from "./pages/checkout/PaymentResult";
 import Specification from "./pages/legal/Specification";
 import Warranty from "./pages/legal/Warranty";
+import About from "./pages/about/About"
+import TechnicalTerms from "./pages/legal/TechnicalTerms";
+
+import ScrollToTop from "./components/common/ScrollToTop";
 import { CartProvider } from "./context/CartContext";
 
 const routeMap = [
@@ -152,6 +156,22 @@ const routeMap = [
     ),
   },
   {
+    path: "/about",
+    element: (
+      <MainLayout>
+        <About />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/technical-terms",
+    element: (
+      <MainLayout>
+        <TechnicalTerms />
+      </MainLayout>
+    ),
+  },
+  {
     path: "/admin",
     element: (
       <RoleGuard allowedRoles={["ADMIN"]}>
@@ -215,6 +235,7 @@ function AppRoutes() {
 
   return (
     <div className="page-transition-shell">
+      <ScrollToTop />
       <GlobalLoading />
       {/* Giao diện Popup Hết phiên đăng nhập cực đẹp */}
       {sessionExpired && (

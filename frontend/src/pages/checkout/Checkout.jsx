@@ -39,9 +39,14 @@ const Checkout = () => {
     notes: "",
   });
 
+  // State quản lý lỗi ràng buộc dữ liệu (Validation Errors)
+  const [errors, setErrors] = useState({});
+
   // 3. State quản lý phương thức thanh toán (COD hoặc Chuyển khoản ngân hàng)
   const [paymentMethod, setPaymentMethod] = useState("vietqr");
   const [qrData, setQrData] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Tính toán tổng tiền
   const tempTotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
@@ -49,6 +54,52 @@ const Checkout = () => {
   );
   const shippingFee = tempTotal > 5000000 ? 0 : 150000; // Đơn trên 5tr miễn phí vận chuyển nội thành
   const finalTotal = tempTotal + shippingFee;
+
+  const isLocked = isSubmitting || !!qrData;
+
+  // --- HÀM KIỂM TRA RÀNG BUỘC (VALIDATION LOGIC) ---
+  const validateForm = () => {
+    let tempErrors = {};
+
+    // 1. Ràng buộc Họ và tên
+    if (!shippingInfo.fullName.trim()) {
+      tempErrors.fullName = "Họ và tên không được để trống";
+    } else if (shippingInfo.fullName.trim().length < 2) {
+      tempErrors.fullName = "Họ và tên phải có ít nhất 2 ký tự";
+    }
+
+    // 2. Ràng buộc Số điện thoại (Chuẩn định dạng các nhà mạng Việt Nam)
+    const vnf_regex = /((03|05|07|08|09)+([0-9]{8})\b)/g;
+    if (!shippingInfo.phone.trim()) {
+      tempErrors.phone = "Số điện thoại không được để trống";
+    } else if (!vnf_regex.test(shippingInfo.phone.trim())) {
+      tempErrors.phone = "Số điện thoại không đúng định dạng (VD: 0912345678)";
+    }
+
+    // 3. Ràng buộc Email (Không bắt buộc, nhưng nếu điền thì phải đúng cấu trúc)
+    if (shippingInfo.email.trim()) {
+      const email_regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email_regex.test(shippingInfo.email.trim())) {
+        tempErrors.email = "Địa chỉ email không hợp lệ";
+      }
+    }
+
+    // 4. Ràng buộc Địa chỉ nhận hàng (Yêu cầu chi tiết để tránh lỗi giao hàng)
+    if (!shippingInfo.address.trim()) {
+      tempErrors.address = "Địa chỉ nhận hàng không được để trống";
+    } else if (shippingInfo.address.trim().length < 10) {
+      tempErrors.address = "Vui lòng nhập địa chỉ cụ thể hơn (tối thiểu 10 ký tự)";
+    }
+
+    // 5. Ràng buộc Ghi chú
+    if (shippingInfo.notes.length > 500) {
+      tempErrors.notes = "Ghi chú không được vượt quá 500 ký tự";
+    }
+
+    setErrors(tempErrors);
+    // Nếu object tempErrors không có key nào -> Form hoàn toàn hợp lệ
+    return Object.keys(tempErrors).length === 0;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -58,12 +109,7 @@ const Checkout = () => {
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
 
-    if (
-      !shippingInfo.fullName ||
-      !shippingInfo.phone ||
-      !shippingInfo.address
-    ) {
-      alert("Vui lòng điền đầy đủ các thông tin giao hàng bắt buộc!");
+    if (!validateForm()) {
       return;
     }
 
@@ -141,6 +187,7 @@ const Checkout = () => {
                 </h2>
               </div>
 
+              {/* Họ và tên */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -152,15 +199,22 @@ const Checkout = () => {
                       <input
                         type="text"
                         name="fullName"
+                        disabled={isLocked}
                         required
                         value={shippingInfo.fullName}
                         onChange={handleInputChange}
                         placeholder="Nguyễn Văn A"
-                        className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary"
-                      />
+                        className={`w-full rounded-xl border bg-surface-container/10 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary ${errors.fullName ? "border-error bg-error/[0.02] focus:border-error" : "border-outline-variant/60"
+                          }`} />
                     </div>
+                    {errors.fullName && (
+                      <p className="text-xs text-error font-semibold mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        {errors.fullName}
+                      </p>
+                    )}
                   </div>
 
+                  {/* Số điện thoại */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-on-surface-variant">
                       Số điện thoại *
@@ -170,16 +224,23 @@ const Checkout = () => {
                       <input
                         type="tel"
                         name="phone"
-                        required
+                        disabled={isLocked}
                         value={shippingInfo.phone}
                         onChange={handleInputChange}
                         placeholder="09xx xxx xxx"
-                        className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary"
+                        className={`w-full rounded-xl border bg-surface-container/10 pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary ${errors.phone ? "border-error bg-error/[0.02] focus:border-error" : "border-outline-variant/60"
+                          }`}
                       />
                     </div>
+                    {errors.phone && (
+                      <p className="text-xs text-error font-semibold mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        {errors.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
 
+                {/* Email */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-on-surface-variant">
                     Địa chỉ Email
@@ -187,40 +248,65 @@ const Checkout = () => {
                   <input
                     type="email"
                     name="email"
+                    disabled={isLocked}
                     value={shippingInfo.email}
                     onChange={handleInputChange}
                     placeholder="name@example.com"
-                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary"
+                    className={`w-full rounded-xl border bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary ${errors.email ? "border-error bg-error/[0.02] focus:border-error" : "border-outline-variant/60"
+                      }`}
                   />
+                  {errors.email && (
+                    <p className="text-xs text-error font-semibold mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {errors.email}
+                    </p>
+                  )}
                 </div>
 
+                {/* Địa chỉ nhận hàng */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-on-surface-variant">
                     Địa chỉ nhận hàng *
                   </label>
                   <textarea
                     name="address"
-                    required
+                    disabled={isLocked}
                     rows={2}
                     value={shippingInfo.address}
                     onChange={handleInputChange}
                     placeholder="Số nhà, tên đường, phường/xã, quận/huyện, thành phố..."
-                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary"
+                    className={`w-full rounded-xl border bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary ${errors.address ? "border-error bg-error/[0.02] focus:border-error" : "border-outline-variant/60"
+                      }`}
                   />
+                  {errors.address && (
+                    <p className="text-xs text-error font-semibold mt-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {errors.address}
+                    </p>
+                  )}
                 </div>
 
+                {/* Ghi chú */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface-variant">
-                    Ghi chú đơn hàng
+                  <label className="text-xs font-bold text-on-surface-variant flex justify-between">
+                    <span>Ghi chú đơn hàng</span>
+                    <span className={`text-[10px] ${shippingInfo.notes.length > 500 ? "text-error" : "text-on-surface-variant/50"}`}>
+                      {shippingInfo.notes.length}/500
+                    </span>
                   </label>
                   <textarea
                     name="notes"
                     rows={3}
+                    disabled={isLocked}
                     value={shippingInfo.notes}
                     onChange={handleInputChange}
-                    placeholder="Lưu ý về giờ giao hàng, yêu cầu khi bốc dỡ vật tư..."
-                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary"
+                    placeholder="Lưu ý về giờ giao hàng, yêu cầu đặc biệt..."
+                    className={`w-full rounded-xl border bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary ${errors.notes ? "border-error bg-error/[0.02] focus:border-error" : "border-outline-variant/60"
+                      }`}
                   />
+                  {errors.notes && (
+                    <p className="text-xs text-error font-semibold mt-1 flex items-center gap-1">
+                      {errors.notes}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -237,11 +323,10 @@ const Checkout = () => {
               <div className="space-y-3">
                 {/* Lựa chọn 1: Chuyển khoản VietQR */}
                 <label
-                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === "vietqr"
-                      ? "border-primary bg-primary/[0.02]"
-                      : "border-outline-variant/60 hover:bg-surface-container/10"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "vietqr"
+                    ? "border-primary bg-primary/[0.02]"
+                    : "border-outline-variant/60 hover:bg-surface-container/10"
+                    }`}
                 >
                   <input
                     type="radio"
@@ -263,11 +348,10 @@ const Checkout = () => {
 
                 {/* Lựa chọn 2: VNPay */}
                 <label
-                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === "vnpay"
-                      ? "border-primary bg-primary/[0.02]"
-                      : "border-outline-variant/60 hover:bg-surface-container/10"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "vnpay"
+                    ? "border-primary bg-primary/[0.02]"
+                    : "border-outline-variant/60 hover:bg-surface-container/10"
+                    }`}
                 >
                   <input
                     type="radio"
@@ -295,11 +379,10 @@ const Checkout = () => {
 
                 {/* Lựa chọn 3: Ví MoMo */}
                 <label
-                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === "momo"
-                      ? "border-primary bg-primary/[0.02]"
-                      : "border-outline-variant/60 hover:bg-surface-container/10"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "momo"
+                    ? "border-primary bg-primary/[0.02]"
+                    : "border-outline-variant/60 hover:bg-surface-container/10"
+                    }`}
                 >
                   <input
                     type="radio"
@@ -327,11 +410,10 @@ const Checkout = () => {
 
                 {/* Lựa chọn 3: COD */}
                 <label
-                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                    paymentMethod === "cod"
-                      ? "border-primary bg-primary/[0.02]"
-                      : "border-outline-variant/60 hover:bg-surface-container/10"
-                  }`}
+                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "cod"
+                    ? "border-primary bg-primary/[0.02]"
+                    : "border-outline-variant/60 hover:bg-surface-container/10"
+                    }`}
                 >
                   <input
                     type="radio"

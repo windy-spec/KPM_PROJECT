@@ -13,7 +13,6 @@ import { categoryService } from "../../services/category.service";
 
 const NavigationMenu = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [categories, setCategories] = useState([]);
 
@@ -34,22 +33,6 @@ const NavigationMenu = () => {
       .catch((err) => console.error("Error fetching categories:", err));
   }, []);
 
-  // Hàm xử lý cuộn mượt mà đến section
-  const handleScrollToSection = (e, targetId) => {
-    e.preventDefault();
-
-    if (location.pathname === "/") {
-      // Nếu đang ở trang chủ -> Tìm id và cuộn mượt xuống
-      const element = document.getElementById(targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    } else {
-      // Nếu ở trang khác -> Điều hướng về trang chủ kèm theo dấu vết #targetId
-      navigate(`/#${targetId}`);
-    }
-  };
-
   // ĐỊNH NGHĨA MENU: Thêm thoải mái các mục cần cuộn trang ở đây
   const menuItems = [
     {
@@ -63,11 +46,20 @@ const NavigationMenu = () => {
       title: "Về chúng tôi",
       icon: Drill,
       hasSub: false,
-      onClick: (e) => handleScrollToSection(e, "home-about"),
+      to: "/about",
     },
     { title: "Yêu cầu báo giá", icon: Ruler, hasSub: false },
-    { title: "Thuật ngữ chuyên ngành", icon: Settings, hasSub: false },
-    { title: "Unknow", icon: Heart, hasSub: true },
+    {
+      title: "Thuật ngữ chuyên ngành",
+      icon: Settings,
+      hasSub: false,
+      to: "/technical-terms",
+    },
+    {
+      title: "Unknow",
+      icon: Heart,
+      hasSub: true
+    },
   ];
 
   return (

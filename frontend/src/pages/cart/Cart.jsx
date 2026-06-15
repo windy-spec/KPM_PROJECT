@@ -10,11 +10,17 @@ import {
 } from "lucide-react";
 import cartService from "../../services/cart.service";
 import { useCart } from "../../context/CartContext";
+import ConfirmModal from "../../components/common/ConfirmModal"
+import notify from "../../utils/notify"
+
 const Cart = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const { fetchCartCount } = useCart();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
   const loadCart = async () => {
     try {
       setLoading(true);
@@ -37,6 +43,7 @@ const Cart = () => {
             item.products?.materials?.material_name || "Vật liệu tùy chỉnh",
           quantity: item.quantity,
           price: parseFloat(item.price) || 0,
+          rawItem: item
         }));
         setCartItems(formattedItems);
       } else {
@@ -74,19 +81,36 @@ const Cart = () => {
     }
   };
 
-  // 3. Hàm xử lý xóa sản phẩm khỏi giỏ hàng
-  const handleRemoveItem = async (id) => {
-    if (
-      window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")
-    ) {
-      setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
-      try {
-        await cartService.removeItem(id);
-        fetchCartCount(); // Cập nhật lại số lượng trên header
-      } catch (e) {
-        console.error(e);
-        loadCart();
-      }
+  // 3.1. Lưu sản phẩm cần xóa
+  const handleOpenDeleteModal = (item) => {
+    setItemToDelete(item);
+    setIsModalOpen(true);
+  };
+
+  // 3.2. Hàm xử lý xóa sản phẩm khỏi giỏ hàng
+  const handleConfirmRemove = async () => {
+    if (!itemToDelete) return;
+
+    // LẤY ID TỪ OBJECT GỐC TỪ BACKEND TRẢ VỀ CHƯA QUA MAP
+    // Thử nghiệm theo thứ tự: ID bản ghi giỏ hàng gốc -> product_id -> id map
+    const id = itemToDelete.rawItem?._id || itemToDelete.rawItem?.id || itemToDelete.id;
+
+    try {
+      // Gọi API xóa xuống Backend
+      await cartService.removeItem(id);
+
+      // Nếu thành công, xóa dòng trên giao diện ứng với id đang hiển thị
+      setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemToDelete.id));
+
+      notify.showSuccess("Đã xóa sản phẩm khỏi giỏ hàng!");
+      fetchCartCount();
+    } catch (e) {
+      console.error("Lỗi khi xóa từ server:", e);
+      notify.showError("Có lỗi xảy ra khi xóa sản phẩm.");
+      loadCart();
+    } finally {
+      setIsModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -193,7 +217,7 @@ const Cart = () => {
 
                         {/* Nút xóa trên màn hình nhỏ */}
                         <button
-                          onClick={() => handleRemoveItem(item.id)}
+                          onClick={() => handleOpenDeleteModal(item)}
                           className="sm:hidden mt-2 inline-flex items-center gap-1 text-xs font-bold text-error/80 hover:text-error transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Xóa món này
@@ -245,7 +269,7 @@ const Cart = () => {
                         </span>
                       </div>
                       <button
-                        onClick={() => handleRemoveItem(item.id)}
+                        onClick={() => handleOpenDeleteModal(item)}
                         className="hidden sm:block p-1.5 text-on-surface-variant/50 hover:text-error hover:bg-red-50 rounded-lg transition-all"
                         title="Xóa khỏi giỏ"
                       >
@@ -318,6 +342,27 @@ const Cart = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={isModalOpen}                                // Khớp với prop 'open' của bạn
+        title="XÓA SẢN PHẨM KHỎI GIỎ"                     // Khớp với prop 'title' của bạn
+        message={                                         // Khớp với prop 'message' của bạn
+          <span>
+            Bạn có chắc chắn muốn xóa sản phẩm{" "}
+            <span className="font-extrabold text-primary">
+              "{itemToDelete?.product_name}"
+            </span>{" "}
+            này khỏi giỏ hàng không? Hành động này không thể hoàn tác.
+          </span>
+        }
+        confirmText="Xác nhận xóa"                        // Khớp với prop 'confirmText' của bạn
+        cancelText="Quay lại"                             // Khớp với prop 'cancelText' của bạn
+        onConfirm={handleConfirmRemove}                   // Khớp với prop 'onConfirm' của bạn
+        onCancel={() => {                                 // Khớp với prop 'onCancel' của bạn
+          setIsModalOpen(false);
+          setItemToDelete(null);
+        }}
+      />
     </div>
   );
 };
