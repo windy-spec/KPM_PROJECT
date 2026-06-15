@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import adminService from '../../services/admin.service';
 import { showError } from '../../utils/notify';
+import Pagination from '../../components/common/Pagination';
 
 // Tối ưu lại Badge trạng thái theo chuẩn UI mới
 function StatusBadge({ status }) {
@@ -37,11 +38,16 @@ export default function QuotationList({ onOpen }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+
   const load = async () => {
     setLoading(true);
     try {
       const res = await adminService.getQuotations({ page: 1, limit: 200 });
       setRows(res.data?.data || res.data || []);
+      setCurrentPage(1);
     } catch (e) {
       showError(e?.response?.data?.message || e?.message || 'Không tải được danh sách báo giá');
     } finally { setLoading(false); }
@@ -59,11 +65,15 @@ export default function QuotationList({ onOpen }) {
     return new Intl.NumberFormat('vi-VN').format(Number(n)) + ' đ';
   }
 
+  // Tính toán dữ liệu phân trang
+  const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+  const paginatedRows = rows.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
-    // Bỏ padding ở container, dùng overflow-hidden để header bám sát viền
     <div className="bg-white border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-      
-      {/* Header Bar chuẩn AdminProductPanel */}
       <div className="px-4 md:px-5 py-4 border-b border-outline-variant/50 flex items-center justify-start gap-2 bg-surface-container/10">
         <h2 className="text-[15px] md:text-[16px] font-black uppercase tracking-[0.12em] text-on-surface">
           Danh sách Báo giá
@@ -85,38 +95,45 @@ export default function QuotationList({ onOpen }) {
               <th className="p-4 pr-6 text-center w-[120px]">Hành động</th>
             </tr>
           </thead>
-          
+
           <tbody className="divide-y divide-outline-variant/25 text-sm">
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-12 text-center text-xs font-bold text-on-surface-variant/50 tracking-widest uppercase">
+                <td colSpan={5} className="p-12 text-center text-xs font-bold text-on-surface-variant/50 tracking-widest uppercase animate-pulse">
                   Đang tải dữ liệu...
                 </td>
               </tr>
             ) : null}
 
-            {rows.map(r => (
-              <tr 
-                key={r.id} 
-                className="hover:bg-surface-container/20 transition-colors cursor-pointer" 
+            {!loading && paginatedRows.map(r => (
+              <tr
+                key={r.id}
+                // Thêm lớp "group" để có thể tinh chỉnh các phần tử con bên trong khi hover vào hàng
+                className="group hover:bg-surface-container/20 transition-all duration-150 cursor-pointer"
                 onDoubleClick={() => onOpen?.(r.id)}
               >
-                <td className="p-4 pl-6 font-mono text-xs font-bold text-on-surface-variant/80">
-                  {shortCode(r.id)}
+                {/* Thêm tiền tố # để phần mã nhìn chuyên nghiệp và đầy đặn hơn */}
+                <td className="p-4 pl-6 font-mono text-xs font-bold text-on-surface-variant/80 group-hover:text-primary transition-colors">
+                  #{shortCode(r.id)}
                 </td>
                 <td className="p-4 text-[13px] text-on-surface-variant/80 font-medium">
                   {new Date(r.created_at || r.createdAt || Date.now()).toLocaleString('vi-VN')}
                 </td>
-                <td className="p-4 font-black text-on-surface text-[13px]">
+                {/* Nâng kích thước chữ tiền lên text-sm giúp cột giá trị bớt trống trải */}
+                <td className="p-4 font-black text-on-surface text-sm tracking-wide">
                   {formatVND(r.total_quoted_price ?? r.total_amount ?? r.total)}
                 </td>
                 <td className="p-4">
                   <StatusBadge status={r.status} />
                 </td>
                 <td className="p-4 pr-6 text-center">
-                  <button 
-                    onClick={() => onOpen?.(r.id)} 
-                    className="inline-flex items-center justify-center rounded-xl border border-outline-variant/60 px-4 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container hover:text-primary transition-all shadow-sm"
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Tránh kích hoạt double click của dòng khi ấn trực tiếp nút
+                      onOpen?.(r.id);
+                    }}
+                    // Thêm trạng thái biến đổi màu dựa trên class group-hover của dòng, giúp nút "Xem" sáng bật lên rất mượt mà
+                    className="inline-flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white px-4 py-1.5 text-[11px] font-bold text-on-surface-variant transition-all shadow-2xs group-hover:border-primary/40 group-hover:text-primary group-hover:bg-primary/5 group-hover:shadow-xs active:scale-95"
                   >
                     Xem
                   </button>
@@ -134,6 +151,17 @@ export default function QuotationList({ onOpen }) {
           </tbody>
         </table>
       </div>
+
+      {/* Khu vực hiển thị Pagination */}
+      {totalPages > 1 && (
+        <div className="px-5 py-4 border-t border-outline-variant/40 flex justify-end bg-surface-container/5">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,72 +1,105 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Minus, Plus, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
+import cartService from '../../services/cart.service';
 
 const Cart = () => {
     const navigate = useNavigate();
+    const [cartItems, setCartItems] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // 1. Khởi tạo danh sách sản phẩm trong giỏ hàng
-    // Thực tế bạn sẽ lấy dữ liệu từ Backend API hoặc localStorage.getItem('cartItems')
-    const [cartItems, setCartItems] = useState([
-        {
-            id: 1,
-            product_name: "Cổng sắt mỹ thuật CNC 4 cánh",
-            product_code: "GATE-CNC-04",
-            image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
-            material_name: "Sắt tấm dày 5mm",
-            quantity: 1,
-            price: 15500000,
-        },
-        {
-            id: 2,
-            product_name: "Bản mã thép vuông đục lỗ",
-            product_code: "BM-200-10",
-            image: "https://images.unsplash.com/photo-1537462715879-360eeb61a0bc?q=80&w=200",
-            material_name: "Thép SS400 dày 10mm",
-            quantity: 50,
-            price: 45000,
+    const loadCart = async () => {
+        try {
+            setLoading(true);
+            const res = await cartService.getCart();
+            // Transform data or just set it
+            // Backend returns cart = { id, user_id, cart_items: [...] }
+            if (res.success && res.data && res.data.cart_items) {
+                const formattedItems = res.data.cart_items.map(item => ({
+                    id: item.id,
+                    product_id: item.product_id,
+                    quotation_id: item.quotation_id,
+                    product_name: item.products ? item.products.product_name : item.quotations?.title || "Báo giá tùy chỉnh",
+                    product_code: item.products ? item.products.product_code : "CUSTOM",
+                    image: item.products?.product_images?.[0]?.image_url || "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                    material_name: item.products?.materials?.material_name || "Vật liệu tùy chỉnh",
+                    quantity: item.quantity,
+                    price: parseFloat(item.price) || 0,
+                }));
+                setCartItems(formattedItems);
+            } else {
+                setCartItems([]);
+            }
+        } catch (e) {
+            console.error("Failed to load cart", e);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
-    // Lưu giỏ hàng vào localStorage mỗi khi có thay đổi để đồng bộ với Navbar khi cần
     useEffect(() => {
-        localStorage.setItem('cartItems', JSON.stringify(cartItems));
-    }, [cartItems]);
+        loadCart();
+    }, []);
 
     // 2. Hàm xử lý thay đổi số lượng (Tăng / Giảm)
-    const handleUpdateQuantity = (id, delta) => {
+    const handleUpdateQuantity = async (id, delta) => {
+        const item = cartItems.find(i => i.id === id);
+        if (!item) return;
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) return;
+
+        // Optimistic UI update
         setCartItems(prevItems =>
-            prevItems.map(item => {
-                if (item.id === id) {
-                    const newQty = item.quantity + delta;
-                    return newQty > 0 ? { ...item, quantity: newQty } : item;
-                }
-                return item;
-            })
+            prevItems.map(i => i.id === id ? { ...i, quantity: newQty } : i)
         );
+
+        try {
+            await cartService.updateQuantity(id, newQty);
+        } catch (e) {
+            console.error(e);
+            loadCart(); // Rollback on error
+        }
     };
 
     // 3. Hàm xử lý xóa sản phẩm khỏi giỏ hàng
-    const handleRemoveItem = (id) => {
+    const handleRemoveItem = async (id) => {
         if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?")) {
             setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+            try {
+                await cartService.removeItem(id);
+            } catch (e) {
+                console.error(e);
+                loadCart();
+            }
         }
     };
 
     // 4. Tính toán tiền nong
     const totalAmount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const shippingFee = totalAmount > 5000000 || totalAmount === 0 ? 0 : 150000; // Miễn phí vận chuyển cho đơn trên 5 triệu
+    const shippingFee = totalAmount > 5000000 || totalAmount === 0 ? 0 : 150000;
     const finalAmount = totalAmount + shippingFee;
 
     // 5. Hàm điều hướng sang trang Thanh toán kèm dữ liệu thật
-    const handleProceedToCheckout = () => {
+    const handleProceedToCheckout = async () => {
         if (cartItems.length === 0) return;
 
-        // Chuyển hướng sang /checkout và đóng gói giỏ hàng vào state của router
-        navigate('/checkout', {
-            state: { checkoutItems: cartItems }
-        });
+        try {
+            const res = await cartService.submitCart();
+            // res returns { message, order_id } if normal items exist
+            if (res.data && res.data.order_id) {
+                navigate('/checkout', {
+                    state: { checkoutItems: cartItems, order_id: res.data.order_id }
+                });
+            } else {
+                alert(res.message || "Gửi yêu cầu thành công!");
+                navigate('/profile'); // Chuyển về profile xem báo giá
+            }
+        } catch (e) {
+            alert(e.response?.data?.message || "Lỗi khi xử lý giỏ hàng");
+        }
     };
+
+    if (loading) return <div className="text-center py-20">Đang tải giỏ hàng...</div>;
 
     // Trường hợp Giỏ hàng trống
     if (cartItems.length === 0) {

@@ -263,6 +263,10 @@ const adminService = {
   getUsersAccessLogs() {
     return apiClient.get('/auth/admin/access-logs');
   },
+
+  getDashboardStats() {
+    return apiClient.get('/admin/dashboard/stats');
+  }
 };
 
 export default adminService;

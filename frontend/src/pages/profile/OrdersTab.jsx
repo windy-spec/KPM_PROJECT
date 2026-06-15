@@ -1,36 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { Package, Truck, Clock, CheckCircle2, ChevronRight, Download } from 'lucide-react';
-// import { orderService } from '../../services/order.service'; // Chưa có backend
+import orderService from '../../services/order.service';
 
 const OrdersTab = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Tạm thời mock dữ liệu vì backend chưa có chức năng lấy danh sách đơn hàng
-    setTimeout(() => {
-      setOrders([
-        {
-          id: 'ORD-KPM-24001',
-          created_at: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 ngày trước
-          total_amount: 15400000,
-          status: 'production',
-          items: [
-            { name: 'Cổng Sắt CNC 4 Cánh', specs: 'Thép tấm 3mm • Sơn tĩnh điện' }
-          ]
-        },
-        {
-          id: 'ORD-KPM-24002',
-          created_at: new Date(Date.now() - 86400000 * 15).toISOString(), // 15 ngày trước
-          total_amount: 8500000,
-          status: 'completed',
-          items: [
-            { name: 'Lan Can Ban Công Nghệ Thuật', specs: 'Sắt đặc • Sơn PU 2K' }
-          ]
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await orderService.getMyOrders();
+        if (res.success && res.data) {
+          const formattedOrders = res.data.map(o => ({
+            id: o.order_code,
+            created_at: o.created_at,
+            total_amount: parseFloat(o.total_amount) || 0,
+            status: o.production_status,
+            items: o.order_items?.map(i => ({
+              name: i.products?.product_name || "Sản phẩm",
+              specs: i.products?.materials?.material_name || ""
+            })) || []
+          }));
+          setOrders(formattedOrders);
         }
-      ]);
-      setLoading(false);
-    }, 800);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
   }, []);
 
   const formatCurrency = (amount) => {

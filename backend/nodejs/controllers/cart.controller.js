@@ -34,13 +34,11 @@ class CartController {
         itemId,
         quantity,
       );
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "Đã cập nhật số lượng",
-          data: updatedItem,
-        });
+      res.status(200).json({
+        success: true,
+        message: "Đã cập nhật số lượng",
+        data: updatedItem,
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -62,7 +60,11 @@ class CartController {
     try {
       const userId = req.user.id;
       const result = await cartService.submitCart(userId);
-      res.status(200).json({ success: true, message: result.message });
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: { order_id: result.order_id },
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }

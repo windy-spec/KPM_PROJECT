@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product }) => {
   // Destructure dữ liệu thật từ DB
-  const { id, product_name, product_code, product_images, product_categories } = product;
+  const { id, product_name, product_code, product_images, product_categories, base_price } = product;
 
   const imageUrl = product_images?.[0]?.image_url || null;
   const categoryName = product_categories?.category_name || '';
@@ -52,7 +52,7 @@ const ProductCard = ({ product }) => {
         {/* Giá và nút chức năng */}
         <div className="mt-4 pt-4 border-t border-outline-variant/40 flex flex-col gap-3">
           <div className="text-sm font-black text-primary">
-            Tùy chỉnh linh kiện
+            {base_price ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(base_price) : 'Liên hệ'}
           </div>
 
           <Link to={`/product/${id}`} className="w-full py-2.5 bg-surface-container border border-outline-variant/80 text-on-surface-variant text-xs font-black uppercase tracking-wider rounded-xl 

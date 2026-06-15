@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
-  ChevronLeft, ChevronRight, Loader2, Pencil, Shield, 
+import {
+  ChevronLeft, ChevronRight, Loader2, Pencil, Shield,
   Search, Users, CircleDot, ShieldBan, X
 } from 'lucide-react';
 import adminService from '../../services/admin.service';
@@ -12,7 +12,7 @@ export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Phân trang chuẩn từ Server
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -24,7 +24,7 @@ export default function ManageUsers() {
 
   // State dùng để ép component render lại mỗi phút nhằm cập nhật số phút Offline
   const [tick, setTick] = useState(0);
-  
+
   const [form, setForm] = useState({
     role_name: '',
     nickname: '',
@@ -40,14 +40,14 @@ export default function ManageUsers() {
         limit: 10,
         search: searchQuery
       });
-      
+
       let usersData = response.data?.data || [];
 
       // 2. Gọi API lấy logs để bù đắp và xác thực trạng thái online thực tế
       try {
         const logsResponse = await adminService.getUsersAccessLogs();
         const logs = logsResponse.data?.data || [];
-        
+
         usersData = usersData.map(user => {
           // Tìm log của user này
           const userLog = logs.find(log => log.id === user.id);
@@ -56,7 +56,7 @@ export default function ManageUsers() {
             // Nếu tìm thấy log thì lấy last_login_at từ log, không thì giữ nguyên
             last_login_at: userLog ? userLog.last_login_at : user.last_login_at,
             // Đánh dấu true nếu user này có log hoạt động gần đây từ server trả về
-            hasActiveLog: !!userLog 
+            hasActiveLog: !!userLog
           };
         });
       } catch (logErr) {
@@ -79,8 +79,8 @@ export default function ManageUsers() {
 
     const interval = setInterval(() => {
       // Chạy ngầm sau mỗi 4 giây: cập nhật data im lặng tránh gây giật lag UI
-      loadUsers(true); 
-    }, 4000);
+      loadUsers(true);
+    }, 400000);
 
     return () => clearInterval(interval);
   }, [page, searchQuery]);
@@ -109,7 +109,7 @@ export default function ManageUsers() {
         nickname: form.nickname,
         is_active: form.is_active
       });
-      
+
       showSuccess("Cập nhật phân quyền và trạng thái thành công!");
       setEditingUser(null);
       await loadUsers(true);
@@ -124,13 +124,13 @@ export default function ManageUsers() {
   const isOnline = (user) => {
     // Bảo vệ nếu object user không hợp lệ hoặc chưa từng đăng nhập
     if (!user || !user.last_login_at) return false;
-    
+
     // Nếu user không có log hoạt động trả về từ API access-logs -> Chắc chắn đã logout/offline
     if (!user.hasActiveLog) return false;
-    
+
     // Nếu có log, check khoảng thời gian tương tác (15 phút) để đảm bảo tính thực tế
     const diff = Date.now() - new Date(user.last_login_at).getTime();
-    return diff < 15 * 60 * 1000; 
+    return diff < 15 * 60 * 1000;
   };
 
   const pageStart = total === 0 ? 0 : (page - 1) * limit + 1;
@@ -156,11 +156,10 @@ export default function ManageUsers() {
           key={p}
           type="button"
           onClick={() => setPage(p)}
-          className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${
-            page === p
-              ? 'bg-primary text-white font-black'
-              : 'border border-outline-variant/60 hover:bg-surface-container text-on-surface-variant'
-          }`}
+          className={`h-9 w-9 rounded-lg flex items-center justify-center transition-colors ${page === p
+            ? 'bg-primary text-white font-black'
+            : 'border border-outline-variant/60 hover:bg-surface-container text-on-surface-variant'
+            }`}
         >
           {p}
         </button>
@@ -168,7 +167,7 @@ export default function ManageUsers() {
     ));
   };
 
-  
+
 
   return (
     <div className="space-y-6">
@@ -214,7 +213,7 @@ export default function ManageUsers() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           )}
-          
+
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead>
               <tr className="border-b border-outline-variant/50 bg-surface-container/30 text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
@@ -257,14 +256,13 @@ export default function ManageUsers() {
                     </td>
 
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] ${
-                        user.roles?.role_name === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-surface-container text-on-surface-variant'
-                      }`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] ${user.roles?.role_name === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-surface-container text-on-surface-variant'
+                        }`}>
                         <Shield className="w-3 h-3" /> {user.roles?.role_name || 'USER'}
                       </span>
                     </td>
 
-                    
+
 
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
@@ -275,9 +273,9 @@ export default function ManageUsers() {
                           ) : (
                             (() => {
                               if (!user.last_login_at) return 'Chưa hoạt động';
-                              
+
                               const diffMins = Math.floor((Date.now() - new Date(user.last_login_at).getTime()) / (60 * 1000));
-                              
+
                               if (diffMins < 60) {
                                 return `Offline ${diffMins} phút trước`;
                               } else if (diffMins < 1440) {
@@ -299,7 +297,7 @@ export default function ManageUsers() {
                     </td>
 
                     <td className="p-4 pr-6 text-center">
-                      <button 
+                      <button
                         onClick={() => handleOpenEdit(user)}
                         className="h-8 w-8 rounded-lg border border-outline-variant/60 inline-flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-primary transition-all"
                         title="Thiết lập tài khoản"
@@ -370,15 +368,15 @@ export default function ManageUsers() {
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-black uppercase tracking-[0.1em] text-on-surface-variant mb-2">Cấp bậc quyền hạn (Role)</label>
-                    <select 
-                        value={form.role_name}
-                        onChange={e => setForm({ ...form, role_name: e.target.value })}
-                        className="w-full h-11 px-4 text-sm bg-white border border-outline-variant/60 rounded-xl focus:outline-none focus:border-primary font-bold text-on-surface"
-                    >
-                        <option value="USER">Người dùng cơ bản (USER)</option>
-                        <option value="ADMIN">Quản trị viên hệ thống (ADMIN)</option>
-                    </select>
+                  <label className="block text-[11px] font-black uppercase tracking-[0.1em] text-on-surface-variant mb-2">Cấp bậc quyền hạn (Role)</label>
+                  <select
+                    value={form.role_name}
+                    onChange={e => setForm({ ...form, role_name: e.target.value })}
+                    className="w-full h-11 px-4 text-sm bg-white border border-outline-variant/60 rounded-xl focus:outline-none focus:border-primary font-bold text-on-surface"
+                  >
+                    <option value="USER">Người dùng cơ bản (USER)</option>
+                    <option value="ADMIN">Quản trị viên hệ thống (ADMIN)</option>
+                  </select>
                 </div>
 
                 <div className="space-y-2 pt-2">

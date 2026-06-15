@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -18,6 +18,7 @@ import {
 import Portal from '../../components/common/Portal';
 import Pagination from '../../components/common/Pagination';
 import { showSuccess } from '../../utils/notify';
+import orderService from '../../services/order.service';
 
 // Hàm helper format hiển thị tiền tệ VNĐ
 const formatMoney = new Intl.NumberFormat('vi-VN', {
@@ -37,82 +38,48 @@ const formatDate = (dateString) => {
   });
 };
 
-// 1. DỮ LIỆU ẢO (MOCK DATA) ĐƠN HÀNG CHẤT LƯỢNG CAO
-const MOCK_ORDERS = [
-  {
-    id: "ORD-9901",
-    customer_name: "Nguyễn Văn Hùng",
-    customer_phone: "0908123456",
-    created_at: "2026-06-06T14:32:00.000Z",
-    total_amount: 15450000,
-    status: "PENDING", // PENDING, CONFIRMED, DELIVERED, CANCELLED
-    shipping_address: "180 Cao Lỗ, Phường 4, Quận 8, TP. Hồ Chí Minh",
-    notes: "Giao hàng giờ hành chính, gọi trước 30 phút.",
-    items: [
-      { id: 1, product_name: "Sắt hộp mạ kẽm Hòa Phát 40x80x1.8mm", quantity: 50, price: 225000, unit: "Cây" },
-      { id: 2, product_name: "Thép tấm chống trượt 3mm", quantity: 2, price: 2100000, unit: "Tấm" }
-    ]
-  },
-  {
-    id: "ORD-9902",
-    customer_name: "Công ty Cơ khí Kiến Phát",
-    customer_phone: "0912345678",
-    created_at: "2026-06-05T09:15:00.000Z",
-    total_amount: 42800000,
-    status: "CONFIRMED",
-    shipping_address: "Lô C2, Đường số 4, KCN Vĩnh Lộc, Bình Chánh, TP. HCM",
-    notes: "Cần kèm theo biên bản kiểm định chất lượng xuất xưởng.",
-    items: [
-      { id: 3, product_name: "Inox tấm SUS 304 độ dày 2mm", quantity: 5, price: 4500000, unit: "Tấm" },
-      { id: 4, product_name: "Thép hình chữ I đúc I150", quantity: 10, price: 2030000, unit: "Cây" }
-    ]
-  },
-  {
-    id: "ORD-9903",
-    customer_name: "Trần Thị Minh Tâm",
-    customer_phone: "0934888999",
-    created_at: "2026-06-04T16:45:00.000Z",
-    total_amount: 3240000,
-    status: "DELIVERED",
-    shipping_address: "45/12 Đường số 8, Phường 11, Gò Vấp, TP. HCM",
-    notes: "",
-    items: [
-      { id: 5, product_name: "Kính cường lực 10mm tiêu chuẩn", quantity: 4, price: 810000, unit: "m²" }
-    ]
-  },
-  {
-    id: "ORD-9904",
-    customer_name: "Xưởng gia công nhôm kính Thành Phát",
-    customer_phone: "0977222111",
-    created_at: "2026-06-02T11:00:00.000Z",
-    total_amount: 8900000,
-    status: "CANCELLED",
-    shipping_address: "789 Nguyễn Văn Linh, Quận 7, TP. HCM",
-    notes: "Khách hủy do thay đổi thiết kế công trình.",
-    items: [
-      { id: 6, product_name: "Nhôm thanh định hình Xingfa hệ 55", quantity: 20, price: 445000, unit: "Thanh" }
-    ]
-  },
-  {
-    id: "ORD-9905",
-    customer_name: "Lê Hoàng Long",
-    customer_phone: "0909555444",
-    created_at: "2026-06-01T08:20:00.000Z",
-    total_amount: 12600000,
-    status: "DELIVERED",
-    shipping_address: "Chung cư Topaz City, Khối C, Quận 8, TP. HCM",
-    notes: "Giao lên lầu 12 bằng thang máy hàng.",
-    items: [
-      { id: 7, product_name: "Sắt đặc tròn φ12 mạ kẽm nhúng nóng", quantity: 50, price: 198000, unit: "Cây" },
-      { id: 8, product_name: "Bản mã thép 200x200x8mm", quantity: 50, price: 54000, unit: "Cái" }
-    ]
-  }
-];
-
 export default function ManageOrders() {
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const res = await orderService.getAllOrders();
+        if (res.success && res.data) {
+          const formattedOrders = res.data.map(o => ({
+            id: o.id,
+            display_id: o.order_code,
+            customer_name: o.users?.username || o.quotations?.users?.username || "Khách",
+            customer_phone: o.users?.phone || o.quotations?.users?.phone || "N/A",
+            created_at: o.created_at,
+            total_amount: parseFloat(o.total_amount) || 0,
+            status: o.production_status === 'pending' ? 'PENDING' :
+                    o.production_status === 'in_progress' ? 'CONFIRMED' :
+                    o.production_status === 'completed' ? 'DELIVERED' : 'PENDING',
+            shipping_address: o.quotations?.address || "Liên hệ nhận hàng",
+            notes: o.quotations?.notes || "",
+            items: o.order_items?.map(i => ({
+              id: i.id,
+              product_name: i.products?.product_name || "Sản phẩm",
+              quantity: i.quantity,
+              price: parseFloat(i.price) || 0,
+              unit: "Cái"
+            })) || []
+          }));
+          setOrders(formattedOrders);
+        }
+      } catch (e) {
+        console.error("Failed to load orders", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   // Quản lý phân trang client
   const [page, setPage] = useState(1);
@@ -125,9 +92,9 @@ export default function ManageOrders() {
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const matchesSearch = 
-        order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.display_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer_phone.includes(searchQuery);
+        (order.customer_phone && order.customer_phone.includes(searchQuery));
         
       const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -314,7 +281,7 @@ export default function ManageOrders() {
                     onClick={() => setSelectedOrder(order)}
                   >
                     <td className="p-4 text-center font-mono font-black text-primary">
-                      #{order.id}
+                      {order.display_id}
                     </td>
                     <td className="p-4">
                       <div className="font-semibold text-on-surface">{order.customer_name}</div>
@@ -352,7 +319,7 @@ export default function ManageOrders() {
         {totalPages > 1 && (
           <div className="p-4 border-t border-outline-variant/30 flex items-center justify-between bg-surface-container-low/20">
             <p className="text-[11px] font-black text-on-surface-variant/60 uppercase tracking-wider">
-              Trang {page} / {totalPages} ({filteredOrders.length} đơn hàng ảo)
+              Trang {page} / {totalPages} ({filteredOrders.length} đơn hàng)
             </p>
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={(p) => setPage(p)} />
           </div>
@@ -373,7 +340,7 @@ export default function ManageOrders() {
                   </div>
                   <div>
                     <h3 className="text-base font-black text-on-surface">
-                      Chi Tiết Đơn Hàng #{selectedOrder.id}
+                      Chi Tiết Đơn Hàng {selectedOrder.display_id}
                     </h3>
                     <p className="text-xs font-bold text-on-surface-variant/70">
                       Đặt lúc: {formatDate(selectedOrder.created_at)}

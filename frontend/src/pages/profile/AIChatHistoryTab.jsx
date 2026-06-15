@@ -3,39 +3,12 @@ import { MessageSquareCode, Clock, ArrowRight, Bot, PenTool } from 'lucide-react
 
 const AIChatHistoryTab = () => {
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Mock dữ liệu AI Sessions vì chưa có API cho chức năng này
-    setTimeout(() => {
-      setSessions([
-        {
-          id: 'SS-001',
-          title: 'Tư vấn Bản vẽ Cổng Sắt Nghệ Thuật',
-          date: 'Hôm qua, 14:20 PM',
-          messages_count: 12,
-          has_drawing: true,
-          status: 'completed',
-        },
-        {
-          id: 'SS-002',
-          title: 'Hỏi đáp kỹ thuật hàn TIG / MIG',
-          date: '3 ngày trước',
-          messages_count: 5,
-          has_drawing: false,
-          status: 'completed',
-        },
-        {
-          id: 'SS-003',
-          title: 'Bóc tách vật tư Lan Can Kính',
-          date: 'Tuần trước',
-          messages_count: 24,
-          has_drawing: true,
-          status: 'completed',
-        }
-      ]);
-      setLoading(false);
-    }, 600);
+    // Chức năng AI tạm thời ẩn, chưa triển khai
+    setSessions([]);
+    setLoading(false);
   }, []);
 
   if (loading) return <div className="p-8 text-center animate-pulse">Đang tải dữ liệu trò chuyện AI...</div>;

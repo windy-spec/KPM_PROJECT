@@ -15,8 +15,10 @@ import RoleGuard from './components/auth/RoleGuard';
 import PublicGuard from './components/auth/PublicGuard';
 import Checkout from './pages/checkout/Checkout';
 import Cart from './pages/cart/Cart';
+import PaymentResult from './pages/checkout/PaymentResult';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
+
 
 const routeMap = [
   {
@@ -104,6 +106,14 @@ const routeMap = [
     element: (
       <MainLayout>
         <Cart />
+      </MainLayout>
+    ),
+  },
+  {
+    path: '/payment-result',
+    element: (
+      <MainLayout>
+        <PaymentResult />
       </MainLayout>
     ),
   },

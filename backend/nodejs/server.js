@@ -21,6 +21,11 @@ const materialThicknessRoutes = require("./routes/material_thickness.routes.js")
 const paint_typeRoutes = require("./routes/paint_type.routes.js");
 const laborRoutes = require("./routes/labor.routes.js");
 const cartRoutes = require("./routes/cart.routes.js");
+const paymentRoutes = require("./routes/payment.routes.js");
+const invoiceRoutes = require("./routes/invoice.routes.js");
+const orderRoutes = require("./routes/order.routes.js");
+const adminRoutes = require("./routes/admin.routes.js");
+const userRoutes = require("./routes/user.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -37,6 +42,11 @@ app.use("/api/material-thickness", materialThicknessRoutes);
 app.use("/api/paint-types", paint_typeRoutes);
 app.use("/api/labor", laborRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

@@ -105,38 +105,76 @@ class CartService {
     return await prisma.cart_items.delete({ where: { id: itemId } });
   }
 
-  // 5. GỬI YÊU CẦU BÁO GIÁ CHO ADMIN CHỐT (Submit Cart)
+  // 5. GỬI YÊU CẦU BÁO GIÁ HOẶC TẠO ĐƠN HÀNG (Submit Cart)
   async submitCart(userId) {
     const cart = await this.getCart(userId);
     if (!cart.cart_items || cart.cart_items.length === 0) {
-      throw new Error("Giỏ hàng đang trống, không thể gửi yêu cầu!");
+      throw new Error("Giỏ hàng đang trống, không thể thanh toán!");
     }
 
-    // Tách riêng các ID của Hàng Custom để update
-    const quotationIdsToSubmit = cart.cart_items
-      .filter((item) => item.quotation_id !== null)
-      .map((item) => item.quotation_id);
+    // Phân loại giỏ hàng: Hàng Custom (có quotation_id) và Hàng Thường (có product_id)
+    const customItems = cart.cart_items.filter((item) => item.quotation_id !== null);
+    const normalItems = cart.cart_items.filter((item) => item.product_id !== null);
+
+    const quotationIdsToSubmit = customItems.map((item) => item.quotation_id);
 
     return await prisma.$transaction(async (tx) => {
-      // 5.1. Chuyển trạng thái các Quotation (Hàng custom) từ 'draft/favorite' sang 'pending'
+      // 5.1. Chuyển trạng thái các Quotation (Hàng custom) từ 'draft/favorite' sang 'pending_admin'
       if (quotationIdsToSubmit.length > 0) {
         await tx.quotations.updateMany({
           where: { id: { in: quotationIdsToSubmit } },
-          data: { status: "pending" },
+          data: { status: "pending_admin" }, // Gửi cho admin duyệt
         });
       }
 
-      // 5.2. Đối với các Sản phẩm thường (Chỉ có product_id), FE có thể tạo quotation lúc add vào giỏ,
-      // Hoặc tạo mới một quotation chung cho các sản phẩm thường ở đây.
-      // Tạm thời luồng này: Gửi các custom quotation cho xưởng trước.
+      let newOrder = null;
+      // 5.2. Hàng thường -> Sinh ra Order trực tiếp
+      if (normalItems.length > 0) {
+        const orderCode = "ORD-" + Math.floor(1000 + Math.random() * 9000) + "-" + new Date().getFullYear();
+        
+        // Tính tổng tiền hàng thường
+        let totalAmount = 0;
+        const orderItemsData = normalItems.map(item => {
+          const itemTotal = Number(item.quantity) * Number(item.price);
+          totalAmount += itemTotal;
+          return {
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price,
+          };
+        });
 
-      // 5.3. Xóa sạch giỏ hàng sau khi đã gửi đi
+        // Tạo Order
+        newOrder = await tx.orders.create({
+          data: {
+            user_id: userId,
+            order_code: orderCode,
+            total_amount: totalAmount,
+            production_status: "confirmed", // Hàng có sẵn thì confirmed luôn
+            order_items: {
+              create: orderItemsData
+            }
+          }
+        });
+      }
+
+      // 5.3. Xóa sạch giỏ hàng sau khi đã xử lý xong
       await tx.cart_items.deleteMany({
         where: { cart_id: cart.id },
       });
 
+      let message = "";
+      if (customItems.length > 0 && normalItems.length > 0) {
+        message = "Gửi yêu cầu hàng tùy chỉnh thành công! Hàng có sẵn đã được lên đơn, vui lòng thanh toán.";
+      } else if (customItems.length > 0) {
+        message = "Gửi yêu cầu báo giá thành công! Vui lòng chờ xưởng phản hồi.";
+      } else {
+        message = "Lên đơn hàng thành công! Vui lòng tiến hành thanh toán.";
+      }
+
       return {
-        message: "Gửi yêu cầu báo giá thành công! Vui lòng chờ xưởng phản hồi.",
+        message,
+        order_id: newOrder ? newOrder.id : null, // Trả về order_id để gọi API thanh toán luôn
       };
     });
   }

@@ -12,11 +12,14 @@ import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
-    <footer className="bg-[#1e2b2b] text-white pt-20 pb-8 mt-20 border-t border-white/[0.08] relative overflow-hidden">
+    /* - Đổi bg-[#1e2b2b] sang bg-[#253535]: Màu nền tối được nâng sáng lên 1 tông, trong và dễ chịu hơn.
+      - Giữ nguyên text-white để toàn bộ hệ chữ đạt độ sắc nét và sáng rõ cao nhất.
+    */
+    <footer className="bg-[#253535] text-white pt-20 pb-8 mt-20 border-t border-white/[0.08] relative overflow-hidden">
 
-      {/* Hiệu ứng background mờ - Giúp góc chân trang có ánh sáng Teal lung linh */}
-      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-[#008080]/15 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-[#c6e9e9]/5 rounded-full blur-[100px] pointer-events-none" />
+      {/* Hiệu ứng background mờ - Tăng nhẹ độ mờ góc để ánh sáng Teal lung linh rõ nét hơn trên nền mới */}
+      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-[#008080]/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[200px] h-[200px] bg-[#c6e9e9]/8 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-[1280px] mx-auto px-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-16">
 
@@ -32,12 +35,11 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Chuyển thành text-white hoàn toàn để sáng rõ nhất */}
-          <p className="text-sm text-white leading-relaxed font-normal max-w-sm">
+          <p className="text-sm text-white/90 leading-relaxed font-normal max-w-sm">
             Chuyên gia hàng đầu trong lĩnh vực giải pháp kết cấu thép cấu kiện cao cấp và gia công sắt mỹ thuật CNC chính xác.
           </p>
 
-          {/* Mạng xã hội - Đổi màu icon mặc định sáng hơn */}
+          {/* Mạng xã hội */}
           <div className="flex gap-3 pt-2">
             {/* Facebook */}
             <a
@@ -74,14 +76,12 @@ const Footer = () => {
 
         {/* CỘT 2: DỊCH VỤ */}
         <div className="lg:col-span-2">
-          {/* Dùng màu xanh siêu sáng e3fffe của bạn làm tiêu đề */}
           <h4 className="font-black mb-6 uppercase text-xs tracking-widest text-[#e3fffe] border-b border-white/20 pb-2">
             Dịch vụ
           </h4>
           <ul className="flex flex-col gap-3.5 text-sm text-white font-normal">
             {['Cắt CNC theo yêu cầu', 'Gia công bản mã', 'Lắp dựng nhà tiền chế'].map((item, index) => (
               <li key={index}>
-                {/* Khi hover sẽ đổi sang màu xanh sáng để tạo điểm nhấn tương tác */}
                 <a href="#" className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1">
                   <ArrowRight className="w-0 h-3 opacity-0 group-hover:w-3 group-hover:opacity-100 text-[#c6e9e9] transition-all duration-300" />
                   <span>{item}</span>
@@ -142,7 +142,7 @@ const Footer = () => {
               />
               <button
                 type="submit"
-                className="absolute right-1.5 p-1.5 bg-[#008080] text-white rounded-lg hover:bg-[#006565] active:scale-95 transition-all"
+                className="absolute right-1.5 p-1.5 bg-[#008080] text-white rounded-lg hover:bg-[#006565] active:scale-95 transition-all cursor-pointer"
                 title="Gửi"
               >
                 <Send className="w-3.5 h-3.5" />
@@ -157,8 +157,8 @@ const Footer = () => {
       <div className="max-w-[1280px] mx-auto px-5 mt-4 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#e3fffe] font-medium">
         <p>© {new Date().getFullYear()} KPM MECHANICAL. Bảo lưu mọi quyền.</p>
         <div className="flex gap-6">
-          <a href="/terms-of-service" className="hover:text-white transition-colors">Điều khoản dịch vụ</a>
-          <a href="/privacy-policy" className="hover:text-white transition-colors">Chính sách bảo mật</a>
+          <Link to="/terms-of-service" className="hover:text-white transition-colors">Điều khoản dịch vụ</Link>
+          <Link to="/privacy-policy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
         </div>
       </div>
     </footer>

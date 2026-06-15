@@ -218,7 +218,17 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                   <label className="text-xs font-semibold text-on-surface-variant">Vật tư mặc định</label>
                   <select
                     value={comp.default_material || ""}
-                    onChange={(e) => handleChange(idx, 'default_material', e.target.value)}
+                    onChange={(e) => {
+                      const newCode = e.target.value;
+                      const newComps = [...components];
+                      newComps[idx].default_material = newCode;
+                      const mat = materials.find(m => m.material_code === newCode);
+                      if (mat) {
+                        newComps[idx].material_id = mat.id;
+                        newComps[idx].thickness_id = ''; // reset thickness
+                      }
+                      setComponents(newComps);
+                    }}
                     className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                   >
                     <option value="">-- Chọn loại vật tư --</option>

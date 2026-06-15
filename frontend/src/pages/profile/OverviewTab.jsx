@@ -1,13 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CircleDollarSign, ClipboardList, FileSignature, MessageSquareCode, Activity, ArrowRight, ArrowUpRight } from 'lucide-react';
+import userService from '../../services/user.service';
+import { useNavigate } from 'react-router-dom';
 
 const OverviewTab = ({ user }) => {
-  // Mock data cho Overview (Có thể thay bằng API thật sau này)
+  const navigate = useNavigate();
+  const [profileStats, setProfileStats] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await userService.getProfileStats();
+        if (res.success) {
+          setProfileStats(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
+
   const stats = [
-    { title: 'Đơn hàng hoàn tất', value: '02', icon: ClipboardList, color: 'text-teal-600', bg: 'bg-teal-50' },
-    { title: 'Yêu cầu đang chờ', value: '01', icon: FileSignature, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { title: 'Tổng chi tiêu', value: '23.9M', icon: CircleDollarSign, color: 'text-primary', bg: 'bg-primary/10' },
-    { title: 'Tư vấn AI', value: '14', icon: MessageSquareCode, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { title: 'Đơn hàng', value: profileStats?.totalOrders || 0, icon: ClipboardList, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { title: 'Yêu cầu đang chờ', value: profileStats?.pendingQuotations || 0, icon: FileSignature, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { title: 'Tổng chi tiêu', value: profileStats ? formatCurrency(profileStats.totalSpent) : '0đ', icon: CircleDollarSign, color: 'text-primary', bg: 'bg-primary/10' },
+    { title: 'Tư vấn AI', value: '0', icon: MessageSquareCode, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   const recentActivities = [

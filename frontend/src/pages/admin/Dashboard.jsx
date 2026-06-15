@@ -34,49 +34,7 @@ import ManageMaterialUnits from '../../components/admin/ManageMaterialUnits';
 import ManageInvalidBatches from './ManageInvalidBatches';
 import ManageOrders from './ManageOrders';
 import ManageUsers from './ManageUsers';
-
-const weeklyRevenue = [
-  { name: 'Thứ 2', doanhThu: 120 },
-  { name: 'Thứ 3', doanhThu: 240 },
-  { name: 'Thứ 4', doanhThu: 180 },
-  { name: 'Thứ 5', doanhThu: 320 },
-  { name: 'Thứ 6', doanhThu: 290 },
-  { name: 'Thứ 7', doanhThu: 410 },
-  { name: 'Chủ Nhật', doanhThu: 350 },
-];
-
-const stats = [
-  {
-    title: 'Tổng doanh thu tháng',
-    value: '1.240 tỷ',
-    subtext: '+12.5% so với tháng trước',
-    icon: CircleDollarSign,
-    trend: '+12.5% ↗',
-    tone: 'teal',
-  },
-  {
-    title: 'Đơn hàng mới hôm nay',
-    value: '14',
-    subtext: 'Cập nhật 5 phút trước',
-    icon: ClipboardList,
-    trend: '+8 đơn',
-    tone: 'teal',
-  },
-  {
-    title: 'Khách hàng mới',
-    value: '28',
-    subtext: 'Toàn quốc',
-    icon: UserRound,
-  },
-  {
-    title: 'Hợp đồng chờ ký',
-    value: '06',
-    subtext: 'Cần xử lý gấp',
-    icon: FileSignature,
-    trend: 'Cần xử lý',
-    tone: 'amber',
-  },
-];
+import adminService from '../../services/admin.service';
 
 const topProducts = [
   { label: 'Cổng Sắt CNC', percentage: 45 },
@@ -84,27 +42,6 @@ const topProducts = [
   { label: 'Kết Cấu Thép', percentage: 20 },
   { label: 'Phụ Kiện Khác', percentage: 10 },
 ];
-
-const orders = [
-  {
-    code: '#KPM-2024-001',
-    customer: 'Nguyễn Văn A',
-    date: '08/05/2026',
-    product: 'Cổng Sắt CNC 4 Cánh',
-    value: '45.000.000đ',
-    status: 'Đang sản xuất',
-  },
-  {
-    code: '#KPM-2024-002',
-    customer: 'Trần Thị B',
-    date: '07/05/2026',
-    product: 'Lan Can Sắt Nghệ Thuật',
-    value: '12.500.000đ',
-    status: 'Hoàn tất',
-  },
-];
-
-
 
 const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
   <div className="bg-white border border-outline-variant/70 rounded-2xl p-5 shadow-sm min-h-[132px] flex flex-col justify-between">
@@ -143,12 +80,64 @@ const Dashboard = () => {
   };
 
   const [activePanel, setActivePanel] = useState(getPanelFromUrl);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const res = await adminService.getDashboardStats();
+        if (res.success) {
+          setDashboardData(res.data);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    if (activePanel === 'overview') {
+      fetchDashboard();
+    }
+  }, [activePanel]);
 
   // 2. QUAN TRỌNG: Lắng nghe URL thay đổi khi bấm vào Sidebar để ép Dashboard chuyển trang
   useEffect(() => {
     const currentPanel = getPanelFromUrl();
     setActivePanel(currentPanel);
   }, [location.search]); // Mỗi khi query ?panel=... thay đổi, hàm này sẽ chạy
+
+  const formatMoney = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+
+  const dynamicStats = dashboardData ? [
+    {
+      title: 'Doanh thu tháng',
+      value: formatMoney(dashboardData.stats.revenue.value),
+      subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
+      icon: CircleDollarSign,
+      trend: `${dashboardData.stats.revenue.change}% ↗`,
+      tone: 'teal',
+    },
+    {
+      title: 'Đơn hàng mới',
+      value: dashboardData.stats.orders.value,
+      subtext: 'Trong tháng này',
+      icon: ClipboardList,
+      trend: `${dashboardData.stats.orders.change}% ↗`,
+      tone: 'teal',
+    },
+    {
+      title: 'Tổng khách hàng',
+      value: dashboardData.stats.users.value,
+      subtext: 'Toàn quốc',
+      icon: UserRound,
+    },
+    {
+      title: 'Báo giá chờ duyệt',
+      value: dashboardData.stats.pendingQuotations.value,
+      subtext: 'Cần xử lý gấp',
+      icon: FileSignature,
+      trend: 'Cần xử lý',
+      tone: 'amber',
+    },
+  ] : [];
 
   return (
     <div className="min-h-screen bg-[#f6f8f8] text-on-surface">
@@ -159,10 +148,10 @@ const Dashboard = () => {
           <AdminTopbar />
 
           <main className="p-4 md:p-6 xl:p-8 space-y-6">
-            {activePanel === 'overview' && (
+            {activePanel === 'overview' && dashboardData && (
               <>
                 <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-                  {stats.map((item) => (
+                  {dynamicStats.map((item) => (
                     <StatCard key={item.title} {...item} />
                   ))}
                 </section>
@@ -183,24 +172,18 @@ const Dashboard = () => {
 
                     <div className="h-[280px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={weeklyRevenue} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
+                        <BarChart data={dashboardData.chartData} margin={{ top: 12, right: 8, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e8eded" />
                           <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="#94a3b8" />
                           <YAxis tickLine={false} axisLine={false} stroke="#94a3b8" />
                           <Tooltip cursor={{ fill: '#f8fafc' }} />
-                          <Bar dataKey="doanhThu" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                          <Bar dataKey="revenue" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={32} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
 
                     <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-on-surface-variant/55 font-bold uppercase tracking-[0.2em]">
-                      <span>Thứ 2</span>
-                      <span>Thứ 3</span>
-                      <span>Thứ 4</span>
-                      <span>Thứ 5</span>
-                      <span>Thứ 6</span>
-                      <span>Thứ 7</span>
-                      <span>Chủ Nhật</span>
+                      <span>6 THÁNG GẦN NHẤT</span>
                     </div>
                   </div>
 
@@ -261,16 +244,16 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/30 text-xs font-bold text-on-surface-variant">
-                        {orders.map((order) => (
-                          <tr key={order.code} className="hover:bg-surface-container/20 transition-colors">
-                            <td className="p-4 pl-6 font-mono text-on-surface">{order.code}</td>
-                            <td className="p-4 text-on-surface">{order.customer}</td>
-                            <td className="p-4 opacity-75">{order.date}</td>
-                            <td className="p-4 text-on-surface max-w-xs truncate">{order.product}</td>
-                            <td className="p-4 font-black text-on-surface">{order.value}</td>
+                        {dashboardData.recentItems.map((order) => (
+                          <tr key={order.id} className="hover:bg-surface-container/20 transition-colors">
+                            <td className="p-4 pl-6 font-mono text-on-surface">{order.title}</td>
+                            <td className="p-4 text-on-surface">{order.user}</td>
+                            <td className="p-4 opacity-75">{new Date(order.date).toLocaleDateString('vi-VN')}</td>
+                            <td className="p-4 text-on-surface max-w-xs truncate">Sản phẩm KPM</td>
+                            <td className="p-4 font-black text-on-surface">{formatMoney(order.amount)}</td>
                             <td className="p-4">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] ${
-                                order.status === 'Hoàn tất'
+                                order.status === 'completed'
                                   ? 'bg-teal-50 text-teal-700 border border-teal-100'
                                   : 'bg-amber-50 text-amber-700 border border-amber-100'
                               }`}>
