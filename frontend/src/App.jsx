@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { ToastContainer } from 'react-toastify';
 import MainLayout from './components/layout/MainLayout';
@@ -18,6 +18,7 @@ import Cart from './pages/cart/Cart';
 import PaymentResult from './pages/checkout/PaymentResult';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
+import NotFound from './pages/error/NotFound';
 
 
 const routeMap = [
@@ -110,12 +111,12 @@ const routeMap = [
     ),
   },
   {
-    path: '/payment-result',
-    element: (
-      <MainLayout>
-        <PaymentResult />
-      </MainLayout>
-    ),
+    path: '/error',
+    element: <NotFound />
+  },
+  {
+    path: '*',
+    element: <Navigate to="/error" replace />
   },
   {
     path: '/admin',

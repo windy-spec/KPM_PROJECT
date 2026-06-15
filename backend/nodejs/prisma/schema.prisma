@@ -170,13 +170,13 @@ model products {
   id                 String              @id @default(uuid()) @db.Uuid
   product_code       String              @unique @db.VarChar(50)
   product_name       String              @db.VarChar(255)
-  description        String?
   default_specs      Json?
   created_at         DateTime?           @default(now()) @db.Timestamptz(6)
   category_id        String?             @db.Uuid
   components         Json?               @default("[]")
-  base_price         Decimal?            @default(0) @db.Decimal(15, 2)
   price_adjustment   Decimal?            @default(0) @db.Decimal(12, 2)
+  description        String?
+  base_price         Decimal?            @default(0) @db.Decimal(15, 2)
   cart_items         cart_items[]
   product_images     product_images[]
   order_items        order_items[]
