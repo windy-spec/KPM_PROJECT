@@ -2,7 +2,8 @@ const prisma = require("../models/prisma");
 const bcrypt = require("bcrypt");
 const jwtUtils = require("../utils/jwt.utils");
 const { sendVerifyEmail } = require("../utils/mailer.utils");
-
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class authService {
   async register(data) {
     const {
@@ -321,7 +322,7 @@ class authService {
 
   // 2. Cập nhật User (Đổi Role & Cập nhật Nickname)
   async updateUserByAdmin(userId, data) {
-    const { role_name, nickname} = data;
+    const { role_name, nickname } = data;
 
     const user = await prisma.users.findUnique({ where: { id: userId } });
     if (!user) throw new Error("Không tìm thấy tài khoản người dùng!");
@@ -353,7 +354,7 @@ class authService {
             user_id: userId,
             nickname: nickname,
             first_name: "", // Đảm bảo các trường @db.VarChar(50) không bị lỗi trường bắt buộc
-            last_name: ""
+            last_name: "",
           },
         });
       }
@@ -369,6 +370,68 @@ class authService {
         },
       });
     });
+  }
+  async googleLogin(idToken) {
+    // 1. Gửi token lên Google để xác minh
+    const ticket = await client.verifyIdToken({
+      idToken: idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    // 2. Lấy thông tin user từ Google trả về
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+
+    // 3. Kiểm tra xem email này đã có trong DB chưa (Kéo theo role và profile)
+    let user = await prisma.users.findUnique({
+      where: { email: email },
+      include: { roles: true, user_profiles: true },
+    });
+
+    // 4. Nếu chưa có tài khoản -> Tự động đăng ký mới luôn
+    if (!user) {
+      // Lấy ID của quyền USER
+      const userRole = await prisma.roles.findUnique({
+        where: { role_name: "USER" },
+      });
+
+      user = await prisma.users.create({
+        data: {
+          email: email,
+          username:
+            name.replace(/\s+/g, "").toLowerCase() +
+            Math.floor(Math.random() * 1000), // Tạo username ngẫu nhiên
+          password_hash: "", // Database ông dùng password_hash chứ ko phải password
+          role_id: userRole.id, // Dùng role_id cho chuẩn
+          is_verified: true, // Google login mặc định là email thật nên verified luôn
+          // Nhét luôn avatar và tên thật vào bảng user_profiles
+          user_profiles: {
+            create: {
+              first_name: name,
+              last_name: "",
+              avatar_url: picture,
+            },
+          },
+        },
+        include: { roles: true, user_profiles: true },
+      });
+    }
+
+    // 5. Tạo token y hệt như hàm login thường của ông
+    const accessToken = jwtUtils.generateAccessToken(user);
+    const refreshToken = jwtUtils.generateRefreshToken(user);
+
+    // 6. Lưu Refresh Token vào DB
+    await prisma.users.update({
+      where: { id: user.id },
+      data: { refresh_token: refreshToken, last_login_at: new Date() },
+    });
+
+    return {
+      user: user,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    };
   }
 }
 

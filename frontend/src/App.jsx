@@ -1,26 +1,33 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { ToastContainer } from 'react-toastify';
-import MainLayout from './components/layout/MainLayout';
-import Home from './pages/client/Home';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import Profile from './pages/profile/Profile';
-import ProductList from './pages/product/ProductList';
-import ProductDetail from './pages/product/ProductDetail';
-import AdminDashboard from './pages/admin/Dashboard';
-import RoleGuard from './components/auth/RoleGuard';
-import PublicGuard from './components/auth/PublicGuard';
-import Checkout from './pages/checkout/Checkout';
-import Cart from './pages/cart/Cart';
-import PrivacyPolicy from './pages/legal/PrivacyPolicy';
-import TermsOfService from './pages/legal/TermsOfService';
-import NotFound from './pages/error/NotFound';
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { ToastContainer } from "react-toastify";
+import MainLayout from "./components/layout/MainLayout";
+import Home from "./pages/client/Home";
+import Login from "./pages/auth/Login";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import Profile from "./pages/profile/Profile";
+import ProductList from "./pages/product/ProductList";
+import ProductDetail from "./pages/product/ProductDetail";
+import AdminDashboard from "./pages/admin/Dashboard";
+import RoleGuard from "./components/auth/RoleGuard";
+import PublicGuard from "./components/auth/PublicGuard";
+import Checkout from "./pages/checkout/Checkout";
+import Cart from "./pages/cart/Cart";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import TermsOfService from "./pages/legal/TermsOfService";
+import NotFound from "./pages/error/NotFound";
 import PaymentResult from "./pages/checkout/PaymentResult";
-import Specification from './pages/legal/Specification';
-import Warranty from './pages/legal/Warranty';
+import Specification from "./pages/legal/Specification";
+import Warranty from "./pages/legal/Warranty";
 import { CartProvider } from "./context/CartContext";
 
 const routeMap = [
@@ -129,12 +136,12 @@ const routeMap = [
     ),
   },
   {
-    path: '/error',
-    element: <NotFound />
+    path: "/error",
+    element: <NotFound />,
   },
   {
-    path: '*',
-    element: <Navigate to="/error" replace />
+    path: "*",
+    element: <Navigate to="/error" replace />,
   },
   {
     path: "/payment-result",
@@ -256,24 +263,27 @@ function AppRoutes() {
 }
 
 function App() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   return (
-    <CartProvider>
-      <Router>
-        <AppRoutes />
-        <ToastContainer
-          position="top-right"
-          autoClose={3800}
-          hideProgressBar
-          newestOnTop
-          closeOnClick={false}
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-        />
-      </Router>
-    </CartProvider>
+    <GoogleOAuthProvider clientId={clientId}>
+      <CartProvider>
+        <Router>
+          <AppRoutes />
+          <ToastContainer
+            position="top-right"
+            autoClose={3800}
+            hideProgressBar
+            newestOnTop
+            closeOnClick={false}
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
+        </Router>
+      </CartProvider>
+    </GoogleOAuthProvider>
   );
 }
 

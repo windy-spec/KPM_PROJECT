@@ -26,4 +26,5 @@ router.put(
   authMiddleware,
   authController.updateUserByAdmin,
 );
+router.post("/google", authController.googleLogin);
 module.exports = router;

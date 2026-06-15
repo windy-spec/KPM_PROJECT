@@ -236,5 +236,25 @@ class authController {
       return res.status(400).json({ success: false, message: error.message });
     }
   }
+  async googleLogin(req, res) {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        return res.status(400).json({
+          success: false,
+          message: "Không nhận được Token xác thực từ Google!",
+        });
+      }
+      // 3. NẾU CÓ TOKEN, GỌI SERVICE ĐỂ XỬ LÝ
+      const data = await authService.googleLogin(idToken);
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: "Xác thực Google thất bại!",
+        error_detail: error.message,
+      });
+    }
+  }
 }
 module.exports = new authController();
