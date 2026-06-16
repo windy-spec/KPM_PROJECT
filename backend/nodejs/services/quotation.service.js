@@ -62,7 +62,7 @@ class QuotationService {
       try {
         // Tạo mã đơn hàng ngẫu nhiên
         const orderCode = "ORD-" + Math.floor(1000 + Math.random() * 9000) + "-" + new Date().getFullYear();
-        
+
         const newOrder = await prisma.orders.create({
           data: {
             quotation_id: id,
@@ -88,7 +88,7 @@ class QuotationService {
     const { user_id, title, product_id, components, note } = data;
 
     if (!user_id) throw new Error("Vui lòng đăng nhập để gửi yêu cầu báo giá!");
-    
+
     // Kiểm tra thông tin khách hàng (phải có SĐT hoặc Địa chỉ mới cho gửi)
     const profile = await prisma.user_profiles.findUnique({ where: { user_id } });
     if (!profile || (!profile.phone_number && !profile.address)) {
@@ -117,7 +117,7 @@ class QuotationService {
           height: parseFloat(comp.height),
           area: area,
         },
-        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0), 
+        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0),
         note,
       };
     });
@@ -140,7 +140,7 @@ class QuotationService {
     if (statuses && statuses.length > 0) {
       whereClause.status = { in: statuses };
     }
-    
+
     return await prisma.quotations.findMany({
       where: whereClause,
       include: {
@@ -159,16 +159,16 @@ class QuotationService {
   // 3.3 ADMIN DUYỆT BÁO GIÁ & GỬI EMAIL
   async approveQuoteRequest(id, data) {
     const { total_quoted_price } = data;
-    
+
     const quotation = await this.getQuotationById(id);
     if (!quotation) throw new Error("Báo giá không tồn tại!");
-    
+
     // Cập nhật giá bán cuối cùng do Admin chốt và đổi status
     const updatedQuote = await prisma.quotations.update({
       where: { id },
-      data: { 
+      data: {
         total_quoted_price: total_quoted_price !== undefined ? total_quoted_price : quotation.total_quoted_price,
-        status: "sent_to_customer" 
+        status: "sent_to_customer"
       },
       include: {
         users: true
@@ -340,14 +340,14 @@ class QuotationService {
 
     // 1. Lấy dữ liệu sản phẩm gốc và nhân công (Chung cho toàn sản phẩm)
     const [product, laborRate] = await Promise.all([
-      prisma.products.findUnique({ where: { id: product_id } }),
+      product_id ? prisma.products.findUnique({ where: { id: product_id } }) : null,
       prisma.labor_rates.findFirst({
         where: { category_id: labor_category_id, model_id: labor_model_id },
       }),
     ]);
 
     const base_product_price = product?.price_adjustment ? parseFloat(product.price_adjustment) : 0;
-    
+
     let total_area = 0;
     let total_material_price = 0;
     let total_paint_price = 0;
@@ -429,7 +429,7 @@ class QuotationService {
           height: parseFloat(comp.height),
           area: area,
         },
-        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0), 
+        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0),
         note,
       };
     });
