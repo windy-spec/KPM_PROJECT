@@ -88,6 +88,38 @@ class OrderService {
     });
 
     return newOrder;
+  } // THÊM MỚI: Cập nhật thông tin giao hàng & các loại phí trước khi thanh toán
+  async updateCheckoutInfo(orderId, userId, payload) {
+    const {
+      customer_name,
+      customer_phone,
+      shipping_address,
+      order_notes,
+      shipping_fee,
+      installation_fee,
+      final_total,
+    } = payload;
+
+    // Kiểm tra xem đơn hàng có tồn tại không
+    const order = await prisma.orders.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) throw new Error("Không tìm thấy đơn hàng để thanh toán!");
+
+    // Cập nhật thông tin Snapshot vào DB
+    return await prisma.orders.update({
+      where: { id: orderId },
+      data: {
+        customer_name,
+        customer_phone,
+        shipping_address,
+        order_notes,
+        shipping_fee: shipping_fee || 0,
+        installation_fee: installation_fee || 0,
+        total_amount: final_total, // Trọng tâm: Cập nhật đè tổng tiền để MoMo/VNPay lấy đúng số này!
+      },
+    });
   }
 }
 

@@ -114,18 +114,30 @@ model order_tracking {
 }
 
 model orders {
-  id                String           @id @default(uuid()) @db.Uuid
-  quotation_id      String?          @unique @db.Uuid
-  order_code        String           @unique @db.VarChar(50)
-  production_status String?          @default("confirmed") @db.VarChar(50)
-  created_at        DateTime?        @default(now()) @db.Timestamptz(6)
-  total_amount      Decimal?         @db.Decimal(15, 2)
-  user_id           String?          @db.Uuid
+  id                String         @id @default(uuid()) @db.Uuid
+  quotation_id      String?        @unique @db.Uuid
+  order_code        String         @unique @db.VarChar(50)
+  production_status String?        @default("pending_payment") @db.VarChar(50)
+  created_at        DateTime?      @default(now()) @db.Timestamptz(6)
+  
+  // Tiền nong
+  total_amount      Decimal?       @db.Decimal(15, 2)
+  shipping_fee      Decimal?       @default(0) @db.Decimal(15, 2)
+  installation_fee  Decimal?       @default(0) @db.Decimal(15, 2)
+  
+  // Snapshot thông tin giao hàng (Sao chép từ Profile qua lúc nhấn Đặt Hàng)
+  customer_name     String?        @db.VarChar(100)
+  customer_phone    String?        @db.VarChar(20)
+  shipping_address  String?
+  order_notes       String?
+  
+  // Quan hệ
+  user_id           String?        @db.Uuid
   invoices          invoices?
   order_items       order_items[]
   order_tracking    order_tracking[]
-  quotations        quotations?      @relation(fields: [quotation_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  users             users?           @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  quotations        quotations?    @relation(fields: [quotation_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users             users?         @relation(fields: [user_id], references: [id], onUpdate: NoAction)
   transactions      transactions[]
 }
 

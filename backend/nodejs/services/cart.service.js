@@ -113,8 +113,12 @@ class CartService {
     }
 
     // Phân loại giỏ hàng: Hàng Custom (có quotation_id) và Hàng Thường (có product_id)
-    const customItems = cart.cart_items.filter((item) => item.quotation_id !== null);
-    const normalItems = cart.cart_items.filter((item) => item.product_id !== null);
+    const customItems = cart.cart_items.filter(
+      (item) => item.quotation_id !== null,
+    );
+    const normalItems = cart.cart_items.filter(
+      (item) => item.product_id !== null,
+    );
 
     const quotationIdsToSubmit = customItems.map((item) => item.quotation_id);
 
@@ -130,11 +134,15 @@ class CartService {
       let newOrder = null;
       // 5.2. Hàng thường -> Sinh ra Order trực tiếp
       if (normalItems.length > 0) {
-        const orderCode = "ORD-" + Math.floor(1000 + Math.random() * 9000) + "-" + new Date().getFullYear();
-        
+        const orderCode =
+          "ORD-" +
+          Math.floor(1000 + Math.random() * 9000) +
+          "-" +
+          new Date().getFullYear();
+
         // Tính tổng tiền hàng thường
         let totalAmount = 0;
-        const orderItemsData = normalItems.map(item => {
+        const orderItemsData = normalItems.map((item) => {
           const itemTotal = Number(item.quantity) * Number(item.price);
           totalAmount += itemTotal;
           return {
@@ -150,11 +158,11 @@ class CartService {
             user_id: userId,
             order_code: orderCode,
             total_amount: totalAmount,
-            production_status: "confirmed", // Hàng có sẵn thì confirmed luôn
+            production_status: "pending_payment", // Hàng có sẵn thì confirmed luôn
             order_items: {
-              create: orderItemsData
-            }
-          }
+              create: orderItemsData,
+            },
+          },
         });
       }
 
@@ -165,9 +173,11 @@ class CartService {
 
       let message = "";
       if (customItems.length > 0 && normalItems.length > 0) {
-        message = "Gửi yêu cầu hàng tùy chỉnh thành công! Hàng có sẵn đã được lên đơn, vui lòng thanh toán.";
+        message =
+          "Gửi yêu cầu hàng tùy chỉnh thành công! Hàng có sẵn đã được lên đơn, vui lòng thanh toán.";
       } else if (customItems.length > 0) {
-        message = "Gửi yêu cầu báo giá thành công! Vui lòng chờ xưởng phản hồi.";
+        message =
+          "Gửi yêu cầu báo giá thành công! Vui lòng chờ xưởng phản hồi.";
       } else {
         message = "Lên đơn hàng thành công! Vui lòng tiến hành thanh toán.";
       }

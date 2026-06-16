@@ -105,6 +105,24 @@ class PaymentService {
         status: "pending", // Admin sẽ duyệt tay sau
       },
     });
+    if (order_id) {
+      await prisma.orders.update({
+        where: { id: order_id },
+        data: { production_status: "pending" },
+      });
+      await invoiceService.createInvoice(order_id, amount);
+    } else if (quotation_id) {
+      const order = await prisma.orders.findUnique({
+        where: { quotation_id: quotation_id },
+      });
+      if (order) {
+        await prisma.orders.update({
+          where: { id: order.id },
+          data: { production_status: "pending" }, 
+        });
+        await invoiceService.createInvoice(order.id, amount);
+      }
+    }
 
     return transaction;
   }

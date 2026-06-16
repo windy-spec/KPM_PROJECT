@@ -1,0 +1,192 @@
+import React, { useState, useEffect } from "react";
+
+const AddressSelect = ({ value, onChange, disabled }) => {
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [street, setStreet] = useState("");
+
+  // 1. Load danh sách Tỉnh/Thành
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/p/")
+      .then((res) => res.json())
+      .then((data) => setProvinces(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  // 2. Tự động đọc Address từ DB và khớp lại vào Dropdown
+  useEffect(() => {
+    if (value && provinces.length > 0 && !selectedProvince) {
+      const parts = value.split(",").map((s) => s.trim());
+
+      if (parts.length >= 4) {
+        const pName = parts[parts.length - 1];
+        const dName = parts[parts.length - 2];
+        const wName = parts[parts.length - 3];
+        const streetName = parts.slice(0, parts.length - 3).join(", ");
+
+        const p = provinces.find(
+          (x) => pName === x.name || pName.includes(x.name),
+        );
+        if (p) {
+          setSelectedProvince(p.code);
+          fetch(`https://provinces.open-api.vn/api/p/${p.code}?depth=2`)
+            .then((res) => res.json())
+            .then((data) => {
+              setDistricts(data.districts || []);
+              const d = (data.districts || []).find(
+                (x) => dName === x.name || dName.includes(x.name),
+              );
+              if (d) {
+                setSelectedDistrict(d.code);
+                fetch(`https://provinces.open-api.vn/api/d/${d.code}?depth=2`)
+                  .then((res) => res.json())
+                  .then((wData) => {
+                    setWards(wData.wards || []);
+                    const w = (wData.wards || []).find(
+                      (x) => wName === x.name || wName.includes(x.name),
+                    );
+                    if (w) setSelectedWard(w.code);
+                  });
+              }
+            });
+        }
+        setStreet(streetName);
+      } else {
+        setStreet(value);
+      }
+    }
+  }, [value, provinces]); // Chạy lại khi có value hoặc load xong Tỉnh
+
+  // 3. Load Huyện khi chọn Tỉnh mới
+  useEffect(() => {
+    if (
+      selectedProvince &&
+      !districts.find((d) => d.province_code == selectedProvince)
+    ) {
+      fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
+        .then((res) => res.json())
+        .then((data) => {
+          setDistricts(data.districts || []);
+          setSelectedDistrict("");
+          setWards([]);
+        });
+    }
+  }, [selectedProvince]);
+
+  // 4. Load Xã khi chọn Huyện mới
+  useEffect(() => {
+    if (
+      selectedDistrict &&
+      !wards.find((w) => w.district_code == selectedDistrict)
+    ) {
+      fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
+        .then((res) => res.json())
+        .then((data) => {
+          setWards(data.wards || []);
+          setSelectedWard("");
+        });
+    }
+  }, [selectedDistrict]);
+
+  const handleUpdateAddress = (
+    newStreet,
+    newProvince,
+    newDistrict,
+    newWard,
+  ) => {
+    const pName = provinces.find((p) => p.code == newProvince)?.name || "";
+    const dName = districts.find((d) => d.code == newDistrict)?.name || "";
+    const wName = wards.find((w) => w.code == newWard)?.name || "";
+
+    const fullAddress = [newStreet, wName, dName, pName]
+      .filter(Boolean)
+      .join(", ");
+    onChange(fullAddress);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <select
+          disabled={disabled}
+          value={selectedProvince}
+          onChange={(e) => {
+            setSelectedProvince(e.target.value);
+            handleUpdateAddress(street, e.target.value, "", "");
+          }}
+          className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
+        >
+          <option value="">Chọn Tỉnh/Thành phố</option>
+          {provinces.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          disabled={!selectedProvince || disabled}
+          value={selectedDistrict}
+          onChange={(e) => {
+            setSelectedDistrict(e.target.value);
+            handleUpdateAddress(street, selectedProvince, e.target.value, "");
+          }}
+          className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
+        >
+          <option value="">Chọn Quận/Huyện</option>
+          {districts.map((d) => (
+            <option key={d.code} value={d.code}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          disabled={!selectedDistrict || disabled}
+          value={selectedWard}
+          onChange={(e) => {
+            setSelectedWard(e.target.value);
+            handleUpdateAddress(
+              street,
+              selectedProvince,
+              selectedDistrict,
+              e.target.value,
+            );
+          }}
+          className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
+        >
+          <option value="">Chọn Phường/Xã</option>
+          {wards.map((w) => (
+            <option key={w.code} value={w.code}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <input
+        type="text"
+        disabled={disabled}
+        value={street}
+        onChange={(e) => {
+          setStreet(e.target.value);
+          handleUpdateAddress(
+            e.target.value,
+            selectedProvince,
+            selectedDistrict,
+            selectedWard,
+          );
+        }}
+        placeholder="Số nhà, tên đường, tòa nhà..."
+        className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
+      />
+    </div>
+  );
+};
+
+export default AddressSelect;
