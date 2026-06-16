@@ -39,7 +39,9 @@ const Checkout = () => {
   });
 
   const [profileLoading, setProfileLoading] = useState(true);
-  const [needInstallation, setNeedInstallation] = useState(false);
+  const [needInstallation, setNeedInstallation] = useState(
+    location.state?.from_order ? (location.state?.installation_fee > 0) : false
+  );
   const [paymentMethod, setPaymentMethod] = useState("vietqr");
   const [qrData, setQrData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,11 +85,18 @@ const Checkout = () => {
   }, [navigate]);
 
   // TÍNH TOÁN TIỀN NONG TỰ ĐỘNG
+  const passedShippingFee = location.state?.shipping_fee;
+  const passedInstallationFee = location.state?.installation_fee;
+  const passedTotalAmount = location.state?.total_amount;
+
   const tempTotal = cartItems.reduce(
     (acc, item) => acc + item.price * item.quantity,
     0,
   );
-  const shippingFee = tempTotal > 5000000 ? 0 : 150000;
+  
+  const shippingFee = isFromOrder && passedShippingFee !== undefined 
+    ? passedShippingFee 
+    : (tempTotal > 5000000 ? 0 : 150000);
 
   // Lấy 8% tổng giá trị linh kiện làm phí lắp đặt/thi công (Tự động scale theo độ khủng của đơn hàng)
   const calculateAutoInstallFee = (items) => {
@@ -98,9 +107,12 @@ const Checkout = () => {
   };
 
   const installationFee = needInstallation
-    ? calculateAutoInstallFee(cartItems)
+    ? (isFromOrder && passedInstallationFee !== undefined ? passedInstallationFee : calculateAutoInstallFee(cartItems))
     : 0;
-  const finalTotal = tempTotal + shippingFee + installationFee;
+
+  const finalTotal = isFromOrder && passedTotalAmount !== undefined && (installationFee === passedInstallationFee)
+    ? passedTotalAmount
+    : tempTotal + shippingFee + installationFee;
   const isLocked = isSubmitting || !!qrData || profileLoading;
 
   const handleSubmitOrder = async (e) => {

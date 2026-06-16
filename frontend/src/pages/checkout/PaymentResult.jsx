@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { CheckCircle, XCircle, Home, FileText } from "lucide-react";
+import apiClient from "../../services/apiClient";
 
 const PaymentResult = () => {
   // Lấy các tham số trên thanh URL do VNPay/MoMo trả về
@@ -11,38 +12,60 @@ const PaymentResult = () => {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    // Tham số trả về của VNPay
-    const vnp_ResponseCode = searchParams.get("vnp_ResponseCode");
-    // Tham số trả về của MoMo
-    const resultCode = searchParams.get("resultCode");
+    const syncPaymentStatus = async () => {
+      // Tham số trả về của VNPay
+      const vnp_ResponseCode = searchParams.get("vnp_ResponseCode");
+      // Tham số trả về của MoMo
+      const resultCode = searchParams.get("resultCode");
 
-    if (vnp_ResponseCode) {
-      // Chuẩn VNPay: 00 là thành công
-      if (vnp_ResponseCode === "00") {
-        setStatus("success");
-        setMessage("Thanh toán đơn hàng qua VNPay thành công!");
-      } else {
-        setStatus("failed");
-        setMessage(
-          "Thanh toán VNPay thất bại hoặc đã bị hủy (Mã lỗi: " +
-            vnp_ResponseCode +
-            ")",
-        );
+      try {
+        if (vnp_ResponseCode) {
+          // Gửi data về BE để tự update DB nếu webhook bị lỗi môi trường localhost
+          // Sử dụng searchParams.toString() để giữ nguyên cấu trúc query string, giúp BE verify chữ ký chính xác
+          const queryString = searchParams.toString();
+          await apiClient.get(`/payments/vnpay-ipn?${queryString}`).catch((err) => console.log(err));
+
+          // Chuẩn VNPay: 00 là thành công
+          if (vnp_ResponseCode === "00") {
+            setStatus("success");
+            setMessage("Thanh toán đơn hàng qua VNPay thành công!");
+          } else {
+            setStatus("failed");
+            setMessage(
+              "Thanh toán VNPay thất bại hoặc đã bị hủy (Mã lỗi: " +
+                vnp_ResponseCode +
+                ")",
+            );
+          }
+        } else if (resultCode) {
+          // Xử lý type chuẩn cho MoMo để pass qua backend
+          const body = Object.fromEntries(searchParams.entries());
+          if (body.amount) body.amount = Number(body.amount);
+          if (body.resultCode) body.resultCode = Number(body.resultCode);
+          if (body.transId) body.transId = Number(body.transId);
+          if (body.responseTime) body.responseTime = Number(body.responseTime);
+
+          await apiClient.post("/payments/momo-webhook", body).catch((err) => console.log(err));
+
+          // Chuẩn MoMo: 0 là thành công
+          if (String(resultCode) === "0") {
+            setStatus("success");
+            setMessage("Thanh toán đơn hàng qua MoMo thành công!");
+          } else {
+            setStatus("failed");
+            setMessage("Thanh toán MoMo thất bại (Mã lỗi: " + resultCode + ")");
+          }
+        } else {
+          // Nếu không có param nào (user tự gõ link)
+          setStatus("failed");
+          setMessage("Không tìm thấy thông tin giao dịch hợp lệ trên hệ thống.");
+        }
+      } catch (err) {
+        console.error("Lỗi:", err);
       }
-    } else if (resultCode) {
-      // Chuẩn MoMo: 0 là thành công
-      if (resultCode === "0") {
-        setStatus("success");
-        setMessage("Thanh toán đơn hàng qua MoMo thành công!");
-      } else {
-        setStatus("failed");
-        setMessage("Thanh toán MoMo thất bại (Mã lỗi: " + resultCode + ")");
-      }
-    } else {
-      // Nếu không có param nào (user tự gõ link)
-      setStatus("failed");
-      setMessage("Không tìm thấy thông tin giao dịch hợp lệ trên hệ thống.");
-    }
+    };
+    
+    syncPaymentStatus();
   }, [searchParams]);
 
   if (status === "loading")

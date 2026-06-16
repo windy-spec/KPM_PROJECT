@@ -26,6 +26,8 @@ const OrdersTab = () => {
             order_code: o.order_code, // Tách riêng mã hiển thị
             created_at: o.created_at,
             total_amount: parseFloat(o.total_amount) || 0,
+            shipping_fee: parseFloat(o.shipping_fee) || 0,
+            installation_fee: parseFloat(o.installation_fee) || 0,
             status: o.production_status,
             items:
               o.order_items?.map((i) => ({
@@ -157,15 +159,35 @@ const OrdersTab = () => {
                 {/* HIỂN THỊ NÚT THANH TOÁN LẠI NẾU ĐANG CHỜ TIỀN */}
                 {order.status === "pending_payment" ? (
                   <button
-                    onClick={() =>
+                    onClick={() => {
+                      // Bắt buộc phải format lại cục data này trước khi truyền đi
+                      const formattedCheckoutItems = order.raw_items.map(
+                        (i) => ({
+                          id: i.id,
+                          product_id: i.product_id,
+                          product_name: i.products?.product_name || "Sản phẩm",
+                          product_code: i.products?.product_code || "KPM",
+                          image:
+                            i.products?.product_images?.[0]?.image_url ||
+                            "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                          material_name:
+                            i.products?.materials?.material_name || "Linh kiện",
+                          quantity: i.quantity,
+                          price: parseFloat(i.price) || 0,
+                        }),
+                      );
+
                       navigate("/checkout", {
                         state: {
                           order_id: order.id,
-                          checkoutItems: order.raw_items,
+                          checkoutItems: formattedCheckoutItems, // Truyền cái data đã format vào đây
                           from_order: true,
+                          shipping_fee: order.shipping_fee,
+                          installation_fee: order.installation_fee,
+                          total_amount: order.total_amount,
                         },
-                      })
-                    }
+                      });
+                    }}
                     className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary text-white rounded-xl hover:bg-primary/90 transition-all shadow-md"
                   >
                     Tiếp tục thanh toán

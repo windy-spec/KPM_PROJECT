@@ -56,9 +56,14 @@ const NavigationMenu = () => {
       to: "/technical-terms",
     },
     {
-      title: "Unknow",
+      title: "Trung tâm trợ giúp",
       icon: Heart,
-      hasSub: true
+      hasSub: true,
+      subItems: [
+        { title: "Điều khoản dịch vụ", to: "/terms" },
+        { title: "Chính sách bảo mật", to: "/privacy" },
+        { title: "Các câu hỏi thường gặp", to: "/faq" },
+      ]
     },
   ];
 
@@ -106,7 +111,17 @@ const NavigationMenu = () => {
               {/* Dropdown động */}
               {item.hasSub && (
                 <div className="absolute top-full left-0 w-64 bg-white border border-outline-variant shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[60] py-2 rounded-b-lg">
-                  {index === 0 && categories.length > 0 ? (
+                  {item.subItems ? (
+                    item.subItems.map((sub, idx) => (
+                      <Link
+                        key={idx}
+                        to={sub.to}
+                        className="block px-4 py-2 text-sm text-on-surface-variant hover:bg-primary/5 hover:text-primary"
+                      >
+                        {sub.title}
+                      </Link>
+                    ))
+                  ) : index === 0 && categories.length > 0 ? (
                     categories.map((cat) => (
                       <Link
                         key={cat.id || cat._id || cat.category_code}

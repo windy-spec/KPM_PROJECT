@@ -118,7 +118,7 @@ class PaymentService {
       if (order) {
         await prisma.orders.update({
           where: { id: order.id },
-          data: { production_status: "pending" }, 
+          data: { production_status: "pending" },
         });
         await invoiceService.createInvoice(order.id, amount);
       }
@@ -143,9 +143,17 @@ class PaymentService {
       where: { transaction_code: orderId },
     });
     if (!transaction) throw new Error("Giao dịch không tồn tại!");
+    
+    // Ngăn chặn xử lý lặp lại nếu webhook gọi nhiều lần hoặc frontend tự gọi
+    if (transaction.status !== "pending") {
+      return true;
+    }
 
     // Nếu thanh toán thành công
-    if (resultCode === 0) {
+    if (Number(resultCode) === 0) {
+      console.log(
+        "🎉 [MOMO WEBHOOK] THANH TOÁN THÀNH CÔNG! Đang xử lý cập nhật...",
+      );
       await prisma.$transaction(async (tx) => {
         // Cập nhật trạng thái transaction
         await tx.transactions.update({
@@ -154,24 +162,34 @@ class PaymentService {
         });
 
         if (transaction.quotation_id) {
-          // Đổi trạng thái báo giá
           await tx.quotations.update({
             where: { id: transaction.quotation_id },
             data: { status: "paid" },
           });
 
-          // Tìm Order tương ứng để xuất Hoá Đơn
           const order = await tx.orders.findUnique({
             where: { quotation_id: transaction.quotation_id },
           });
           if (order) {
-            await invoiceService.createInvoice(order.id, amount, tx); // Truyền tx để chạy trong transaction
+            // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+            await tx.orders.update({
+              where: { id: order.id },
+              data: { production_status: "pending" },
+            });
+            await invoiceService.createInvoice(order.id, amount, tx);
           }
         } else if (transaction.order_id) {
-          // Xuất hoá đơn luôn cho đơn hàng trực tiếp
+          // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+          await tx.orders.update({
+            where: { id: transaction.order_id },
+            data: { production_status: "pending" },
+          });
           await invoiceService.createInvoice(transaction.order_id, amount, tx);
         }
       });
+      console.log(
+        "✅ [MOMO WEBHOOK] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
+      );
     } else {
       // Thanh toán thất bại
       await prisma.transactions.update({
@@ -340,11 +358,19 @@ class PaymentService {
       const transaction = await prisma.transactions.findUnique({
         where: { transaction_code: orderId },
       });
-      if (!transaction) return { RspCode: "01", Message: "Order not found" };
-      if (transaction.status !== "pending")
+      if (!transaction) {
+        console.error(`[VNPAY IPN] Lỗi: Không tìm thấy giao dịch ${orderId}`);
+        return { RspCode: "01", Message: "Order not found" };
+      }
+      if (transaction.status !== "pending") {
+        console.log(`[VNPAY IPN] Thông báo: Giao dịch ${orderId} đã được xử lý`);
         return { RspCode: "02", Message: "Order already confirmed" };
+      }
 
       if (rspCode === "00") {
+        console.log(
+          "🎉 [VNPAY IPN] THANH TOÁN THÀNH CÔNG! Đang xử lý cập nhật...",
+        );
         // Thanh toán thành công
         await prisma.$transaction(async (tx) => {
           await tx.transactions.update({
@@ -360,8 +386,20 @@ class PaymentService {
             const order = await tx.orders.findUnique({
               where: { quotation_id: transaction.quotation_id },
             });
-            if (order) await invoiceService.createInvoice(order.id, amount, tx);
+            if (order) {
+              // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+              await tx.orders.update({
+                where: { id: order.id },
+                data: { production_status: "pending" },
+              });
+              await invoiceService.createInvoice(order.id, amount, tx);
+            }
           } else if (transaction.order_id) {
+            // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+            await tx.orders.update({
+              where: { id: transaction.order_id },
+              data: { production_status: "pending" },
+            });
             await invoiceService.createInvoice(
               transaction.order_id,
               amount,
@@ -369,6 +407,9 @@ class PaymentService {
             );
           }
         });
+        console.log(
+          "✅ [VNPAY IPN] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
+        );
         return { RspCode: "00", Message: "Confirm Success" };
       } else {
         // Thanh toán thất bại
@@ -376,9 +417,13 @@ class PaymentService {
           where: { id: transaction.id },
           data: { status: "failed" },
         });
+        console.log(`[VNPAY IPN] Thanh toán thất bại, cập nhật trạng thái failed cho ${orderId}`);
         return { RspCode: "00", Message: "Success" };
       }
     } else {
+      console.error(`[VNPAY IPN] Lỗi: Checksum không hợp lệ cho đơn ${orderId}`);
+      console.log(`- SecureHash nhận được:`, secureHash);
+      console.log(`- Hash tự tính toán:`, signed);
       return { RspCode: "97", Message: "Invalid Checksum" };
     }
   }
@@ -389,7 +434,7 @@ function sortObject(obj) {
   let str = [];
   let key;
   for (key in obj) {
-    if (obj.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
       str.push(encodeURIComponent(key));
     }
   }
