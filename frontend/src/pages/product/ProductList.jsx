@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import ProductCard from '../../components/common/ProductCard';
 import SidebarFilter from '../../components/layout/SidebarFilter';
@@ -7,13 +7,31 @@ import { productService } from '../../services/product.service';
 
 const ProductList = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const initialCategory = searchParams.get('category');
+  // Phân rã tham số category từ URL (ví dụ "101,102" thành ["101", "102"])
+  const initialCategoryIds = initialCategory
+    ? initialCategory.split(',').map(id => String(id).trim()).filter(Boolean)
+    : [];
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, totalPage: 1, totalItem: 0 });
   const [filters, setFilters] = useState({ categories: initialCategory ? [initialCategory] : [] });
 
+  // Lắng nghe khi URL thay đổi (nhấn từ NavigationMenu hoặc F5) để đồng bộ vào State lọc
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const catParam = params.get('category');
+    const updatedIds = catParam
+      ? catParam.split(',').map(id => String(id).trim()).filter(Boolean)
+      : [];
+
+    setFilters({ categories: updatedIds });
+  }, [location.search]);
+
+  // Gọi API lấy sản phẩm dựa trên State lọc hiện tại
   const fetchProducts = async (page = 1) => {
     setLoading(true);
     try {
@@ -30,14 +48,7 @@ const ProductList = () => {
   };
 
   useEffect(() => {
-    // Khởi tạo lại filter nếu URL query param thay đổi
-    const urlCategory = new URLSearchParams(location.search).get('category');
-    setFilters({ categories: urlCategory ? [urlCategory] : [] });
-  }, [location.search]);
-
-  useEffect(() => {
     fetchProducts(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const handlePageChange = (newPage) => {
@@ -48,7 +59,21 @@ const ProductList = () => {
   };
 
   const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
+    const selectedIds = newFilters.categories || [];
+
+    // 1. Cập nhật State để chạy API lấy sản phẩm mới
+    setFilters({ categories: selectedIds });
+
+    // 2. Đồng bộ hóa trực tiếp danh sách ID đang chọn lên thanh URL trình duyệt
+    const params = new URLSearchParams(location.search);
+    if (selectedIds.length > 0) {
+      params.set('category', selectedIds.join(',')); // Tạo chuỗi dạng ?category=101,102
+    } else {
+      params.delete('category'); // Nếu mảng rỗng (Xóa lọc) thì xóa hẳn chữ category trên URL
+    }
+
+    // Đẩy URL mới lên thanh địa chỉ mà không làm reload lại toàn bộ trang
+    navigate({ search: params.toString() }, { replace: true });
   };
 
   return (
@@ -69,12 +94,12 @@ const ProductList = () => {
 
       {/* Layout Grid chính */}
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
+
         {/* CỘT TRÁI: SidebarFilter */}
         <div className="lg:col-span-1">
-          <SidebarFilter 
-            onFilterChange={handleFilterChange} 
-            initialCategoryIds={filters.categories} 
+          <SidebarFilter
+            onFilterChange={handleFilterChange}
+            initialCategoryIds={filters.categories}
           />
         </div>
 
@@ -107,32 +132,31 @@ const ProductList = () => {
           {/* Phân trang */}
           {pagination.totalPage > 1 && (
             <div className="mt-12 flex items-center justify-center gap-1.5 text-xs font-black">
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.page - 1)}
                 disabled={pagination.page === 1}
                 className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center disabled:opacity-50"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              
+
               {[...Array(pagination.totalPage)].map((_, idx) => {
                 const pageNum = idx + 1;
                 return (
-                  <button 
+                  <button
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-colors ${
-                      pageNum === pagination.page 
-                        ? 'bg-primary border-primary text-white' 
-                        : 'bg-white border-outline-variant text-on-surface-variant hover:border-primary/50'
-                    }`}
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-colors ${pageNum === pagination.page
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-white border-outline-variant text-on-surface-variant hover:border-primary/50'
+                      }`}
                   >
                     {pageNum}
                   </button>
                 );
               })}
 
-              <button 
+              <button
                 onClick={() => handlePageChange(pagination.page + 1)}
                 disabled={pagination.page === pagination.totalPage}
                 className="w-9 h-9 border border-outline-variant rounded-lg bg-white text-on-surface-variant flex items-center justify-center disabled:opacity-50"
