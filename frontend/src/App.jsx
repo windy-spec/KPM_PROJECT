@@ -27,9 +27,12 @@ import TermsOfService from "./pages/legal/TermsOfService";
 import NotFound from "./pages/error/NotFound";
 import PaymentResult from "./pages/checkout/PaymentResult";
 import Specification from "./pages/legal/Specification";
-import Warranty from "./pages/legal/Warranty";
+import SpecConfirmation from "./pages/legal/SpecConfirmation";
 import About from "./pages/about/About"
 import TechnicalTerms from "./pages/legal/TechnicalTerms";
+import FAQ from "./pages/info/FAQ";
+import WarrantyPolicy from "./pages/legal/WarrantyPolicy";
+import CustomQuoteForm from './components/quotation/CustomQuoteForm';
 
 import ScrollToTop from "./components/common/ScrollToTop";
 import { CartProvider } from "./context/CartContext";
@@ -68,10 +71,10 @@ const routeMap = [
     ),
   },
   {
-    path: "/warranty",
+    path: "/spec-confirmation",
     element: (
       <MainLayout>
-        <Warranty />
+        <SpecConfirmation />
       </MainLayout>
     ),
   },
@@ -164,12 +167,36 @@ const routeMap = [
     ),
   },
   {
+    path: "/faq",
+    element: (
+      <MainLayout>
+        <FAQ />
+      </MainLayout>
+    ),
+  },
+  {
     path: "/technical-terms",
     element: (
       <MainLayout>
         <TechnicalTerms />
       </MainLayout>
     ),
+  },
+  {
+    path: "/warranty",
+    element: (
+      <MainLayout>
+        <WarrantyPolicy />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/request-a-quote",
+    element: (
+      <MainLayout>
+        <CustomQuoteForm />
+      </MainLayout>
+    )
   },
   {
     path: "/admin",

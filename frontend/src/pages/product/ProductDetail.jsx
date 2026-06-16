@@ -19,6 +19,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { CATEGORY_BLUEPRINTS } from "../../config/categoryBlueprints";
+
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -696,7 +697,7 @@ export default function ProductDetail() {
               </a>
               và{" "}
               <a
-                href="/warranty"
+                href="/spec-confirmation"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary font-bold hover:underline"

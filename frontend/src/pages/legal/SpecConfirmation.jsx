@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Hammer, ShieldAlert, ArrowLeft, ShieldCheck } from 'lucide-react';
 
-const Warranty = () => {
+const SpecConfirmation = () => {
     return (
         <div className="min-h-screen bg-surface selection:bg-primary/20 py-12 md:py-20 text-on-surface">
             <div className="max-w-[1140px] mx-auto px-6 md:px-12">
@@ -84,4 +84,4 @@ const Warranty = () => {
     );
 };
 
-export default Warranty;
+export default SpecConfirmation;

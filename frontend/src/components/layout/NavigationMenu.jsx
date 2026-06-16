@@ -41,14 +41,24 @@ const NavigationMenu = () => {
       hasSub: true,
       to: "/products",
     },
-    { title: "Chính sách bảo hành", icon: Hammer, hasSub: false },
+    {
+      title: "Chính sách bảo hành",
+      icon: Hammer,
+      hasSub: false,
+      to: "/warranty",
+    },
     {
       title: "Về chúng tôi",
       icon: Drill,
       hasSub: false,
       to: "/about",
     },
-    { title: "Yêu cầu báo giá", icon: Ruler, hasSub: false },
+    {
+      title: "Yêu cầu báo giá",
+      icon: Ruler,
+      hasSub: false,
+      to: "/request-a-quote",
+    },
     {
       title: "Thuật ngữ chuyên ngành",
       icon: Settings,
@@ -60,8 +70,8 @@ const NavigationMenu = () => {
       icon: Heart,
       hasSub: true,
       subItems: [
-        { title: "Điều khoản dịch vụ", to: "/terms" },
-        { title: "Chính sách bảo mật", to: "/privacy" },
+        { title: "Điều khoản dịch vụ", to: "/terms-of-service" },
+        { title: "Chính sách bảo mật", to: "/privacy-policy" },
         { title: "Các câu hỏi thường gặp", to: "/faq" },
       ]
     },
@@ -75,14 +85,14 @@ const NavigationMenu = () => {
         }`}
     >
       <div className="max-w-[1280px] mx-auto px-5">
-        <ul className="flex items-center gap-2">
+        <ul className="flex items-center justify-between flex-nowrap gap-2">
           {menuItems.map((item, index) => (
-            <li key={index} className="group relative">
+            <li key={index} className="group relative flex-shrink-0">
               {item.onClick ? (
                 // Các nút có sự kiện cuộn trang tự động
                 <button
                   onClick={item.onClick}
-                  className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold text-on-surface-variant hover:text-primary hover:bg-surface-container transition-all cursor-pointer w-full text-left"
+                  className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold text-on-surface-variant hover:text-primary hover:bg-surface-container transition-all cursor-pointer w-full text-left whitespace-nowrap"
                 >
                   <item.icon className="w-4 h-4" />
                   <span className="uppercase tracking-wide">{item.title}</span>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import adminService from '../../services/admin.service';
 import { showError } from '../../utils/notify';
 import Pagination from '../../components/common/Pagination';
+import AdminQuoteReviewModal from '../../components/admin/AdminQuoteReviewModal';
 
 // Tối ưu lại Badge trạng thái theo chuẩn UI mới
 function StatusBadge({ status }) {
@@ -42,6 +43,8 @@ export default function QuotationList({ onOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
+  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -54,6 +57,18 @@ export default function QuotationList({ onOpen }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  function handleOpenEdit(id) {
+    setSelectedQuoteId(id);
+  }
+
+  function handleCloseEdit() {
+    setSelectedQuoteId(null);
+  }
+
+  function handleRefreshList() {
+    loadQuotationsData(currentPage);
+  }
 
   function shortCode(id) {
     if (!id) return '';
@@ -127,16 +142,29 @@ export default function QuotationList({ onOpen }) {
                   <StatusBadge status={r.status} />
                 </td>
                 <td className="p-4 pr-6 text-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Tránh kích hoạt double click của dòng khi ấn trực tiếp nút
-                      onOpen?.(r.id);
-                    }}
-                    // Thêm trạng thái biến đổi màu dựa trên class group-hover của dòng, giúp nút "Xem" sáng bật lên rất mượt mà
-                    className="inline-flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white px-4 py-1.5 text-[11px] font-bold text-on-surface-variant transition-all shadow-2xs group-hover:border-primary/40 group-hover:text-primary group-hover:bg-primary/5 group-hover:shadow-xs active:scale-95"
-                  >
-                    Xem
-                  </button>
+                  <div className="flex items-center justify-center gap-2">
+                    {/* Nút Xem gốc (Giữ nguyên prop callback onOpen ban đầu của bạn) */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpen?.(r.id);
+                      }}
+                      className="inline-flex items-center justify-center rounded-xl border border-outline-variant/60 bg-white px-3 py-1.5 text-[11px] font-bold text-on-surface-variant transition-all shadow-2xs hover:border-on-surface-variant hover:bg-surface-container/40 active:scale-95 cursor-pointer"
+                    >
+                      Xem
+                    </button>
+
+                    {/* Nút Chỉnh sửa mới thêm để kích hoạt cấu trúc Admin Review Modal */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(r.id);
+                      }}
+                      className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-black text-primary transition-all shadow-2xs hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer"
+                    >
+                      Chỉnh sửa
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -161,6 +189,14 @@ export default function QuotationList({ onOpen }) {
             onPageChange={(page) => setCurrentPage(page)}
           />
         </div>
+      )}
+
+      {selectedQuoteId && (
+        <AdminQuoteReviewModal
+          quoteId={selectedQuoteId}
+          onClose={handleCloseEdit}
+          onRefresh={handleRefreshList}
+        />
       )}
     </div>
   );
