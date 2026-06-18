@@ -1,5 +1,8 @@
 const prisma = require("../models/prisma");
-const { sendQuotationEmail, sendOrderConfirmationEmail } = require("../utils/mailer.utils");
+const {
+  sendQuotationEmail,
+  sendOrderConfirmationEmail,
+} = require("../utils/mailer.utils");
 
 class QuotationService {
   // 1. LẤY DANH SÁCH BÁO GIÁ (Dành cho Admin/Sale xem tổng quan)
@@ -44,7 +47,17 @@ class QuotationService {
 
   // 3. CẬP NHẬT TRẠNG THÁI (VD: Từ "draft" sang "approved" hoặc "cancelled")
   async updateStatus(id, status) {
-    const validStatuses = ["draft", "pending_admin", "sent_to_customer", "approved", "customer_approved", "admin_confirmed", "rejected", "cancelled", "favorite"];
+    const validStatuses = [
+      "draft",
+      "pending_admin",
+      "sent_to_customer",
+      "approved",
+      "customer_approved",
+      "admin_confirmed",
+      "rejected",
+      "cancelled",
+      "favorite",
+    ];
     if (!validStatuses.includes(status)) {
       throw new Error("Trạng thái không hợp lệ!");
     }
@@ -54,26 +67,34 @@ class QuotationService {
     const updatedQuotation = await prisma.quotations.update({
       where: { id },
       data: { status },
-      include: { users: true }
+      include: { users: true },
     });
 
     // Nếu Admin xác nhận lên đơn hàng -> Sinh ra Order và gửi email cho Khách hàng
     if (status === "admin_confirmed") {
       try {
         // Tạo mã đơn hàng ngẫu nhiên
-        const orderCode = "ORD-" + Math.floor(1000 + Math.random() * 9000) + "-" + new Date().getFullYear();
+        const orderCode =
+          "ORD-" +
+          Math.floor(1000 + Math.random() * 9000) +
+          "-" +
+          new Date().getFullYear();
 
         const newOrder = await prisma.orders.create({
           data: {
             quotation_id: id,
             order_code: orderCode,
-            production_status: "confirmed"
-          }
+            production_status: "confirmed",
+          },
         });
 
         // Gửi email báo khách hàng đơn đã được lên thành công
         if (updatedQuotation.users && updatedQuotation.users.email) {
-          await sendOrderConfirmationEmail(updatedQuotation.users.email, newOrder, updatedQuotation);
+          await sendOrderConfirmationEmail(
+            updatedQuotation.users.email,
+            newOrder,
+            updatedQuotation,
+          );
         }
       } catch (err) {
         console.error("Lỗi khi tạo Đơn hàng hoặc gửi email:", err);
@@ -90,7 +111,9 @@ class QuotationService {
     if (!user_id) throw new Error("Vui lòng đăng nhập để gửi yêu cầu báo giá!");
 
     // Kiểm tra thông tin khách hàng (phải có SĐT hoặc Địa chỉ mới cho gửi)
-    const profile = await prisma.user_profiles.findUnique({ where: { user_id } });
+    const profile = await prisma.user_profiles.findUnique({
+      where: { user_id },
+    });
     if (!profile || (!profile.phone_number && !profile.address)) {
       throw new Error("PROFILE_INCOMPLETE");
     }
@@ -104,7 +127,8 @@ class QuotationService {
 
     // Tạo mảng specs dựa theo từng component
     const specsData = components.map((comp, idx) => {
-      const area = (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
+      const area =
+        (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
@@ -117,7 +141,7 @@ class QuotationService {
           height: parseFloat(comp.height),
           area: area,
         },
-        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0),
+        snapshot_price: detail ? detail.material_cost + detail.paint_cost : 0,
         note,
       };
     });
@@ -167,12 +191,15 @@ class QuotationService {
     const updatedQuote = await prisma.quotations.update({
       where: { id },
       data: {
-        total_quoted_price: total_quoted_price !== undefined ? total_quoted_price : quotation.total_quoted_price,
-        status: "sent_to_customer"
+        total_quoted_price:
+          total_quoted_price !== undefined
+            ? total_quoted_price
+            : quotation.total_quoted_price,
+        status: "sent_to_customer",
       },
       include: {
-        users: true
-      }
+        users: true,
+      },
     });
 
     // Tự động gửi Email cho khách hàng nếu họ có email
@@ -187,7 +214,6 @@ class QuotationService {
 
     return updatedQuote;
   }
-
 
   // 4. THÊM FILE ĐÍNH KÈM (Lưu Link bản vẽ từ FE gửi xuống)
   async addAttachment(quotation_id, data) {
@@ -227,89 +253,126 @@ class QuotationService {
   }
   // CỖ MÁY TÍNH GIÁ HÀNG LOẠT (PRICING ENGINE - BULK CALCULATE)
   async calculateBulk(data) {
-    const { user_id, session_id, items } = data; // items là một mảng các sản phẩm, mỗi sản phẩm chứa mảng components
-
+    const { user_id, session_id, items } = data;
     if (!items || !Array.isArray(items) || items.length === 0) {
-      throw new Error("Danh sách sản phẩm trống!");
+      throw new Error("Không có sản phẩm nào để tính giá!");
     }
-
     let total_quoted_price = 0;
     const quotation_specs_data = [];
 
-    // Lấy đơn giá nhân công mặc định (Ví dụ lấy cái đầu tiên trong DB)
-    const laborRate = await prisma.labor_rates.findFirst();
-    const labor_price_per_sqm = laborRate
-      ? parseFloat(laborRate.rate_amount)
-      : 0;
+    const profit = 1.3;
+    const wasted = 1.05;
+    // 1. Thu thập toàn bộ ID
+    const materialIds = new Set();
+    const thicknessIds = new Set();
+    const paintIds = new Set();
 
-    // Vòng lặp bóc tách từng món trong giỏ hàng
+    // 2. Lấy đơn giá nhân công mặc định
+    const laborRate = await prisma.labor_rates.findFirst();
+    const labor_price_per_sqm = laborRate ? parseFloat(laborRate.rate_amount) : 0;
+
+    // 3. Query toàn bộ dữ liệu 1 lần duy nhất
+    items.forEach((item) => {
+      (item.components || []).forEach((comp) => {
+        if (comp.material_id) materialIds.add(comp.material_id);
+        if (comp.thickness_id) thicknessIds.add(comp.thickness_id);
+        if (comp.paint_id) paintIds.add(comp.paint_id);
+      });
+    });
+
+    // 4. Lấy dữ liệu từ DB
+    const [materialsDb, thicknessDb, paintsDb] = await Promise.all([
+      prisma.materials.findMany({ where: { id: { in: Array.from(materialIds) } } }),
+      prisma.material_thickness.findMany({ where: { id: { in: Array.from(thicknessIds) } } }),
+      prisma.paint_types.findMany({ where: { id: { in: Array.from(paintIds) } } }),
+    ]);
+
+    // 5. Chuyển array thành Map object để tra cứu
+    const mapMaterials = Object.fromEntries(materialsDb.map((m) => [m.id, m]));
+    const mapThickness = Object.fromEntries(thicknessDb.map((t) => [t.id, t]));
+    const mapPaints = Object.fromEntries(paintsDb.map((p) => [p.id, p]));
+
+    // 6. Vòng lặp tính toán
     for (const item of items) {
       const { product_id, components, note } = item;
+      const itemQty = item.quantity || 1; // Số lượng sản phẩm
 
       if (!components || !Array.isArray(components) || components.length === 0) continue;
 
       for (const comp of components) {
         const {
           component_name,
+          length,
           width,
           height,
           material_id,
           thickness_id,
           paint_id,
         } = comp;
+        const compQty = comp.quantity || 1; // Số lượng linh kiện (nếu có)
 
-        const area = (parseFloat(width) / 1000) * (parseFloat(height) / 1000);
+      const material = mapMaterials[material_id];
+      const thickness = mapThickness[thickness_id];
+      const paint = mapPaints[paint_id];
 
-        // Truy vấn DB lấy giá gốc của 3 nguyên liệu
-        const [material, thickness, paint] = await Promise.all([
-          prisma.materials.findUnique({ where: { id: material_id } }),
-          prisma.material_thickness.findUnique({ where: { id: thickness_id } }),
-          prisma.paint_types.findUnique({ where: { id: paint_id } }),
-        ]);
+      if (!material) {
+        throw new Error(
+          `Dữ liệu vật tư không hợp lệ cho linh kiện: ${component_name}`,
+        );
+      }
 
-        if (!material || !thickness || !paint) {
-          throw new Error(
-            `Vật tư, Độ dày hoặc Sơn của linh kiện '${component_name || "Chưa rõ"}' không tồn tại!`,
-          );
-        }
+      // Tính diện tích 1 linh kiện (m2) (Dùng length * width vì height thường = 0)
+      const l = parseFloat(length || height || 0);
+      const w = parseFloat(width || 0);
+      const area = (l / 1000) * (w / 1000);
 
-        // Công thức lõi (Phân bổ nhân công theo diện tích linh kiện để gộp lại đúng tổng diện tích sản phẩm)
-        const material_cost =
-          parseFloat(material.base_price) *
-          parseFloat(thickness.price_multiplier) *
-          area;
-        const paint_cost = parseFloat(paint.price_per_sqm) * area;
-        const labor_cost = labor_price_per_sqm * area;
+      // Công thức tính có hệ số hao hụt
+      const mat_multiplier = thickness ? parseFloat(thickness.price_multiplier || 1) : 1.0;
+      const material_cost =
+        parseFloat(material.base_price) *
+        mat_multiplier *
+        area *
+        wasted;
+      
+      const paint_cost = paint ? parseFloat(paint.price_per_sqm) * area * wasted : 0;
+      const labor_cost = labor_price_per_sqm * area;
 
-        const snapshot_price = material_cost + paint_cost + labor_cost;
+      // Tổng chi phí vốn cho 1 linh kiện
+      const base_cost = material_cost + paint_cost + labor_cost;
 
-        // Cộng dồn vào tổng tiền của cả đơn
-        total_quoted_price += snapshot_price;
+      // Giá bán ra có lợi nhuận
+      const final_price_per_unit = base_cost * profit;
 
-        // Đẩy vào mảng specs để chuẩn bị lưu DB
+      // Nhân với số lượng linh kiện và sản phẩm
+      const total_comp_price = final_price_per_unit * compQty * itemQty;
+
+      total_quoted_price += total_comp_price;
+
         quotation_specs_data.push({
           component_name,
-          material_id: material_id || null,
-          thickness_id: thickness_id || null,
-          paint_id: paint_id || null,
+          material_id,
+          thickness_id,
+          paint_id,
           dimensions: {
             product_id,
             width: parseFloat(width),
             height: parseFloat(height),
             area,
+            quantity: compQty * itemQty, // Lưu lại tổng số lượng thực tế
             breakdown_costs: {
               material: material_cost,
               paint: paint_cost,
               labor: labor_cost,
+              unit_price: final_price_per_unit,
+              total_price: total_comp_price,
             },
           },
-          snapshot_price,
+          snapshot_price: total_comp_price, // Lưu giá thực tế thu của khách
           note,
         });
       }
     }
 
-    // Sau khi tính xong tất cả, tạo 1 Báo Giá duy nhất bao trọn mảng Specs
     return await prisma.quotations.create({
       data: {
         user_id: user_id || null,
@@ -321,18 +384,13 @@ class QuotationService {
         },
       },
       include: {
-        quotation_specs: true, // Trả về chi tiết để FE hiển thị luôn
+        quotation_specs: true,
       },
     });
   }
   // CỖ MÁY TÍNH GIÁ REAL-TIME CHO FRONTEND (Không lưu DB)
   async calculateRealtime(data) {
-    const {
-      product_id,
-      labor_category_id,
-      labor_model_id,
-      components,
-    } = data;
+    const { product_id, labor_category_id, labor_model_id, components } = data;
 
     if (!components || !Array.isArray(components) || components.length === 0) {
       throw new Error("Sản phẩm chưa cấu hình linh kiện!");
@@ -340,39 +398,75 @@ class QuotationService {
 
     // 1. Lấy dữ liệu sản phẩm gốc và nhân công (Chung cho toàn sản phẩm)
     const [product, laborRate] = await Promise.all([
-      product_id ? prisma.products.findUnique({ where: { id: product_id } }) : null,
+      product_id
+        ? prisma.products.findUnique({ where: { id: product_id } })
+        : null,
       prisma.labor_rates.findFirst({
         where: { category_id: labor_category_id, model_id: labor_model_id },
       }),
     ]);
 
-    const base_product_price = product?.price_adjustment ? parseFloat(product.price_adjustment) : 0;
+    const base_product_price = product?.price_adjustment
+      ? parseFloat(product.price_adjustment)
+      : 0;
 
     let total_area = 0;
     let total_material_price = 0;
     let total_paint_price = 0;
     const componentDetails = [];
 
+    const profit = 1.3;
+    const wasted = 1.05;
+
     // 2. Lặp tính giá cho từng linh kiện
     for (const comp of components) {
-      const { component_name, width, height, material_id, thickness_id, paint_id } = comp;
-      const area = (parseFloat(width || 0) / 1000) * (parseFloat(height || 0) / 1000);
+      const {
+        component_name,
+        length,
+        width,
+        height,
+        material_id,
+        thickness_id,
+        paint_id,
+      } = comp;
+      
+      // Dùng length x width, nếu length không có thì lấy height (trường hợp UI truyền height)
+      const l = parseFloat(length || height || 0);
+      const w = parseFloat(width || 0);
+      const area = (l / 1000) * (w / 1000);
+      
       total_area += area;
 
       const [material, thickness, paint] = await Promise.all([
-        material_id ? prisma.materials.findUnique({ where: { id: material_id } }) : null,
-        thickness_id ? prisma.material_thickness.findUnique({ where: { id: thickness_id } }) : null,
-        paint_id ? prisma.paint_types.findUnique({ where: { id: paint_id } }) : null,
+        material_id
+          ? prisma.materials.findUnique({ where: { id: material_id } })
+          : null,
+        thickness_id
+          ? prisma.material_thickness.findUnique({
+              where: { id: thickness_id },
+            })
+          : null,
+        paint_id
+          ? prisma.paint_types.findUnique({ where: { id: paint_id } })
+          : null,
       ]);
 
       if (!material) {
-        throw new Error(`Dữ liệu vật tư không hợp lệ cho linh kiện: ${component_name}`);
+        throw new Error(
+          `Dữ liệu vật tư không hợp lệ cho linh kiện: ${component_name}`,
+        );
       }
 
-      const mat_multiplier = thickness ? parseFloat(thickness.price_multiplier || 1) : 1.0;
+      const mat_multiplier = thickness
+        ? parseFloat(thickness.price_multiplier || 1)
+        : 1.0;
       const mat_base_price = parseFloat(material.base_price || 0);
-      const material_price = mat_base_price * mat_multiplier * area;
-      const paint_price = paint ? parseFloat(paint.price_per_sqm || 0) * area : 0;
+      
+      // Áp dụng wasted và profit cho cấu hình real-time giống hệt Bulk
+      const material_price = mat_base_price * mat_multiplier * area * wasted * profit;
+      const paint_price = paint
+        ? parseFloat(paint.price_per_sqm || 0) * area * wasted * profit
+        : 0;
 
       total_material_price += material_price;
       total_paint_price += paint_price;
@@ -381,23 +475,29 @@ class QuotationService {
         name: component_name,
         area: area.toFixed(2),
         material_cost: material_price,
-        paint_cost: paint_price
+        paint_cost: paint_price,
       });
     }
 
-    // 3. Tính tiền nhân công tổng
-    const labor_price = laborRate ? parseFloat(laborRate.rate_amount || 0) * total_area : 0;
+    // 3. Tính tiền nhân công tổng (Đã áp dụng profit)
+    const labor_price = laborRate
+      ? parseFloat(laborRate.rate_amount || 0) * total_area * profit
+      : 0;
 
-    const total_price = base_product_price + total_material_price + labor_price + total_paint_price;
+    const total_price =
+      base_product_price +
+      total_material_price +
+      labor_price +
+      total_paint_price;
 
     return {
       total_area: total_area.toFixed(2),
       component_details: componentDetails,
       breakdown_costs: [
-        { name: "Sản phẩm gốc", amount: base_product_price },
-        { name: "Vật tư (Theo linh kiện)", amount: total_material_price },
-        { name: "Nhân công gia công", amount: labor_price },
-        { name: "Công sơn tĩnh điện", amount: total_paint_price },
+        { name: "Phụ phí / Lắp ráp (Cố định)", amount: base_product_price },
+        { name: "Vật tư (gồm Hao hụt & Lợi nhuận)", amount: total_material_price },
+        { name: "Nhân công (Đã có Lợi nhuận)", amount: labor_price },
+        { name: "Công sơn tĩnh điện (Đã có Lợi nhuận)", amount: total_paint_price },
       ],
       total_amount: total_price,
     };
@@ -416,7 +516,8 @@ class QuotationService {
 
     // Tạo mảng specs dựa theo từng component
     const specsData = components.map((comp, idx) => {
-      const area = (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
+      const area =
+        (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
@@ -429,7 +530,7 @@ class QuotationService {
           height: parseFloat(comp.height),
           area: area,
         },
-        snapshot_price: (detail ? detail.material_cost + detail.paint_cost : 0),
+        snapshot_price: detail ? detail.material_cost + detail.paint_cost : 0,
         note,
       };
     });
