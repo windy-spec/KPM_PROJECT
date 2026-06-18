@@ -102,6 +102,8 @@ model materials {
   material_types     material_types?      @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   material_units     material_units?      @relation(fields: [unit_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
   quotation_specs    quotation_specs[]
+  inventory          inventory?
+  inventory_logs     inventory_logs[]
 }
 
 model order_tracking {
@@ -225,6 +227,8 @@ model quotations {
   user_id               String?                 @db.Uuid
   session_id            String?                 @db.Uuid
   total_quoted_price    Decimal                 @db.Decimal(15, 2)
+  admin_proposed_price  Decimal?                @db.Decimal(15, 2) 
+  user_proposed_price   Decimal?                @db.Decimal(15, 2)
   status                String?                 @default("draft") @db.VarChar(50)
   created_at            DateTime?               @default(now()) @db.Timestamptz(6)
   title                 String?                 @db.VarChar(255)
@@ -395,4 +399,23 @@ model ai_knowledge_patterns {
   is_active          Boolean?            @default(true)
   created_at         DateTime?           @default(now()) @db.Timestamptz(6)
   ai_knowledge_base  ai_knowledge_base[]
+}
+model inventory {
+  id              String    @id @default(uuid()) @db.Uuid
+  material_id     String    @unique @db.Uuid // Unique vì mỗi vật tư chỉ có 1 dòng tổng tồn kho
+  quantity        Decimal   @default(0) @db.Decimal(12, 2) // Số lượng hiện có để sản xuất
+  leftover_amount Decimal   @default(0) @db.Decimal(12, 2) // Số lượng vụn/thừa có thể tái chế
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  materials       materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+model inventory_logs {
+  id               String    @id @default(uuid()) @db.Uuid
+  material_id      String    @db.Uuid
+  action_type      String    @db.VarChar(50) // Phân loại: 'IMPORT' (Nhập), 'EXPORT' (Xuất), 'WASTE' (Hao phí)
+  quantity_change  Decimal   @db.Decimal(12, 2) // Số lượng thay đổi (dương là nhập, âm là xuất)
+  reference_code   String?   @db.VarChar(100) // Mã tham chiếu (VD: Mã đơn hàng #ORD-123, Mã phiếu nhập)
+  note             String?   // Ghi chú (VD: "Xuất kho cho đơn hàng A", "Nhập hàng từ nhà cung cấp")
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  
+  materials        materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }

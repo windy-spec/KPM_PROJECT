@@ -115,7 +115,9 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
         width: '',
         height: '',
         unit: 'mm',
-        default_material: ''
+        default_material: '',
+        waste_rate: 0,
+        waste_unit: 'cây'
       }
     ]);
   };
@@ -253,7 +255,7 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                   </select>
                 </div>
 
-                <div className="md:col-span-2 grid grid-cols-4 gap-3">
+                <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-6 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs text-on-surface-variant">Dài (L)</label>
                     <input
@@ -295,6 +297,28 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                       <option value="cm">cm</option>
                       <option value="m">m</option>
                     </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-on-surface-variant">SL Hao phí</label>
+                    <input
+                      type="number"
+                      value={comp.waste_rate !== undefined ? comp.waste_rate : ""}
+                      onChange={(e) => handleChange(idx, 'waste_rate', e.target.value)}
+                      placeholder="VD: 1"
+                      className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-on-surface-variant">ĐV Hao phí</label>
+                    <input
+                      type="text"
+                      value={comp.waste_unit || ""}
+                      onChange={(e) => handleChange(idx, 'waste_unit', e.target.value)}
+                      placeholder="VD: cây, tấm..."
+                      className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                    />
                   </div>
                 </div>
               </div>

@@ -112,7 +112,7 @@ const sendQuotationEmail = async (email, quotationData) => {
             </p>
 
             <div style="text-align: center; margin: 40px 0 20px 0;">
-              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 16px 40px; font-size: 16px; font-weight: bold; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(37,99,235,0.3);">
+              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=quotations" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 16px 40px; font-size: 16px; font-weight: bold; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(37,99,235,0.3);">
                 XEM CHI TIẾT HỒ SƠ
               </a>
             </div>

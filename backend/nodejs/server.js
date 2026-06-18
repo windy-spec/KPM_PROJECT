@@ -1,9 +1,43 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const http = require("http");
+const { Server } = require("socket.io");
+
 // Khởi chạy các tác vụ chạy ngầm (Cron Jobs)
 require("./cron/importCleanup.cron");
 const app = express();
+
+const server = http.createServer(app);
+const io = new Server(server, { 
+  cors: { 
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+  } 
+});
+
+// Quản lý Socket
+io.on("connection", (socket) => {
+  console.log("Client connected to Socket:", socket.id);
+
+  socket.on("join", (data) => {
+    if (data?.role === "admin" || data?.role === "superadmin") {
+      socket.join("room_admin");
+      console.log(`Socket ${socket.id} joined room_admin`);
+    }
+    if (data?.user_id) {
+      socket.join(`room_user_${data.user_id}`);
+      console.log(`Socket ${socket.id} joined room_user_${data.user_id}`);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
+
+// Gắn io vào biến toàn cục để truy cập từ các Service
+global.io = io;
 
 // CREATE PORT OR GATES HERE (Thêm fallback 5000 nếu env chưa kịp nhận)
 const Port = process.env.PORT || 5000;
@@ -52,6 +86,6 @@ app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");
 });
 
-app.listen(Port, () => {
+server.listen(Port, () => {
   console.log(` Server is running on port ${Port}`);
 });

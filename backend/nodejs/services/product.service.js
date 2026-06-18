@@ -23,14 +23,17 @@ class ProductService {
       where: { product_code },
     });
     if (existing) throw new Error(`Mã sản phẩm '${product_code}' đã tồn tại!`);
-
+    const formattedComponents = (components || []).map((comp) => ({
+      ...comp,
+      waste_rate: comp.waste_rate ? parseFloat(comp.waste_rate) : 0, // Mặc định hao phí là 0%
+    }));
     return await prisma.products.create({
       data: {
         category_id,
         product_code,
         product_name,
         default_specs,
-        components: components || [], // Nhét components vào đây!
+        components: formattedComponents || [], // Nhét components vào đây!
         base_price: base_price ? parseFloat(base_price) : 0,
       },
     });
@@ -42,17 +45,17 @@ class ProductService {
     const take = Number(limit);
 
     const whereCondition = {
-      AND: []
+      AND: [],
     };
-    
+
     if (category_id && category_id !== "null" && category_id !== "undefined") {
       const categories = category_id.split(",");
       if (categories.length > 0) {
         whereCondition.AND.push({
           OR: [
             { category_id: { in: categories } },
-            { product_categories: { parent_id: { in: categories } } }
-          ]
+            { product_categories: { parent_id: { in: categories } } },
+          ],
         });
       }
     }
@@ -61,7 +64,7 @@ class ProductService {
         OR: [
           { product_code: { contains: search, mode: "insensitive" } },
           { product_name: { contains: search, mode: "insensitive" } },
-        ]
+        ],
       });
     }
 
@@ -77,12 +80,12 @@ class ProductService {
         orderBy: { created_at: "desc" },
         include: {
           product_categories: {
-            select: { 
-              category_name: true, 
+            select: {
+              category_name: true,
               parent_id: true,
               parent_category: {
-                select: { category_name: true }
-              }
+                select: { category_name: true },
+              },
             },
           },
           product_images: {
@@ -117,7 +120,10 @@ class ProductService {
 
     const existing = await prisma.products.findUnique({ where: { id } });
     if (!existing) throw new Error("Sản phẩm không tồn tại");
-
+    const formattedComponents = (components || []).map((comp) => ({
+      ...comp,
+      waste_rate: comp.waste_rate ? parseFloat(comp.waste_rate) : 0, // Mặc định hao phí là 0%
+    }));
     return await prisma.products.update({
       where: { id },
       data: {
@@ -125,8 +131,9 @@ class ProductService {
         product_code,
         product_name,
         default_specs,
-        components,
-        base_price: base_price !== undefined ? parseFloat(base_price) : undefined,
+        components: formattedComponents,
+        base_price:
+          base_price !== undefined ? parseFloat(base_price) : undefined,
       },
     });
   }
@@ -157,7 +164,7 @@ class ProductService {
       where: { id: imageId, product_id: productId },
     });
     if (!image) throw new Error("Không tìm thấy ảnh!");
-    
+
     // Nếu là ảnh chính, không cho xóa trực tiếp bằng route này (hoặc có thể tự xử lý logic)
     if (image.is_primary) {
       throw new Error("Không thể xóa ảnh chính của sản phẩm!");
