@@ -3,6 +3,8 @@ import adminService from '../../services/admin.service';
 import { showError } from '../../utils/notify';
 import Pagination from '../../components/common/Pagination';
 import AdminQuoteReviewModal from '../../components/admin/AdminQuoteReviewModal';
+import { useSocket } from '../../context/SocketContext';
+import { showSuccess } from '../../utils/notify';
 
 // Tối ưu lại Badge trạng thái theo chuẩn UI mới
 function StatusBadge({ status }) {
@@ -36,9 +38,9 @@ function StatusBadge({ status }) {
 }
 
 export default function QuotationList({ onOpen }) {
+  const socket = useSocket();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
@@ -55,6 +57,28 @@ export default function QuotationList({ onOpen }) {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewQuote = (payload) => {
+      showSuccess(payload?.message || "Có yêu cầu báo giá mới từ khách hàng!");
+      load();
+    };
+
+    const handleQuoteNegotiated = (payload) => {
+      showSuccess(payload?.message || "Khách hàng vừa phản hồi một báo giá!");
+      load();
+    };
+
+    socket.on("new_quotation", handleNewQuote);
+    socket.on("quote_negotiated", handleQuoteNegotiated);
+
+    return () => {
+      socket.off("new_quotation", handleNewQuote);
+      socket.off("quote_negotiated", handleQuoteNegotiated);
+    };
+  }, [socket]);
 
   function shortCode(id) {
     if (!id) return '';

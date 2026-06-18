@@ -20,7 +20,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 
 
-const AdminSidebar = ({ onPanelChange = () => {} }) => {
+const AdminSidebar = ({ onPanelChange = () => { } }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -43,7 +43,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
       // Bất kể API có chạy thành công hay lỗi, bắt buộc phải dọn dẹp Client và chuyển trang
       localStorage.removeItem('accessToken');
       localStorage.removeItem('user');
-      
+
       // Chuyển hướng người dùng về trang đăng nhập ngay lập tức
       navigate('/login');
     }
@@ -56,12 +56,11 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
       items: [
         { label: 'Tổng quan doanh số', icon: LayoutDashboard, panel: 'overview' },
         { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
-        { label: 'Lập báo giá', icon: ShoppingCart, panel: 'pricing' },
         { label: 'Danh sách Báo giá', icon: FileText, panel: 'quotations' },
         { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
         { label: 'Quản lý lô', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản lý đơn hàng', icon: ShoppingCart, panel: 'orders' },
-        { label: 'Quản lý user', icon: User, panel: 'users'}
+        { label: 'Quản lý user', icon: User, panel: 'users' }
       ],
     },
     {
@@ -88,7 +87,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
   ];
 
   return (
-    <div className="w-64 h-screen border-r border-outline-variant/70 bg-surface flex flex-col shrink-0 select-none">
+    <div className="sticky top-0 left-0 z-40 w-64 min-w-[256px] max-w-[256px] h-screen bg-surface border-r border-outline-variant/70 flex flex-col shrink-0 lg:flex flex-none select-none overflow-hidden">
       <div className="p-5 border-b border-outline-variant/70 bg-white">
         <h1 className="text-xl font-black tracking-tight text-primary flex items-center gap-2.5">
           <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
@@ -113,26 +112,24 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
                 // XỬ LÝ GIAO DIỆN DROPDOWN (MỤC VẬT TƯ VÀ CẤU HÌNH)
                 if (item.isDropdown) {
                   const isAnySubmenuActive = item.submenu.some(sub => activePanel === sub.panel);
-                  
+
                   return (
                     <div key={item.label} className="w-full space-y-1">
                       <button
                         type="button"
                         onClick={item.onToggle}
-                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                          isAnySubmenuActive
-                            ? 'bg-primary/5 text-primary'
-                            : 'text-on-surface-variant hover:bg-white hover:text-primary'
-                        }`}
+                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${isAnySubmenuActive
+                          ? 'bg-primary/5 text-primary'
+                          : 'text-on-surface-variant hover:bg-white hover:text-primary'
+                          }`}
                       >
                         <span className="flex items-center gap-3 min-w-0">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate text-left">{item.label}</span>
                         </span>
-                        <ChevronDown 
-                          className={`w-4 h-4 opacity-60 transition-transform duration-200 ${
-                            item.isOpen ? 'rotate-180' : ''
-                          }`} 
+                        <ChevronDown
+                          className={`w-4 h-4 opacity-60 transition-transform duration-200 ${item.isOpen ? 'rotate-180' : ''
+                            }`}
                         />
                       </button>
 
@@ -147,11 +144,10 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
                               <Link
                                 key={subItem.label}
                                 to={`/admin/dashboard?panel=${subItem.panel}`}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-bold transition-colors ${
-                                  isSubActive
-                                    ? 'bg-primary text-white shadow-sm'
-                                    : 'text-on-surface-variant/80 hover:bg-white hover:text-primary'
-                                }`}
+                                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-bold transition-colors ${isSubActive
+                                  ? 'bg-primary text-white shadow-sm'
+                                  : 'text-on-surface-variant/80 hover:bg-white hover:text-primary'
+                                  }`}
                               >
                                 <SubIcon className="w-3.5 h-3.5 shrink-0" />
                                 <span className="truncate">{subItem.label}</span>
@@ -164,7 +160,7 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
                   );
                 }
 
-                
+
 
                 // XỬ LÝ CÁC MENU LINK THÔNG THƯỜNG
                 const isActive = item.path
@@ -175,11 +171,10 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
                   <Link
                     key={item.label}
                     to={item.path || `/admin/dashboard?panel=${item.panel}`}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                      isActive
-                        ? 'bg-primary text-white shadow-md shadow-primary/10'
-                        : 'text-on-surface-variant hover:bg-white hover:text-primary'
-                    }`}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${isActive
+                      ? 'bg-primary text-white shadow-md shadow-primary/10'
+                      : 'text-on-surface-variant hover:bg-white hover:text-primary'
+                      }`}
                   >
                     <span className="flex items-center gap-3 min-w-0">
                       <Icon className="w-4 h-4 shrink-0" />
@@ -192,17 +187,6 @@ const AdminSidebar = ({ onPanelChange = () => {} }) => {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="p-4 border-t border-outline-variant/70 bg-white">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Đăng xuất</span>
-        </button>
       </div>
     </div>
   );

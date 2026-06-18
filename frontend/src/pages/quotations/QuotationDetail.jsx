@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Clock
 } from "lucide-react"; // Thêm một số icon phổ biến của lucide để tăng tính trực quan
+import { useSocket } from "../../context/SocketContext";
 
 export default function QuotationDetail({ quotationIdProp, onBack }) {
   const [id, setId] = useState(
@@ -23,11 +24,27 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   const [uploading, setUploading] = useState(false);
   const [customPrice, setCustomPrice] = useState('');
   const [expandedSpecId, setExpandedSpecId] = useState(null);
+  const socket = useSocket();
 
   useEffect(() => {
     if (!id) return;
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (!socket || !id) return;
+    const handleQuoteNegotiated = (payload) => {
+      // Chỉ reload nếu đúng id báo giá đang xem
+      if (payload?.data?.id === id) {
+        showSuccess(payload?.message || "Khách hàng vừa phản hồi báo giá này!");
+        load();
+      }
+    };
+    socket.on("quote_negotiated", handleQuoteNegotiated);
+    return () => {
+      socket.off("quote_negotiated", handleQuoteNegotiated);
+    };
+  }, [socket, id]);
 
   async function load() {
     setLoading(true);
