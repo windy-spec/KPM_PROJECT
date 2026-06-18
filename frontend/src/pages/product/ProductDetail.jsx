@@ -763,39 +763,56 @@ export default function ProductDetail() {
               </button>
             </div>
 
-            {isModified ? (
-              <button
-                onClick={handleRequestQuote}
-                disabled={!isAgreed}
-                className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-primary text-white hover:bg-primary/90 shadow-primary/30"}`}
-              >
-                <ClipboardList className="w-5 h-5" />
-                Yêu cầu Báo giá
-              </button>
-            ) : (
-              <button
-                onClick={handleBuyNow}
-                disabled={!isAgreed}
-                className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-[#ff6b00] text-white hover:bg-[#ff6b00]/90 shadow-[#ff6b00]/30"}`}
-              >
-                <CreditCard className="w-5 h-5" />
-                Mua ngay
-              </button>
-            )}
+            {(() => {
+              // 1. Tính toán giá trị đơn hàng hiện tại
+              const currentSinglePrice = isModified
+                ? (priceData?.total_amount || 0)
+                : (parseFloat(product?.base_price) || 0);
 
-            <button
-              onClick={handleAddToCart}
-              disabled={isModified || !isAgreed}
-              title={
-                isModified
-                  ? "Vui lòng yêu cầu báo giá cho sản phẩm đã thay đổi thông số"
-                  : "Thêm vào giỏ hàng"
+              const totalOrderValue = currentSinglePrice * quantity;
+
+              // 2. Kịch bản ĐƠN HÀNG LỚN (> 40 triệu): Ẩn hết, chỉ hiện nút liên hệ ký hợp đồng
+              if (totalOrderValue > 40000000) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => toast.info("Vui lòng liên hệ Hotline hoặc đến xưởng để ký hợp đồng cho đơn hàng lớn!")}
+                    className="flex-[3] bg-amber-600 hover:bg-amber-700 text-white font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md uppercase tracking-wider animate-pulse cursor-pointer"
+                  >
+                    <ClipboardList className="w-5 h-5" />
+                    Yêu cầu gặp mặt ký hợp đồng (&gt; 40Tr)
+                  </button>
+                );
               }
-              className={`flex-1 font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${isModified || !isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-surface-container-highest text-on-surface hover:bg-outline-variant/30"}`}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              <span className="hidden sm:inline">Giỏ hàng</span>
-            </button>
+
+              // 3. Kịch bản ĐƠN HÀNG THƯỜNG (<= 40 triệu): Trả về nguyên vẹn các nút bấm cũ của bạn
+              return (
+                <>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={!isAgreed}
+                    className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-[#ff6b00] text-white hover:bg-[#ff6b00]/90 shadow-[#ff6b00]/30"}`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    Mua ngay
+                  </button>
+
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={isModified || !isAgreed}
+                    title={
+                      isModified
+                        ? "Vui lòng yêu cầu báo giá cho sản phẩm đã thay đổi thông số"
+                        : "Thêm vào giỏ hàng"
+                    }
+                    className={`flex-1 font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${isModified || !isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-surface-container-highest text-on-surface hover:bg-outline-variant/30"}`}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="hidden sm:inline">Giỏ hàng</span>
+                  </button>
+                </>
+              );
+            })()}
 
             <button
               onClick={handleSaveFavorite}
