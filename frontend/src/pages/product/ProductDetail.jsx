@@ -518,6 +518,7 @@ export default function ProductDetail() {
                       </label>
                       <input
                         type="number"
+                        disabled={true}
                         value={comp.length}
                         onChange={(e) =>
                           handleConfigChange(idx, "length", e.target.value)
@@ -531,6 +532,7 @@ export default function ProductDetail() {
                       </label>
                       <input
                         type="number"
+                        disabled={true}
                         value={comp.width}
                         onChange={(e) =>
                           handleConfigChange(idx, "width", e.target.value)
@@ -544,6 +546,7 @@ export default function ProductDetail() {
                       </label>
                       <input
                         type="number"
+                        disabled={true}
                         value={comp.height}
                         onChange={(e) =>
                           handleConfigChange(idx, "height", e.target.value)
@@ -560,6 +563,7 @@ export default function ProductDetail() {
                       </label>
                       <select
                         value={comp.material_id}
+                        disabled={true}
                         onChange={(e) => {
                           const newConfig = [...componentsConfig];
                           newConfig[idx].material_id = e.target.value;
@@ -593,6 +597,7 @@ export default function ProductDetail() {
                           </label>
                           <select
                             value={comp.thickness_id}
+                            disabled={true}
                             onChange={(e) =>
                               handleConfigChange(
                                 idx,
@@ -601,7 +606,6 @@ export default function ProductDetail() {
                               )
                             }
                             className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                            disabled={!comp.material_id}
                           >
                             <option value="">-- Chọn độ dày --</option>
                             {thicknesses
@@ -627,6 +631,7 @@ export default function ProductDetail() {
                         </label>
                         <select
                           value={comp.paint_id}
+                          disabled={true}
                           onChange={(e) =>
                             handleConfigChange(idx, "paint_id", e.target.value)
                           }

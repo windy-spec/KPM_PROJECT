@@ -43,8 +43,6 @@ export default function QuotationList({ onOpen }) {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  const [selectedQuoteId, setSelectedQuoteId] = useState(null);
-
   const load = async () => {
     setLoading(true);
     try {
@@ -57,18 +55,6 @@ export default function QuotationList({ onOpen }) {
   };
 
   useEffect(() => { load(); }, []);
-
-  function handleOpenEdit(id) {
-    setSelectedQuoteId(id);
-  }
-
-  function handleCloseEdit() {
-    setSelectedQuoteId(null);
-  }
-
-  function handleRefreshList() {
-    loadQuotationsData(currentPage);
-  }
 
   function shortCode(id) {
     if (!id) return '';
@@ -153,17 +139,6 @@ export default function QuotationList({ onOpen }) {
                     >
                       Xem
                     </button>
-
-                    {/* Nút Chỉnh sửa mới thêm để kích hoạt cấu trúc Admin Review Modal */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEdit(r.id);
-                      }}
-                      className="inline-flex items-center justify-center rounded-xl border border-primary/30 bg-primary/5 px-3 py-1.5 text-[11px] font-black text-primary transition-all shadow-2xs hover:bg-primary hover:text-white hover:border-primary active:scale-95 cursor-pointer"
-                    >
-                      Chỉnh sửa
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -189,14 +164,6 @@ export default function QuotationList({ onOpen }) {
             onPageChange={(page) => setCurrentPage(page)}
           />
         </div>
-      )}
-
-      {selectedQuoteId && (
-        <AdminQuoteReviewModal
-          quoteId={selectedQuoteId}
-          onClose={handleCloseEdit}
-          onRefresh={handleRefreshList}
-        />
       )}
     </div>
   );
