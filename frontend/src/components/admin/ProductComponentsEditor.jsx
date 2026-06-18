@@ -199,8 +199,13 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-on-surface-variant">Tên linh kiện</label>
                   <select
-                    value={comp.name}
-                    onChange={(e) => handleChange(idx, 'name', e.target.value)}
+                    value={comp.component_name || comp.name || ""}
+                    onChange={(e) => {
+                      const newComps = [...components];
+                      newComps[idx].name = e.target.value;
+                      newComps[idx].component_name = e.target.value;
+                      setComponents(newComps);
+                    }}
                     className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                   >
                     <option value="">-- Chọn linh kiện --</option>
@@ -208,8 +213,8 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                       <option key={i} value={bp.name}>{bp.name}</option>
                     ))}
                     {/* Allow fallback to custom name if not in blueprint */}
-                    {!availableBlueprints.find(bp => bp.name === comp.name) && comp.name && (
-                      <option value={comp.name}>{comp.name}</option>
+                    {!availableBlueprints.find(bp => bp.name === (comp.component_name || comp.name)) && (comp.component_name || comp.name) && (
+                      <option value={comp.component_name || comp.name}>{comp.component_name || comp.name}</option>
                     )}
                   </select>
                 </div>
@@ -234,7 +239,7 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                     <option value="">-- Chọn loại vật tư --</option>
                     {materials
                       .filter(m => {
-                        const bp = availableBlueprints.find(b => b.name === comp.name);
+                        const bp = availableBlueprints.find(b => b.name === (comp.component_name || comp.name));
                         if (bp && bp.allowed_materials) {
                           return bp.allowed_materials.includes(m.material_code);
                         }

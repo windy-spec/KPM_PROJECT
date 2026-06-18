@@ -1,54 +1,72 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Filter, Loader2, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
-import adminService from '../../services/admin.service';
-import Portal from '../../components/common/Portal';
-import ConfirmModal from '../../components/common/ConfirmModal';
-import { showError, showSuccess } from '../../utils/notify';
-import Pagination from '../../components/common/Pagination';
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Loader2,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import adminService from "../../services/admin.service";
+import Portal from "../../components/common/Portal";
+import ConfirmModal from "../../components/common/ConfirmModal";
+import { showError, showSuccess } from "../../utils/notify";
+import Pagination from "../../components/common/Pagination";
 
-const formatMoney = new Intl.NumberFormat('vi-VN');
+const formatMoney = new Intl.NumberFormat("vi-VN");
 
 const normalizeMaterial = (item) => ({
   id: item.id,
-  type_id: item.type_id || '',
-  unit_id: item.unit_id || '',
-  material_code: item.material_code || '',
-  material_name: item.material_name || '',
+  type_id: item.type_id || "",
+  unit_id: item.unit_id || "",
+  material_code: item.material_code || "",
+  material_name: item.material_name || "",
   base_price: Number(item.base_price ?? 0),
-  type_name: item.material_types?.type_name || '-',
-  unit_name: item.material_units?.unit_name || '-',
+  type_name: item.material_types?.type_name || "-",
+  unit_name: item.material_units?.unit_name || "-",
 });
 
-function MaterialModal({ initial, materialTypes, materialUnits, loading, onCancel, onSave }) {
+function MaterialModal({
+  initial,
+  materialTypes,
+  materialUnits,
+  loading,
+  onCancel,
+  onSave,
+}) {
   const [form, setForm] = useState({
-    type_id: initial?.type_id || '',
-    unit_id: initial?.unit_id || '',
-    material_code: initial?.material_code || '',
-    material_name: initial?.material_name || '',
-    base_price: initial?.base_price ?? '',
+    type_id: initial?.type_id || "",
+    unit_id: initial?.unit_id || "",
+    material_code: initial?.material_code || "",
+    material_name: initial?.material_name || "",
+    base_price: initial?.base_price ?? "",
   });
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     setForm({
-      type_id: initial?.type_id || '',
-      unit_id: initial?.unit_id || '',
-      material_code: initial?.material_code || '',
-      material_name: initial?.material_name || '',
-      base_price: initial?.base_price ?? '',
+      type_id: initial?.type_id || "",
+      unit_id: initial?.unit_id || "",
+      material_code: initial?.material_code || "",
+      material_name: initial?.material_name || "",
+      base_price: initial?.base_price ?? "",
     });
     setTouched(false);
   }, [initial]);
 
-  const priceValue = form.base_price === '' ? '' : Number(form.base_price);
-  const hasNegativePrice = form.base_price !== '' && !Number.isNaN(priceValue) && priceValue < 0;
-  const hasInvalidPrice = form.base_price !== '' && Number.isNaN(priceValue);
+  const priceValue = form.base_price === "" ? "" : Number(form.base_price);
+  const hasNegativePrice =
+    form.base_price !== "" && !Number.isNaN(priceValue) && priceValue < 0;
+  const hasInvalidPrice = form.base_price !== "" && Number.isNaN(priceValue);
   const canSubmit =
     !!form.type_id &&
     !!form.unit_id &&
     form.material_code.trim() &&
     form.material_name.trim() &&
-    form.base_price !== '' &&
+    form.base_price !== "" &&
     !hasNegativePrice &&
     !hasInvalidPrice &&
     !loading;
@@ -71,10 +89,11 @@ function MaterialModal({ initial, materialTypes, materialUnits, loading, onCance
           <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5">
             <div>
               <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-                {initial?.id ? 'Sửa vật tư' : 'Thêm vật tư mới'}
+                {initial?.id ? "Sửa vật tư" : "Thêm vật tư mới"}
               </h3>
               <p className="mt-2 text-xs text-on-surface-variant/70">
-                Quản lý master data vật tư thô cho kho dữ liệu đầu vào của Pricing Engine.
+                Quản lý master data vật tư thô cho kho dữ liệu đầu vào của
+                Pricing Engine.
               </p>
             </div>
             <button
@@ -88,7 +107,9 @@ function MaterialModal({ initial, materialTypes, materialUnits, loading, onCance
 
           <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Loại vật tư</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Loại vật tư
+              </label>
               <select
                 value={form.type_id}
                 onChange={(e) => setForm({ ...form, type_id: e.target.value })}
@@ -101,11 +122,17 @@ function MaterialModal({ initial, materialTypes, materialUnits, loading, onCance
                   </option>
                 ))}
               </select>
-              {touched && !form.type_id ? <p className="text-xs text-rose-600">Bắt buộc chọn loại vật tư.</p> : null}
+              {touched && !form.type_id ? (
+                <p className="text-xs text-rose-600">
+                  Bắt buộc chọn loại vật tư.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Đơn vị tính</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Đơn vị tính
+              </label>
               <select
                 value={form.unit_id}
                 onChange={(e) => setForm({ ...form, unit_id: e.target.value })}
@@ -118,50 +145,76 @@ function MaterialModal({ initial, materialTypes, materialUnits, loading, onCance
                   </option>
                 ))}
               </select>
-              {touched && !form.unit_id ? <p className="text-xs text-rose-600">Bắt buộc chọn đơn vị tính.</p> : null}
+              {touched && !form.unit_id ? (
+                <p className="text-xs text-rose-600">
+                  Bắt buộc chọn đơn vị tính.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Mã vật tư</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Mã vật tư
+              </label>
               <input
                 value={form.material_code}
-                onChange={(e) => setForm({ ...form, material_code: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, material_code: e.target.value })
+                }
                 placeholder="VD: VT-THEP-4080"
                 className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
               />
-              {touched && !form.material_code.trim() ? <p className="text-xs text-rose-600">Mã vật tư không được để trống.</p> : null}
+              {touched && !form.material_code.trim() ? (
+                <p className="text-xs text-rose-600">
+                  Mã vật tư không được để trống.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên vật tư</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Tên vật tư
+              </label>
               <input
                 value={form.material_name}
-                onChange={(e) => setForm({ ...form, material_name: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, material_name: e.target.value })
+                }
                 placeholder="VD: Thép hộp mạ kẽm 40x80"
                 className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
               />
-              {touched && !form.material_name.trim() ? <p className="text-xs text-rose-600">Tên vật tư không được để trống.</p> : null}
+              {touched && !form.material_name.trim() ? (
+                <p className="text-xs text-rose-600">
+                  Tên vật tư không được để trống.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Giá gốc / Đơn vị (VNĐ)</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
+                Giá gốc / Đơn vị (VNĐ)
+              </label>
               <input
                 type="number"
                 min="0"
                 step="1"
                 value={form.base_price}
-                onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, base_price: e.target.value })
+                }
                 placeholder="VD: 125000"
                 className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${
                   hasNegativePrice
-                    ? 'border-rose-500 bg-rose-50 focus:border-rose-500'
-                    : 'border-outline-variant/60 bg-surface-container/20 focus:border-primary'
+                    ? "border-rose-500 bg-rose-50 focus:border-rose-500"
+                    : "border-outline-variant/60 bg-surface-container/20 focus:border-primary"
                 }`}
               />
               {hasNegativePrice ? (
                 <p className="text-xs text-rose-600">Giá gốc không được âm.</p>
               ) : touched && hasInvalidPrice ? (
-                <p className="text-xs text-rose-600">Vui lòng nhập giá hợp lệ.</p>
+                <p className="text-xs text-rose-600">
+                  Vui lòng nhập giá hợp lệ.
+                </p>
               ) : null}
             </div>
           </div>
@@ -182,7 +235,11 @@ function MaterialModal({ initial, materialTypes, materialUnits, loading, onCance
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {loading ? 'Đang lưu...' : initial?.id ? 'Cập nhật vật tư' : 'Lưu vật tư'}
+              {loading
+                ? "Đang lưu..."
+                : initial?.id
+                  ? "Cập nhật vật tư"
+                  : "Lưu vật tư"}
             </button>
           </div>
         </div>
@@ -196,24 +253,24 @@ const ManageMaterials = () => {
   const [materialTypes, setMaterialTypes] = useState([]);
   const [materialUnits, setMaterialUnits] = useState([]);
 
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  
+
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 10;
 
   const loadInitialData = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const [typesRes, unitsRes, materialsRes] = await Promise.all([
         adminService.getMaterialTypes(),
@@ -221,14 +278,24 @@ const ManageMaterials = () => {
         adminService.getMaterials({ page: 1, limit: 500 }),
       ]);
 
-      setMaterialTypes(Array.isArray(typesRes.data?.data) ? typesRes.data.data : []);
-      setMaterialUnits(Array.isArray(unitsRes.data?.data) ? unitsRes.data.data : []);
+      setMaterialTypes(
+        Array.isArray(typesRes.data?.data) ? typesRes.data.data : [],
+      );
+      setMaterialUnits(
+        Array.isArray(unitsRes.data?.data) ? unitsRes.data.data : [],
+      );
 
       const materialData = materialsRes.data?.data || [];
-      setItems(Array.isArray(materialData) ? materialData.map(normalizeMaterial) : []);
+      setItems(
+        Array.isArray(materialData) ? materialData.map(normalizeMaterial) : [],
+      );
     } catch (e) {
       setItems([]);
-      setError(e?.response?.data?.message || e?.message || 'Không tải được danh sách vật tư');
+      setError(
+        e?.response?.data?.message ||
+          e?.message ||
+          "Không tải được danh sách vật tư",
+      );
     } finally {
       setLoading(false);
     }
@@ -241,7 +308,11 @@ const ManageMaterials = () => {
   const filteredItems = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     return items.filter((item) => {
-      const matchesSearch = !keyword || `${item.material_code} ${item.material_name}`.toLowerCase().includes(keyword);
+      const matchesSearch =
+        !keyword ||
+        `${item.material_code} ${item.material_name}`
+          .toLowerCase()
+          .includes(keyword);
       const matchesType = !typeFilter || item.type_id === typeFilter;
       return matchesSearch && matchesType;
     });
@@ -285,9 +356,11 @@ const ManageMaterials = () => {
       await loadInitialData();
       setShowConfirmDelete(false);
       setPendingDelete(null);
-      showSuccess('Xoá vật tư thành công.');
+      showSuccess("Xoá vật tư thành công.");
     } catch (e) {
-      showError(e?.response?.data?.message || e?.message || 'Xoá vật tư thất bại');
+      showError(
+        e?.response?.data?.message || e?.message || "Xoá vật tư thất bại",
+      );
     }
   };
 
@@ -311,9 +384,13 @@ const ManageMaterials = () => {
       await loadInitialData();
       setShowForm(false);
       setEditing(null);
-      showSuccess(editing?.id ? 'Cập nhật vật tư thành công.' : 'Thêm vật tư thành công.');
+      showSuccess(
+        editing?.id ? "Cập nhật vật tư thành công." : "Thêm vật tư thành công.",
+      );
     } catch (e) {
-      showError(e?.response?.data?.message || e?.message || 'Lưu vật tư thất bại');
+      showError(
+        e?.response?.data?.message || e?.message || "Lưu vật tư thất bại",
+      );
     } finally {
       setFormLoading(false);
     }
@@ -333,7 +410,8 @@ const ManageMaterials = () => {
               </span>
             </div>
             <p className="mt-2 text-xs text-on-surface-variant/65">
-              Quản lý master data vật tư thô: mã, tên, loại vật tư, đơn vị tính và giá gốc.
+              Quản lý master data vật tư thô: mã, tên, loại vật tư, đơn vị tính
+              và giá gốc.
             </p>
           </div>
 
@@ -384,7 +462,8 @@ const ManageMaterials = () => {
           </div>
 
           <div className="text-xs font-semibold text-on-surface-variant/70">
-            Hiển thị {pagedItems.length} / {filteredItems.length} vật tư từ backend
+            Hiển thị {pagedItems.length} / {filteredItems.length} vật tư từ
+            backend
           </div>
         </div>
 
@@ -411,18 +490,24 @@ const ManageMaterials = () => {
             <tbody className="divide-y divide-outline-variant/25 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-on-surface-variant/60">
+                  <td
+                    colSpan={7}
+                    className="p-8 text-center text-sm text-on-surface-variant/60"
+                  >
                     Đang tải vật tư từ backend...
                   </td>
                 </tr>
               ) : null}
 
               {pagedItems.map((item, idx) => (
-                <tr key={item.id} className="hover:bg-surface-container/20 transition-colors">
+                <tr
+                  key={item.id}
+                  className="hover:bg-surface-container/20 transition-colors"
+                >
                   <td className="p-4 pl-6 font-mono text-xs text-on-surface-variant/70">
-                    {((page - 1) * pageSize) + idx + 1 < 10
-                      ? `0${((page - 1) * pageSize) + idx + 1}`
-                      : ((page - 1) * pageSize) + idx + 1}
+                    {(page - 1) * pageSize + idx + 1 < 10
+                      ? `0${(page - 1) * pageSize + idx + 1}`
+                      : (page - 1) * pageSize + idx + 1}
                   </td>
                   <td className="p-4">
                     <span className="inline-flex rounded-md bg-surface-container px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">
@@ -430,10 +515,16 @@ const ManageMaterials = () => {
                     </span>
                   </td>
                   <td className="p-4">
-                    <div className="font-black text-on-surface">{item.material_name}</div>
+                    <div className="font-black text-on-surface">
+                      {item.material_name}
+                    </div>
                   </td>
-                  <td className="p-4 text-on-surface-variant/80">{item.type_name}</td>
-                  <td className="p-4 text-on-surface-variant/80">{item.unit_name}</td>
+                  <td className="p-4 text-on-surface-variant/80">
+                    {item.type_name}
+                  </td>
+                  <td className="p-4 text-on-surface-variant/80">
+                    {item.unit_name}
+                  </td>
                   <td className="p-4 text-on-surface-variant/70 font-semibold">
                     {formatMoney.format(item.base_price)} đ
                   </td>
@@ -460,7 +551,10 @@ const ManageMaterials = () => {
 
               {pagedItems.length === 0 && !loading && !error && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-on-surface-variant/60">
+                  <td
+                    colSpan={7}
+                    className="p-8 text-center text-sm text-on-surface-variant/60"
+                  >
                     Không tìm thấy vật tư phù hợp.
                   </td>
                 </tr>
@@ -471,17 +565,19 @@ const ManageMaterials = () => {
 
         <div className="border-t border-outline-variant/40 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:px-5">
           <div className="text-xs font-semibold text-on-surface-variant/70">
-            Dữ liệu được lấy trực tiếp từ backend: materials, material_types, material_units.
+            Dữ liệu được lấy trực tiếp từ backend: materials, material_types,
+            material_units.
           </div>
           <div className="p-4 border-t border-outline-variant/50 flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface/10">
             <p className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-wider">
-              Trang {Math.min(page, totalPages)} / {totalPages} (Tổng cộng {filteredItems.length} kết quả)
+              Trang {Math.min(page, totalPages)} / {totalPages} (Tổng cộng{" "}
+              {filteredItems.length} kết quả)
             </p>
             <div className="flex items-center overflow-x-auto max-w-full">
-              <Pagination 
-                currentPage={page} 
-                totalPages={totalPages} 
-                onPageChange={(p) => setPage(p)} 
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
               />
             </div>
           </div>
@@ -505,7 +601,11 @@ const ManageMaterials = () => {
       <ConfirmModal
         open={showConfirmDelete}
         title="Xác nhận xoá vật tư"
-        message={pendingDelete ? `Bạn chắc chắn muốn xoá vật tư ${pendingDelete.material_code} - ${pendingDelete.material_name}?` : 'Bạn chắc chắn muốn xoá vật tư này?'}
+        message={
+          pendingDelete
+            ? `Bạn chắc chắn muốn xoá vật tư ${pendingDelete.material_code} - ${pendingDelete.material_name}?`
+            : "Bạn chắc chắn muốn xoá vật tư này?"
+        }
         confirmText="Xoá"
         cancelText="Hủy"
         onCancel={() => {

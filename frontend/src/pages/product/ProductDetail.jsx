@@ -107,20 +107,6 @@ export default function ProductDetail() {
                     : true,
             };
           });
-        } else if (blueprint.length > 0) {
-          baseConfig = blueprint.map((comp) => ({
-            component_name: comp.name,
-            length: 2000,
-            width: 1000,
-            height: "",
-            unit: "mm",
-            default_material: "",
-            material_id: "",
-            thickness_id: "",
-            paint_id: "",
-            allowed_materials: comp.allowed_materials || [],
-            allow_paint: comp.allow_paint,
-          }));
         }
 
         // Ánh xạ config từ favorite nếu có
