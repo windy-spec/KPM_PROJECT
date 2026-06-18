@@ -26,7 +26,6 @@ import AdminProductPanel from "../../components/admin/AdminProductPanel";
 import ManageCategories from "./ManageCategories";
 import ManageMaterials from "./ManageMaterials";
 import ManageSettings from "./ManageSettings";
-import PricingForm from "../quotations/PricingForm";
 import QuotationList from "../quotations/QuotationList";
 import QuotationDetail from "../quotations/QuotationDetail";
 import ManageMaterialTypes from "../../components/admin/ManageMaterialTypes";
@@ -65,11 +64,10 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
       </span>
       {trend ? (
         <span
-          className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.18em] ${
-            tone === "amber"
-              ? "bg-amber-50 text-amber-700"
-              : "bg-teal-50 text-teal-700"
-          }`}
+          className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.18em] ${tone === "amber"
+            ? "bg-amber-50 text-amber-700"
+            : "bg-teal-50 text-teal-700"
+            }`}
         >
           {trend}
         </span>
@@ -120,42 +118,42 @@ const Dashboard = () => {
 
   const dynamicStats = dashboardData
     ? [
-        {
-          title: "Doanh thu tháng",
-          value: formatMoney(dashboardData.stats.revenue.value),
-          subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
-          icon: CircleDollarSign,
-          trend: `${dashboardData.stats.revenue.change}% ↗`,
-          tone: "teal",
-        },
-        {
-          title: "Đơn hàng mới",
-          value: dashboardData.stats.orders.value,
-          subtext: "Trong tháng này",
-          icon: ClipboardList,
-          trend: `${dashboardData.stats.orders.change}% ↗`,
-          tone: "teal",
-        },
-        {
-          title: "Tổng khách hàng",
-          value: dashboardData.stats.users.value,
-          subtext: "Toàn quốc",
-          icon: UserRound,
-        },
-        {
-          title: "Báo giá chờ duyệt",
-          value: dashboardData.stats.pendingQuotations.value,
-          subtext: "Cần xử lý gấp",
-          icon: FileSignature,
-          trend: "Cần xử lý",
-          tone: "amber",
-        },
-      ]
+      {
+        title: "Doanh thu tháng",
+        value: formatMoney(dashboardData.stats.revenue.value),
+        subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
+        icon: CircleDollarSign,
+        trend: `${dashboardData.stats.revenue.change}% ↗`,
+        tone: "teal",
+      },
+      {
+        title: "Đơn hàng mới",
+        value: dashboardData.stats.orders.value,
+        subtext: "Trong tháng này",
+        icon: ClipboardList,
+        trend: `${dashboardData.stats.orders.change}% ↗`,
+        tone: "teal",
+      },
+      {
+        title: "Tổng khách hàng",
+        value: dashboardData.stats.users.value,
+        subtext: "Toàn quốc",
+        icon: UserRound,
+      },
+      {
+        title: "Báo giá chờ duyệt",
+        value: dashboardData.stats.pendingQuotations.value,
+        subtext: "Cần xử lý gấp",
+        icon: FileSignature,
+        trend: "Cần xử lý",
+        tone: "amber",
+      },
+    ]
     : [];
 
   return (
-    <div className="min-h-screen bg-[#f6f8f8] text-on-surface">
-      <div className="flex flex-col lg:flex-row min-h-screen">
+    <div className="min-h-screen w-full bg-[#f6f8f8] text-on-surface">
+      <div className="flex flex-col lg:flex-row min-h-screen w-full">
         <AdminSidebar
           activePanel={activePanel}
           onPanelChange={(p) => setActivePanel(p)}
@@ -334,11 +332,10 @@ const Dashboard = () => {
                             </td>
                             <td className="p-4">
                               <span
-                                className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] ${
-                                  order.status === "completed"
-                                    ? "bg-teal-50 text-teal-700 border border-teal-100"
-                                    : "bg-amber-50 text-amber-700 border border-amber-100"
-                                }`}
+                                className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] ${order.status === "completed"
+                                  ? "bg-teal-50 text-teal-700 border border-teal-100"
+                                  : "bg-amber-50 text-amber-700 border border-amber-100"
+                                  }`}
                               >
                                 {order.status}
                               </span>
@@ -406,16 +403,10 @@ const Dashboard = () => {
               "settings_paint",
               "settings_labor",
             ].includes(activePanel) && (
-              <section>
-                <ManageSettings activePanel={activePanel} />
-              </section>
-            )}
-
-            {activePanel === "pricing" && (
-              <section>
-                <PricingForm />
-              </section>
-            )}
+                <section>
+                  <ManageSettings activePanel={activePanel} />
+                </section>
+              )}
 
             {activePanel === "quotations" && (
               <section>

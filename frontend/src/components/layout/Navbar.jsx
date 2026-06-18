@@ -71,11 +71,10 @@ const Navbar = () => {
 
   return (
     <header
-      className={`bg-white w-full z-50 sticky top-0 transition-all duration-200 ${
-        isScrolled
+      className={`bg-white w-full z-50 sticky top-0 transition-all duration-200 ${isScrolled
           ? "shadow-none border-b border-transparent"
           : "shadow-sm border-b border-outline-variant"
-      }`}
+        }`}
     >
       <div className="max-w-[1280px] mx-auto px-5 py-3">
         <div className="flex items-center justify-between gap-8">
