@@ -8,12 +8,24 @@ import {
   ChevronRight,
   Download,
   CreditCard,
+  X,
 } from "lucide-react";
 import orderService from "../../services/order.service";
+import Portal from "../../components/common/Portal";
+import { useSocket } from "../../context/SocketContext";
+import { showSuccess } from "../../utils/notify";
 
 const OrdersTab = () => {
+  const socket = useSocket();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // States for tracking modal
+  const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+  const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
+  const [trackingData, setTrackingData] = useState([]);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+
   const navigate = useNavigate();
   useEffect(() => {
     const fetchOrders = async () => {
@@ -46,6 +58,36 @@ const OrdersTab = () => {
     };
     fetchOrders();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleOrderStatusUpdated = (data) => {
+      setOrders((prev) => 
+        prev.map(o => o.id === data.orderId ? { ...o, status: data.status } : o)
+      );
+      showSuccess(`Đơn hàng ${data.orderId.split('-').pop()} vừa được cập nhật: ${data.stage_name}`);
+      
+      // Nếu đang mở modal theo dõi chính đơn hàng này, cập nhật thêm tracking log luôn
+      setTrackingData(prev => {
+        // Chỉ thêm vào nếu trùng order đang mở modal
+        if (selectedTrackingOrder && selectedTrackingOrder.id === data.orderId) {
+           return [{
+             stage_name: data.stage_name,
+             stage_description: data.stage_description,
+             created_at: new Date().toISOString()
+           }, ...prev];
+        }
+        return prev;
+      });
+    };
+
+    socket.on("orderStatusUpdated", handleOrderStatusUpdated);
+
+    return () => {
+      socket.off("orderStatusUpdated", handleOrderStatusUpdated);
+    };
+  }, [socket, selectedTrackingOrder]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -92,6 +134,22 @@ const OrdersTab = () => {
             {status}
           </span>
         );
+    }
+  };
+
+  const handleTrackOrder = async (order) => {
+    setSelectedTrackingOrder(order);
+    setTrackingModalOpen(true);
+    setTrackingLoading(true);
+    try {
+      const res = await orderService.getOrderTracking(order.id);
+      if (res.success && res.data) {
+        setTrackingData(res.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTrackingLoading(false);
     }
   };
 
@@ -193,7 +251,10 @@ const OrdersTab = () => {
                     Tiếp tục thanh toán
                   </button>
                 ) : (
-                  <button className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors shadow-sm">
+                  <button 
+                    onClick={() => handleTrackOrder(order)}
+                    className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors shadow-sm"
+                  >
                     Theo dõi đơn hàng
                   </button>
                 )}
@@ -202,6 +263,85 @@ const OrdersTab = () => {
           </div>
         ))
       )}
+
+      {/* Tracking Modal */}
+      {trackingModalOpen && selectedTrackingOrder && (
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-[32px] border border-outline-variant/60 bg-surface shadow-2xl overflow-hidden animate-scale-up">
+              
+              {/* Header Modal */}
+              <div className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container-low px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-on-surface">
+                      Theo Dõi Tiến Độ
+                    </h3>
+                    <p className="text-xs font-bold text-on-surface-variant/70">
+                      Đơn hàng {selectedTrackingOrder.order_code}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setTrackingModalOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Nội dung Tracking Timeline */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {trackingLoading ? (
+                  <div className="py-8 text-center text-sm font-bold text-on-surface-variant/70 animate-pulse">
+                    Đang tải dữ liệu tiến độ...
+                  </div>
+                ) : trackingData.length === 0 ? (
+                  <div className="py-8 text-center text-sm font-bold text-on-surface-variant/70">
+                    Chưa có thông tin tiến độ nào được ghi nhận.
+                  </div>
+                ) : (
+                  <div className="relative pl-4 border-l-2 border-outline-variant/40 space-y-6">
+                    {trackingData.map((track, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[21px] mt-1.5 h-3 w-3 rounded-full border-2 border-surface bg-primary shadow-sm" />
+                        <div>
+                          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">
+                            {new Date(track.created_at).toLocaleString("vi-VN")}
+                          </p>
+                          <h4 className="text-sm font-black text-on-surface">
+                            {track.stage_name}
+                          </h4>
+                          {track.stage_description && (
+                            <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                              {track.stage_description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Modal */}
+              <div className="flex justify-end border-t border-outline-variant/40 bg-surface-container-low/60 px-6 py-4">
+                <button 
+                  onClick={() => setTrackingModalOpen(false)} 
+                  className="h-9 rounded-lg border border-outline-variant bg-surface px-4 text-xs font-bold text-on-surface hover:bg-surface-container-low transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </Portal>
+      )}
+
     </div>
   );
 };

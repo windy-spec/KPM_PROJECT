@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 
 const SocketContext = createContext(null);
@@ -6,23 +6,23 @@ const SocketContext = createContext(null);
 const socketURL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace('/api', '');
 
 export const SocketProvider = ({ children }) => {
-  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
     // Khởi tạo socket connection
-    socketRef.current = io(socketURL, {
+    const newSocket = io(socketURL, {
       transports: ['websocket', 'polling'],
     });
 
-    socketRef.current.on('connect', () => {
-      console.log('Connected to socket server:', socketRef.current.id);
+    newSocket.on('connect', () => {
+      console.log('Connected to socket server:', newSocket.id);
       
       // Emit join để phân room dựa trên user đăng nhập hiện tại
       const userStr = localStorage.getItem('user');
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
-          socketRef.current.emit('join', {
+          newSocket.emit('join', {
             user_id: user.id,
             role: user.role
           });
@@ -32,19 +32,31 @@ export const SocketProvider = ({ children }) => {
       }
     });
 
-    socketRef.current.on('disconnect', () => {
+    const handleAuthChange = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr && newSocket.connected) {
+        try {
+          const user = JSON.parse(userStr);
+          newSocket.emit('join', { user_id: user.id, role: user.role });
+        } catch(e) {}
+      }
+    };
+    window.addEventListener('auth-change', handleAuthChange);
+
+    newSocket.on('disconnect', () => {
       console.log('Disconnected from socket server');
     });
 
+    setSocket(newSocket);
+
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      window.removeEventListener('auth-change', handleAuthChange);
+      newSocket.disconnect();
     };
   }, []);
 
   return (
-    <SocketContext.Provider value={socketRef.current}>
+    <SocketContext.Provider value={socket}>
       {children}
     </SocketContext.Provider>
   );

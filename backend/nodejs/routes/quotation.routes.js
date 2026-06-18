@@ -10,7 +10,11 @@ router.get("/", quotationController.getAll);
 router.post("/calculate", quotationController.calculateBulk);
 router.post("/calculate-realtime", quotationController.calculateRealtime);
 router.post("/favorite", authenticateToken, quotationController.saveFavorite);
-router.post("/request", authenticateToken, quotationController.requestCustomQuote);
+router.post(
+  "/request",
+  authenticateToken,
+  quotationController.requestCustomQuote,
+);
 router.get("/user", authenticateToken, quotationController.getUserQuotations);
 
 // ========================================================
@@ -19,6 +23,16 @@ router.get("/user", authenticateToken, quotationController.getUserQuotations);
 router.get("/:id", quotationController.getById);
 router.put("/:id/status", quotationController.updateStatus);
 router.put("/:id/approve", quotationController.approveQuoteRequest);
+router.put(
+  "/:id/negotiate",
+  authenticateToken,
+  quotationController.userNegotiate,
+);
+router.put(
+  "/:id/final-decision",
+  authenticateToken,
+  quotationController.adminFinalDecision,
+);
 router.post("/:id/attachments", quotationController.addAttachment); // API lưu link bản vẽ
 router.delete("/:id", quotationController.delete);
 

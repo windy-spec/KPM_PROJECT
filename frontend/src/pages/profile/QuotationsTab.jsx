@@ -1,14 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { quotationService } from '../../services/quotation.service';
 import { FileText, Clock, CheckCircle2, XCircle, AlertCircle, Eye, ChevronRight } from 'lucide-react';
+import { useSocket } from '../../context/SocketContext';
+import { showSuccess } from '../../utils/notify';
 
 const QuotationsTab = () => {
+  const socket = useSocket();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchQuotations();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleQuoteUpdated = (payload) => {
+      setQuotations(prev => prev.map(q => q.id === payload.data.id ? payload.data : q));
+      showSuccess(payload.message || "Yêu cầu báo giá của bạn đã được cập nhật!");
+    };
+
+    socket.on("quote_status_changed", handleQuoteUpdated);
+    socket.on("quote_updated", handleQuoteUpdated);
+
+    return () => {
+      socket.off("quote_status_changed", handleQuoteUpdated);
+      socket.off("quote_updated", handleQuoteUpdated);
+    };
+  }, [socket]);
 
   const fetchQuotations = async () => {
     try {

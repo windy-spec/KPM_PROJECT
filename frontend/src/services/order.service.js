@@ -14,6 +14,16 @@ const orderService = {
   getMyOrders: async () => {
     const response = await apiClient.get('/orders/my-orders');
     return response.data;
+  },
+
+  updateOrderStatus: async (id, data) => {
+    const response = await apiClient.put(`/orders/${id}/status`, data);
+    return response.data;
+  },
+
+  getOrderTracking: async (id) => {
+    const response = await apiClient.get(`/orders/${id}/tracking`);
+    return response.data;
   }
 };
 

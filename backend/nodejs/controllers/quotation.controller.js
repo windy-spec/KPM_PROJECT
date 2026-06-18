@@ -87,13 +87,11 @@ class QuotationController {
       const data = { ...req.body, user_id };
 
       const result = await quotationService.saveFavorite(data);
-      res
-        .status(201)
-        .json({
-          success: true,
-          message: "Đã lưu vào danh sách yêu thích!",
-          data: result,
-        });
+      res.status(201).json({
+        success: true,
+        message: "Đã lưu vào danh sách yêu thích!",
+        data: result,
+      });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -112,7 +110,14 @@ class QuotationController {
       });
     } catch (e) {
       if (e.message === "PROFILE_INCOMPLETE") {
-        return res.status(400).json({ success: false, code: "PROFILE_INCOMPLETE", message: "Vui lòng cập nhật Số điện thoại và Địa chỉ trước khi gửi yêu cầu." });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            code: "PROFILE_INCOMPLETE",
+            message:
+              "Vui lòng cập nhật Số điện thoại và Địa chỉ trước khi gửi yêu cầu.",
+          });
       }
       res.status(400).json({ success: false, message: e.message });
     }
@@ -121,9 +126,12 @@ class QuotationController {
   async getUserQuotations(req, res) {
     try {
       const user_id = req.user?.id || req.query.user_id;
-      const statuses = req.query.statuses ? req.query.statuses.split(',') : [];
-      
-      const result = await quotationService.getUserQuotations(user_id, statuses);
+      const statuses = req.query.statuses ? req.query.statuses.split(",") : [];
+
+      const result = await quotationService.getUserQuotations(
+        user_id,
+        statuses,
+      );
       res.status(200).json({
         success: true,
         data: result,
@@ -135,10 +143,47 @@ class QuotationController {
 
   async approveQuoteRequest(req, res) {
     try {
-      const result = await quotationService.approveQuoteRequest(req.params.id, req.body);
+      const result = await quotationService.approveQuoteRequest(
+        req.params.id,
+        req.body,
+      );
       res.status(200).json({
         success: true,
         message: "Đã duyệt và gửi báo giá cho khách hàng!",
+        data: result,
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+  async userNegotiate(req, res) {
+    try {
+      const { price } = req.body;
+      const result = await quotationService.userNegotiate(
+        req.params.id,
+        req.user.id,
+        price,
+      );
+      res.status(200).json({
+        success: true,
+        message: "Đã gửi mức giá đề xuất của bạn cho xưởng!",
+        data: result,
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async adminFinalDecision(req, res) {
+    try {
+      const { status } = req.body;
+      const result = await quotationService.adminFinalDecision(
+        req.params.id,
+        status,
+      );
+      res.status(200).json({
+        success: true,
+        message: "Đã chốt trạng thái báo giá thành công!",
         data: result,
       });
     } catch (e) {

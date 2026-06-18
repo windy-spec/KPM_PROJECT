@@ -85,6 +85,7 @@ const Login = () => {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user", JSON.stringify(user));
+      window.dispatchEvent(new Event('auth-change'));
 
       const destination =
         user && String(user.role || "").toUpperCase() === "ADMIN"
@@ -145,6 +146,7 @@ const Login = () => {
 
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("user", JSON.stringify(user));
+        window.dispatchEvent(new Event('auth-change'));
 
         const destination =
           user && String(user.role || "").toUpperCase() === "ADMIN"

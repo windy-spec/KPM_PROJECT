@@ -17,4 +17,6 @@ router.put(
   authenticateToken,
   orderController.updateCheckoutInfo,
 );
+router.put("/:id/status", authenticateToken, orderController.updateStatus);
+router.get("/:id/tracking", authenticateToken, orderController.getTracking);
 module.exports = router;

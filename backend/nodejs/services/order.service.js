@@ -121,6 +121,42 @@ class OrderService {
       },
     });
   }
+  async updateOrderStatus(orderId, payload) {
+    const { status, stage_name, stage_description } = payload;
+
+    // Kiểm tra tồn tại đh
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Đơn hàng không tồn tại!");
+
+    // Transaction lỗi sẽ không bị thừa
+    return await prisma.$transaction(async (tx) => {
+      // cập nhật trạng thái tổng
+
+      const updatedOrder = await tx.orders.update({
+        where: { id: orderId },
+        data: { production_status: status },
+        include: { quotations: true }
+      });
+
+      // Ghi log trạng thái
+      if (stage_name) {
+        await tx.order_tracking.create({
+          data: {
+            order_id: orderId,
+            stage_name: stage_name,
+            stage_description: stage_description || "",
+          },
+        });
+      }
+      return updatedOrder;
+    });
+  }
+  async getOrderTracking(orderID) {
+    return await prisma.order_tracking.findMany({
+      where: { order_id: orderID },
+      orderBy: { created_at: "desc" },
+    });
+  }
 }
 
 module.exports = new OrderService();
