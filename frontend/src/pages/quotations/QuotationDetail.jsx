@@ -11,8 +11,10 @@ import {
   ExternalLink,
   FileCheck,
   AlertCircle,
-  Clock
-} from "lucide-react"; // Thêm một số icon phổ biến của lucide để tăng tính trực quan
+  Clock,
+  DollarSign,
+  Gavel
+} from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 
 export default function QuotationDetail({ quotationIdProp, onBack }) {
@@ -22,8 +24,13 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+
   const [customPrice, setCustomPrice] = useState('');
   const [expandedSpecId, setExpandedSpecId] = useState(null);
+
+  const [negotiatePrice, setNegotiatePrice] = useState('');
+  const [finalStatus, setFinalStatus] = useState('admin_confirmed');
+
   const socket = useSocket();
 
   useEffect(() => {
@@ -126,6 +133,41 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     } catch (e) {
       showError(
         e?.response?.data?.message || e?.message || "Lỗi khi duyệt báo giá",
+      );
+    }
+  }
+
+  // Gửi đề xuất mặc cả
+  async function handleNegotiate() {
+    if (!negotiatePrice) {
+      showError("Vui lòng nhập số tiền muốn mặc cả.");
+      return;
+    }
+    try {
+      await apiClient.put(`/quotations/${id}/negotiate`, {
+        price: Number(negotiatePrice)
+      });
+      showSuccess("Gửi đề xuất mặc cả thành công!");
+      setNegotiatePrice('');
+      await load();
+    } catch (e) {
+      showError(
+        e?.response?.data?.message || e?.message || "Lỗi khi gửi đề xuất mặc cả.",
+      );
+    }
+  }
+
+  // Chốt yêu cầu mặc cả từ khách
+  async function handleFinalDecision() {
+    try {
+      await apiClient.put(`/quotations/${id}/final-decision`, {
+        status: finalStatus
+      })
+      showSuccess("Đã chốt quyết định cho yêu cầu báo giá này!");
+      await load();
+    } catch (e) {
+      showError(
+        e?.response?.data?.message || e?.message || "Lỗi khi chốt quyết định",
       );
     }
   }
@@ -372,6 +414,64 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   className="w-full rounded-xl border border-rose-200 bg-white px-4 h-10 text-rose-600 font-bold text-xs uppercase hover:bg-rose-50 transition-colors"
                 >
                   Từ chối yêu cầu
+                </button>
+              </div>
+            )}
+
+            {/* TRẠNG THÁI ĐÃ ĐỀ XUẤT GIÁ - CHO PHÉP MẶC CẢ (status === "admin_quoted") */}
+            {data && data.status === "admin_quoted" && (
+              <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-200 space-y-3">
+                <div className="flex items-center gap-1.5 text-sky-800 text-xs font-black uppercase tracking-wider">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  <span>Giá xưởng đề xuất: {formatVND(data.total_quoted_price)}</span>
+                </div>
+                <div className="space-y-1">
+                  <input
+                    type="number"
+                    value={negotiatePrice}
+                    onChange={(e) => setNegotiatePrice(e.target.value)}
+                    placeholder="Nhập giá muốn mặc cả..."
+                    className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-black text-on-surface focus:outline-none focus:border-sky-500 bg-white shadow-2xs"
+                  />
+                  {negotiatePrice && (
+                    <div className="text-[11px] text-sky-700 font-bold pl-1">
+                      Xem trước: {formatVND(negotiatePrice)}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleNegotiate}
+                  className="w-full rounded-xl bg-sky-600 hover:bg-sky-700 px-4 h-10 text-white font-bold text-xs uppercase shadow-md transition-all active:scale-95"
+                >
+                  Gửi đề xuất mặc cả
+                </button>
+              </div>
+            )}
+
+            {/* TRẠNG THÁI KHÁCH HÀNG MUỐN MẶC CẢ (status === "user_proposed") */}
+            {data && data.status === "user_proposed" && (
+              <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-200 space-y-3">
+                <div className="flex items-center gap-1.5 text-purple-800 text-xs font-black uppercase tracking-wider">
+                  <Gavel className="w-3.5 h-3.5" />
+                  <span>Khách muốn mặc cả xuống: <b className="text-rose-600">{formatVND(data.total_quoted_price)}</b></span>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-purple-700 block pl-1">Quyết định của Admin:</label>
+                  <select
+                    value={finalStatus}
+                    onChange={(e) => setFinalStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-purple-300 rounded-lg text-sm font-bold text-on-surface focus:outline-none focus:border-purple-500 bg-white shadow-2xs"
+                  >
+                    <option value="admin_confirmed">Đồng ý (admin_confirmed)</option>
+                    <option value="under_review">Xem xét thêm (under_review)</option>
+                    <option value="cancelled">Từ chối (cancelled)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleFinalDecision}
+                  className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 px-4 h-10 text-white font-bold text-xs uppercase shadow-md transition-all active:scale-95"
+                >
+                  Chốt yêu cầu
                 </button>
               </div>
             )}

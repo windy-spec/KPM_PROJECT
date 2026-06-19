@@ -56,6 +56,7 @@ class QuotationService {
       "admin_confirmed",
       "rejected",
       "cancelled",
+      "under_review",
       "favorite",
     ];
     if (!validStatuses.includes(status)) {
@@ -517,8 +518,8 @@ class QuotationService {
           : null,
         thickness_id
           ? prisma.material_thickness.findUnique({
-              where: { id: thickness_id },
-            })
+            where: { id: thickness_id },
+          })
           : null,
         paint_id
           ? prisma.paint_types.findUnique({ where: { id: paint_id } })
