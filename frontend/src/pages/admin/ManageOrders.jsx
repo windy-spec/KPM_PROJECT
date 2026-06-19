@@ -62,15 +62,22 @@ export default function ManageOrders() {
             status: o.production_status || "pending",
             shipping_address: o.quotations?.address || "Liên hệ nhận hàng",
             notes: o.quotations?.notes || "",
-            items:
-              o.order_items?.map((i) => ({
-                id: i.id,
-                product_name: i.products?.product_name || "Sản phẩm",
-                quantity: i.quantity,
-                price: parseFloat(i.price) || 0,
-                unit: "Cái",
-              })) || [],
-            total_amount: parseFloat(o.total_amount) || 0,
+            items: o.order_items?.length > 0 
+              ? o.order_items.map((i) => ({
+                  id: i.id,
+                  product_name: i.products?.product_name || "Sản phẩm",
+                  quantity: i.quantity,
+                  price: parseFloat(i.price) || 0,
+                  unit: "Cái",
+                })) 
+              : o.quotations?.quotation_specs?.map((spec) => ({
+                  id: spec.id,
+                  product_name: spec.component_name || "Linh kiện",
+                  quantity: 1,
+                  price: parseFloat(spec.snapshot_price) || 0,
+                  unit: "Hệ",
+                })) || [],
+            total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
           }));
           setOrders(formattedOrders);
         }

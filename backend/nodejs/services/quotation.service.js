@@ -72,10 +72,12 @@ class QuotationService {
     });
 
     if (global.io && updatedQuotation.user_id) {
-      global.io.to(`room_user_${updatedQuotation.user_id}`).emit("quote_status_changed", {
-        message: `Báo giá của bạn đã chuyển sang trạng thái: ${status}`,
-        data: updatedQuotation
-      });
+      global.io
+        .to(`room_user_${updatedQuotation.user_id}`)
+        .emit("quote_status_changed", {
+          message: `Báo giá của bạn đã chuyển sang trạng thái: ${status}`,
+          data: updatedQuotation,
+        });
     }
 
     // Nếu Admin xác nhận lên đơn hàng -> Sinh ra Order và gửi email cho Khách hàng
@@ -92,7 +94,9 @@ class QuotationService {
           data: {
             quotation_id: id,
             order_code: orderCode,
-            production_status: "confirmed",
+            production_status: "pending_payment",
+            total_amount: updatedQuotation.user_proposed_price || updatedQuotation.admin_proposed_price || updatedQuotation.total_quoted_price,
+            user_id: updatedQuotation.user_id,
           },
         });
 
@@ -169,7 +173,7 @@ class QuotationService {
     if (global.io) {
       global.io.to("room_admin").emit("new_quotation", {
         message: "Có yêu cầu báo giá mới từ khách hàng!",
-        data: newQuote
+        data: newQuote,
       });
     }
 
@@ -226,7 +230,7 @@ class QuotationService {
     if (global.io && updateQuote.user_id) {
       global.io.to(`room_user_${updateQuote.user_id}`).emit("quote_updated", {
         message: "Admin đã cập nhật giá cho yêu cầu báo giá của bạn!",
-        data: updateQuote
+        data: updateQuote,
       });
     }
 
@@ -253,7 +257,7 @@ class QuotationService {
     if (global.io) {
       global.io.to("room_admin").emit("quote_negotiated", {
         message: "Khách hàng vừa đề xuất một mức giá mặc cả mới!",
-        data: updateQuote
+        data: updateQuote,
       });
     }
 
@@ -404,7 +408,7 @@ class QuotationService {
         const mat_multiplier = thickness
           ? parseFloat(thickness.price_multiplier || 1)
           : 1.0;
-          
+
         let consumedQty = area * 1.05;
         if (comp.waste_configs && comp.waste_configs[material_id]) {
           consumedQty = parseFloat(comp.waste_configs[material_id].rate || 0);
@@ -415,9 +419,7 @@ class QuotationService {
         const material_cost =
           parseFloat(material.base_price) * mat_multiplier * consumedQty;
 
-        const paint_cost = paint
-          ? parseFloat(paint.price_per_sqm) * area
-          : 0;
+        const paint_cost = paint ? parseFloat(paint.price_per_sqm) * area : 0;
         const labor_cost = labor_price_per_sqm * area;
 
         // Tổng chi phí vốn cho 1 linh kiện
@@ -525,8 +527,8 @@ class QuotationService {
           : null,
         thickness_id
           ? prisma.material_thickness.findUnique({
-            where: { id: thickness_id },
-          })
+              where: { id: thickness_id },
+            })
           : null,
         paint_id
           ? prisma.paint_types.findUnique({ where: { id: paint_id } })
@@ -551,7 +553,7 @@ class QuotationService {
       } else if (comp.waste_rate) {
         consumedQty = parseFloat(comp.waste_rate);
       }
-      
+
       const material_price =
         mat_base_price * mat_multiplier * consumedQty * profit;
       const paint_price = paint

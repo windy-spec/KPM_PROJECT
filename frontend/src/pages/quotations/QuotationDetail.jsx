@@ -299,7 +299,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   Tổng Tiền Thanh Toán (Tạm tính)
                 </div>
                 <div className="text-xl md:text-2xl font-black text-rose-600 tracking-tight">
-                  {formatVND(data.total_quoted_price)}
+                  {formatVND(data.user_proposed_price || data.admin_proposed_price || data.total_quoted_price)}
                 </div>
               </div>
             </div>
@@ -423,7 +423,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-200 space-y-3">
                 <div className="flex items-center gap-1.5 text-sky-800 text-xs font-black uppercase tracking-wider">
                   <DollarSign className="w-3.5 h-3.5" />
-                  <span>Giá xưởng đề xuất: {formatVND(data.total_quoted_price)}</span>
+                  <span>Giá xưởng đề xuất: {formatVND(data.admin_proposed_price || data.total_quoted_price)}</span>
                 </div>
                 <div className="space-y-1">
                   <input
@@ -453,7 +453,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-200 space-y-3">
                 <div className="flex items-center gap-1.5 text-purple-800 text-xs font-black uppercase tracking-wider">
                   <Gavel className="w-3.5 h-3.5" />
-                  <span>Khách muốn mặc cả xuống: <b className="text-rose-600">{formatVND(data.total_quoted_price)}</b></span>
+                  <span>Khách muốn mặc cả xuống: <b className="text-rose-600">{formatVND(data.user_proposed_price)}</b></span>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-purple-700 block pl-1">Quyết định của Admin:</label>
