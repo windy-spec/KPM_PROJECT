@@ -1,64 +1,54 @@
-# Bối cảnh & Các điểm cần chỉnh sửa (Cập nhật theo yêu cầu)
+# Bối cảnh & Các điểm cần chỉnh sửa (Cập nhật theo yêu cầu mới nhất)
 
-Tài liệu này trình bày lại chi tiết thiết kế cho 2 cơ chế: (1) Đưa Linh kiện vào DB và (2) Xử lý logic Đơn vị tính & Hao phí khi thay đổi vật tư.
-
----
-
-## Cơ chế 1: Quản lý Linh kiện (Component Templates) trong Database
-
-**Trả lời câu hỏi của bạn:** *"Thay đổi thì toàn bộ luồng code hiện tại đang lưu trữ linh kiện sản phẩm cũng phải đổi theo đúng không?"*
-
-**Không nhất thiết phải đập bỏ toàn bộ luồng cũ.** Hệ thống hiện tại đang lưu `components` của mỗi Sản phẩm (`products`) dưới dạng một mảng JSON. Cấu trúc JSON này rất linh hoạt và phù hợp vì mỗi sản phẩm có kích thước, số lượng linh kiện khác nhau. 
-
-**Điểm thay đổi cốt lõi chỉ là "Nguồn gốc" của dữ liệu mẫu:**
-Thay vì lấy danh sách linh kiện từ file cứng `CATEGORY_BLUEPRINTS` ở Frontend, chúng ta lấy nó từ Database. Mảng JSON `components` trong bảng `products` hay `quotation_specs` vẫn giữ nguyên dạng JSON, chỉ là dữ liệu nạp vào nó sẽ phong phú và chuẩn xác hơn.
-
-### Các thay đổi cụ thể:
-1. **Schema Database (`schema.prisma`):** Thêm bảng `component_templates` (Linh kiện mẫu) và bảng `component_allowed_materials` (Các vật tư được phép dùng cho linh kiện đó).
-2. **Backend API:** Thêm các API CRUD (`GET`, `POST`, `PUT`, `DELETE`) cho Linh kiện mẫu.
-3. **Frontend (Trang Admin quản lý linh kiện):** Tạo giao diện để thêm mới linh kiện (ví dụ: Tên "Khung sườn", gắn với danh mục "Hàng rào", chọn các vật tư phù hợp như Sắt hộp, Inox...).
-4. **Frontend (Trang cấu hình sản phẩm `ProductComponentsEditor.jsx`):** Gọi API để load danh sách linh kiện mẫu làm lựa chọn dropdown. Khi Admin chọn 1 linh kiện, hệ thống tự động đổ mảng `allowed_materials` để Admin biết linh kiện này được phép dùng những vật tư nào.
+Tài liệu này trình bày lại chi tiết thiết kế cho 3 cơ chế cốt lõi sẽ vận hành trong hệ thống: (1) Đưa Linh kiện vào Database và Dọn dẹp dữ liệu cũ, (2) Quản lý Định mức Tiêu hao (Số lượng tuyệt đối), và (3) Luồng giao tiếp giữa Admin và Role Kho khi duyệt đơn hàng.
 
 ---
 
-## Cơ chế 2: Quản lý Đơn vị tính và Hao phí theo cấu hình Sản phẩm
+## Cơ chế 1: Quản lý Linh kiện trong Database & Dọn dẹp
 
-**Ý tưởng gốc của bạn rất hay:** Đơn vị tính là thuộc tính cố định của Vật tư (tấm, miếng, cây, kg), nhưng độ hao phí là thuộc tính của Sản phẩm (một cái cửa nhôm thì hao phí nhôm khác với cái tủ nhôm). Đặc biệt, **khi chuyển qua vật tư khác trong cùng một linh kiện, mức hao phí cũng phải thay đổi theo cấu hình vật tư đó.**
+**Giải pháp:** 
+- Tạo bảng `component_templates` và `component_allowed_materials` trong Database.
+- Khi Admin tạo Sản phẩm, hệ thống gọi API tải linh kiện từ DB xuống.
+- Khởi tạo tài khoản mang role `admin_kho`. Role này chỉ thao tác trên Backend (API) và bạn của bạn sẽ viết Frontend riêng cho nó.
+- **Dọn dẹp:** Sau khi viết Script đẩy dữ liệu từ `CATEGORY_BLUEPRINTS` vào DB thành công, ta sẽ xóa bỏ hoàn toàn file `frontend/src/config/categoryBlueprints.js` và thư mục liên quan để loại bỏ nợ kỹ thuật (technical debt).
 
-### Thiết kế cấu trúc lưu trữ mới cho JSON `components` của Sản phẩm:
+---
 
-Hiện tại, JSON của 1 linh kiện trong Sản phẩm đang lưu:
-```json
-{
-  "name": "Khung bao cửa",
-  "default_material": "SH_4080",
-  "waste_rate": 1,
-  "waste_unit": "cây"
-}
-```
+## Cơ chế 2: Quản lý Định mức Tiêu hao (Thay thế % hao phí) & Cỗ Máy Tính Giá
 
-**Sẽ được nâng cấp thành:**
-```json
-{
-  "name": "Khung bao cửa",
-  "default_material": "SH_4080",
-  "waste_configs": {
-    "SH_4080": { "rate": 1, "unit": "cây" },
-    "INOX_304": { "rate": 0.5, "unit": "tấm" },
-    "THEP_I_200": { "rate": 2, "unit": "kg" }
-  }
-}
-```
+**Ghi nhận:** Định mức tiêu hao KHÔNG PHẢI LÀ %, mà là **Số lượng vật tư hao tổn cụ thể (Số tuyệt đối)**.
+Ví dụ: Làm chân ghế tiêu hao hết đúng 2 cây sắt.
 
-### Cách thức hoạt động & Điểm cần sửa:
+### Tích hợp vào Cỗ Máy Tính Giá (Pricing Engine - `quotation.service.js`)
+Lỗi ở code cũ là Pricing Engine tính phí vật tư dựa theo công thức: `Diện tích * 1.05 (Hao phí 5%)`.
+Giờ đây ta phải bỏ ngay dòng `const wasted = 1.05` đi.
+Thay vào đó, Pricing Engine sẽ lấy trực tiếp `waste_rate` (tức là mức tiêu hao tuyệt đối do Admin cấu hình) nhân thẳng với Đơn giá vật tư. Nếu làm cái bàn cần 2 tấm gỗ, thì Tiền vật tư = `Giá 1 tấm * 2`. Bỏ qua hoàn toàn việc tính hao hụt theo diện tích. Điều này giúp tính giá chính xác 100% theo vật tư vật lý.
 
-1. **Ở Trang cấu hình Sản phẩm (`ProductComponentsEditor.jsx`):**
-   - Thay vì chỉ cho Admin nhập 1 ô "Hao phí" duy nhất, ta sẽ hiển thị ra một danh sách các "Vật tư phù hợp" (dựa theo cấu hình ở Cơ chế 1).
-   - Với **mỗi loại vật tư**, Admin sẽ nhập được 1 mức `waste_rate` riêng biệt.
-   - **Đơn vị tính (`unit`)** sẽ tự động được hệ thống khóa cứng (Read-only) bằng cách dò trong DB `materials -> material_units`, đảm bảo tuyệt đối không bị sai lệch đơn vị.
+---
 
-2. **Ở Trang tạo Báo giá (`CustomQuoteForm.jsx` / `QuotationDetail.jsx`):**
-   - Khi Khách hàng hoặc Admin **thay đổi loại vật tư** cho một linh kiện (Ví dụ: Từ Sắt Hộp `SH_4080` sang Inox `INOX_304`).
-   - Frontend sẽ tự động tra cứu vào mảng `waste_configs["INOX_304"]` của Sản phẩm đó để lấy ra **Đơn vị hao phí (tấm)** và **Tỉ lệ hao phí (0.5)** tương ứng.
-   - Nếu vật tư đó chưa được cấu hình hao phí, có thể áp dụng mức mặc định là `0` hoặc cảnh báo Admin.
-   - Nhờ vậy, khi xuất kho hoặc tính tiền dựa trên hao phí, số liệu sẽ tự động thích ứng với vật tư được chọn mà không cần can thiệp thủ công.
+## Cơ chế 3: Luồng Quản lý Kho (Inventory) & Phê duyệt Đơn hàng
+
+> 🚨 **CẬP NHẬT QUAN TRỌNG:** Ngăn chặn lỗi Double Calculation (Tính toán 2 lần). Hệ thống áp dụng cơ chế **Snapshot (Chụp ảnh dữ liệu)** để đảm bảo số lượng xuất kho luôn khớp tuyệt đối với lúc Admin duyệt đơn, bất chấp việc ai đó sửa định mức linh kiện trong lúc chờ Kho xác nhận.
+
+**Bước 1: Admin Duyệt Đơn (Phát lệnh yêu cầu xuống Kho)**
+Khi Admin nhấn "Duyệt đơn":
+- Hệ thống tính toán một lần duy nhất: Nhân **Định mức tiêu hao** với **Số lượng sản phẩm** để sinh ra một **"Bảng Yêu Cầu Vật Tư"**.
+- Bảng này lập tức được **lưu chết (Snapshot)** vào cột `material_requirements` (kiểu JSON) trong bảng `orders`.
+- Đơn hàng đổi trạng thái sang `Chờ Kho Xác Nhận`. Không có trừ kho lúc này.
+
+**Bước 2: Role Kho kiểm tra và Xuất kho**
+Bạn của bạn sẽ làm giao diện Frontend cho Role `admin_kho`. Giao diện này sẽ gọi vào API Xác nhận xuất kho của Backend do bạn viết. Khi gọi API:
+
+* **Backend lấy Snapshot:** Hệ thống KHÔNG tính toán lại, mà mở cột `material_requirements` của Đơn hàng ra để đọc chính xác số lượng Admin đã yêu cầu.
+* **Backend kiểm tra kho ĐỦ hàng:** 
+  - API thực thi trừ số lượng (`decrement`) vào bảng `inventory` và lưu lịch sử `inventory_logs`.
+  - Thông báo tự động gửi về Admin báo "Vật tư đã chuẩn bị xong".
+  - Đơn hàng chuyển sang trạng thái: `Đang Sản Xuất`.
+  - API trả về Success cho Frontend của Kho.
+
+* **Backend kiểm tra kho THIẾU hàng:**
+  - API trả về mã lỗi 400 kèm **Danh sách Vật tư thiếu** (Tên vật tư, Số lượng cần, Số lượng đang có, **Số lượng cần mua thêm**).
+  - Frontend của Role Kho hứng mảng này, vẽ thành một cái bảng báo cáo và bấm gửi lại cho Admin để Admin tiến hành quy trình **Mua hàng (Purchase Order)**.
+
+---
+*Tài liệu này đóng vai trò là "Kim chỉ nam" cho mọi dòng code ở Frontend và Backend nhằm đảm bảo tính toàn vẹn của dữ liệu và quy trình nghiệp vụ đúng như bạn thiết kế.*

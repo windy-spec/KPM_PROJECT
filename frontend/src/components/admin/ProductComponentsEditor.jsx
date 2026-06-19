@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Settings, Info } from 'lucide-react';
-import { CATEGORY_BLUEPRINTS } from '../../config/categoryBlueprints';
 import { materialService } from '../../services/material.service';
+import apiClient from '../../services/apiClient';
 
 const ProductComponentsEditor = ({ value, onChange, categoryId, categories, basePrice, setBasePrice }) => {
   const [components, setComponents] = useState([]);
@@ -21,16 +21,22 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
     }
   }, [value]);
 
-  // Fetch materials and labor rates to calculate suggested price
+  const [blueprints, setBlueprints] = useState([]);
+
+  // Fetch materials, labor rates, and blueprints
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [matRes, laborRes] = await Promise.all([
+        const [matRes, laborRes, bpRes] = await Promise.all([
           materialService.getMaterials(),
-          materialService.getLaborRates()
+          materialService.getLaborRates(),
+          apiClient.get('/component-templates')
         ]);
         setMaterials(matRes.data?.data || matRes.data || []);
         setLaborRates(laborRes.data?.data || laborRes.data || []);
+        if (bpRes.data?.success) {
+          setBlueprints(bpRes.data?.data || []);
+        }
       } catch (error) {
         console.error("Error fetching pricing data", error);
       }
@@ -40,13 +46,12 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
 
   // Determine blueprints based on selected category
   const availableBlueprints = useMemo(() => {
-    if (!categoryId || !categories) return [];
+    if (!categoryId || !categories || blueprints.length === 0) return blueprints;
     
     // Find the current category
     const currentCat = categories.find(c => (c.id || c._id) === categoryId);
-    if (!currentCat) return [];
+    if (!currentCat) return blueprints;
 
-    // Find root category to get blueprint key (e.g., HangRao, Cua)
     let rootCat = currentCat;
     while (rootCat.parent_id) {
       const parent = categories.find(c => (c.id || c._id) === rootCat.parent_id);
@@ -54,28 +59,15 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
       else break;
     }
 
-    // Attempt to match blueprint key. Typically format is "RootCode-category-code" or similar.
-    // For simplicity, let's just check all blueprint keys that include the root code or category code
-    const keys = Object.keys(CATEGORY_BLUEPRINTS);
-    const exactMatch = keys.find(k => k === currentCat.category_code);
-    if (exactMatch) return CATEGORY_BLUEPRINTS[exactMatch];
-
-    const matchedKey = keys.find(k => 
-      (currentCat.category_code && k.toLowerCase().includes(currentCat.category_code.toLowerCase())) ||
-      (rootCat.category_code && k.toLowerCase().includes(rootCat.category_code.toLowerCase()))
+    // Lọc template theo category_code
+    const filtered = blueprints.filter(bp => 
+      !bp.category_code || 
+      bp.category_code === currentCat.category_code || 
+      bp.category_code === rootCat.category_code
     );
 
-    if (matchedKey) return CATEGORY_BLUEPRINTS[matchedKey];
-    
-    // Fallback: If no exact blueprint, extract all unique components to suggest
-    const allComponentsMap = new Map();
-    Object.values(CATEGORY_BLUEPRINTS).forEach(bpArray => {
-      bpArray.forEach(bp => {
-        allComponentsMap.set(bp.name, bp);
-      });
-    });
-    return Array.from(allComponentsMap.values());
-  }, [categoryId, categories]);
+    return filtered.length > 0 ? filtered : blueprints;
+  }, [categoryId, categories, blueprints]);
 
   // Calculate suggested price whenever components change
   useEffect(() => {
@@ -131,6 +123,18 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
   const handleChange = (index, field, val) => {
     const newComps = [...components];
     newComps[index][field] = val;
+    setComponents(newComps);
+  };
+
+  const handleWasteConfigChange = (compIdx, materialId, field, val) => {
+    const newComps = [...components];
+    if (!newComps[compIdx].waste_configs) {
+      newComps[compIdx].waste_configs = {};
+    }
+    if (!newComps[compIdx].waste_configs[materialId]) {
+      newComps[compIdx].waste_configs[materialId] = {};
+    }
+    newComps[compIdx].waste_configs[materialId][field] = val;
     setComponents(newComps);
   };
 
@@ -212,10 +216,10 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                   >
                     <option value="">-- Chọn linh kiện --</option>
                     {availableBlueprints.map((bp, i) => (
-                      <option key={i} value={bp.name}>{bp.name}</option>
+                      <option key={i} value={bp.component_name}>{bp.component_name}</option>
                     ))}
                     {/* Allow fallback to custom name if not in blueprint */}
-                    {!availableBlueprints.find(bp => bp.name === (comp.component_name || comp.name)) && (comp.component_name || comp.name) && (
+                    {!availableBlueprints.find(bp => bp.component_name === (comp.component_name || comp.name)) && (comp.component_name || comp.name) && (
                       <option value={comp.component_name || comp.name}>{comp.component_name || comp.name}</option>
                     )}
                   </select>
@@ -233,6 +237,10 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                       if (mat) {
                         newComps[idx].material_id = mat.id;
                         newComps[idx].thickness_id = ''; // reset thickness
+                        // Tự động điền ĐV hao phí từ ĐVT của vật tư
+                        if (mat.material_units?.unit_name) {
+                          newComps[idx].waste_unit = mat.material_units.unit_name;
+                        }
                       }
                       setComponents(newComps);
                     }}
@@ -241,9 +249,10 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                     <option value="">-- Chọn loại vật tư --</option>
                     {materials
                       .filter(m => {
-                        const bp = availableBlueprints.find(b => b.name === (comp.component_name || comp.name));
-                        if (bp && bp.allowed_materials) {
-                          return bp.allowed_materials.includes(m.material_code);
+                        const bp = availableBlueprints.find(b => b.component_name === (comp.component_name || comp.name));
+                        if (bp && bp.allowed_materials && bp.allowed_materials.length > 0) {
+                          // allowed_materials is an array of objects { material_id, materials: { material_code } }
+                          return bp.allowed_materials.some(am => am.materials?.material_code === m.material_code);
                         }
                         return true;
                       })
@@ -298,27 +307,61 @@ const ProductComponentsEditor = ({ value, onChange, categoryId, categories, base
                       <option value="m">m</option>
                     </select>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant">SL Hao phí</label>
-                    <input
-                      type="number"
-                      value={comp.waste_rate !== undefined ? comp.waste_rate : ""}
-                      onChange={(e) => handleChange(idx, 'waste_rate', e.target.value)}
-                      placeholder="VD: 1"
-                      className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-                      min="0"
-                      step="1"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-on-surface-variant">ĐV Hao phí</label>
-                    <input
-                      type="text"
-                      value={comp.waste_unit || ""}
-                      onChange={(e) => handleChange(idx, 'waste_unit', e.target.value)}
-                      placeholder="VD: cây, tấm..."
-                      className="w-full rounded-lg border border-outline-variant/60 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-                    />
+                </div>
+
+                {/* Hao phí theo từng loại vật tư (Waste Configs) */}
+                <div className="md:col-span-2 mt-2 pt-4 border-t border-outline-variant/40">
+                  <label className="text-xs font-bold text-on-surface-variant mb-2 block">Cấu hình Hao phí (theo từng Vật tư được phép)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(() => {
+                      const bp = availableBlueprints.find(b => b.component_name === (comp.component_name || comp.name));
+                      let allowedMatsToConfigure = [];
+                      if (bp && bp.allowed_materials && bp.allowed_materials.length > 0) {
+                        allowedMatsToConfigure = materials.filter(m => bp.allowed_materials.some(am => am.material_id === m.id));
+                      } else if (comp.default_material) {
+                        const m = materials.find(m => m.material_code === comp.default_material);
+                        if (m) allowedMatsToConfigure = [m];
+                      }
+
+                      if (allowedMatsToConfigure.length === 0) {
+                        return <span className="text-xs text-on-surface-variant italic">Vui lòng chọn Tên linh kiện và Vật tư mặc định.</span>;
+                      }
+
+                      return allowedMatsToConfigure.map(mat => {
+                        const config = (comp.waste_configs && comp.waste_configs[mat.id]) || {};
+                        const rate = config.rate !== undefined ? config.rate : (comp.waste_rate || "");
+                        const unit = config.unit || mat.material_units?.unit_name || comp.waste_unit || "";
+
+                        // Ensure unit is saved if it's new
+                        if (!config.unit && unit) {
+                            // We don't dispatch state change during render, so it will just be saved when rate changes
+                        }
+
+                        return (
+                          <div key={mat.id} className="flex items-center gap-2 bg-white border border-outline-variant/60 rounded-lg p-2">
+                            <span className="text-xs font-semibold w-1/3 truncate" title={mat.material_name}>{mat.material_name}</span>
+                            <div className="flex-1 flex gap-2">
+                              <input 
+                                type="number" 
+                                placeholder="SL Hao phí" 
+                                className="w-2/3 border border-outline-variant/60 rounded px-2 py-1 text-xs outline-none focus:border-primary"
+                                value={rate}
+                                onChange={e => {
+                                  handleWasteConfigChange(idx, mat.id, 'rate', e.target.value);
+                                  handleWasteConfigChange(idx, mat.id, 'unit', unit);
+                                }}
+                              />
+                              <input 
+                                type="text"
+                                readOnly
+                                className="w-1/3 border border-outline-variant/60 rounded px-2 py-1 text-xs bg-surface-container/30 text-on-surface-variant cursor-not-allowed"
+                                value={unit}
+                              />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               </div>

@@ -157,6 +157,51 @@ class OrderService {
       orderBy: { created_at: "desc" },
     });
   }
+
+  // API Duyệt Đơn của Admin -> Tính 1 lần & Lưu Snapshot
+  async approveOrderAndRequestMaterials(orderId) {
+    const order = await prisma.orders.findUnique({
+      where: { id: orderId },
+      include: {
+        order_items: {
+          include: { products: true }
+        }
+      }
+    });
+
+    if (!order) throw new Error("Không tìm thấy đơn hàng!");
+    
+    const requiredMaterials = {}; 
+
+    // TÍNH TOÁN (CHỈ LÀM DUY NHẤT Ở ĐÂY)
+    for (const item of order.order_items) {
+      // products.components là mảng JSON
+      const components = item.products?.components || []; 
+      const productQty = item.quantity || 1; 
+
+      for (const comp of components) {
+        // Lấy waste_rate (định mức tuyệt đối) nhân với số lượng sản phẩm
+        const consumedQty = (parseFloat(comp.waste_rate) || 0) * productQty; 
+        const matId = comp.material_id;
+
+        if (matId && consumedQty > 0) {
+          if (!requiredMaterials[matId]) requiredMaterials[matId] = 0;
+          requiredMaterials[matId] += consumedQty;
+        }
+      }
+    }
+    
+    // Đổi trạng thái và LƯU SNAPSHOT (Lưu vĩnh viễn bảng vật tư cần dùng vào cột material_requirements)
+    await prisma.orders.update({
+        where: { id: orderId },
+        data: { 
+            production_status: "WAITING_WAREHOUSE",
+            material_requirements: requiredMaterials
+        }
+    });
+
+    return requiredMaterials; 
+  }
 }
 
 module.exports = new OrderService();

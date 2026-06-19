@@ -60,6 +60,8 @@ const invoiceRoutes = require("./routes/invoice.routes.js");
 const orderRoutes = require("./routes/order.routes.js");
 const adminRoutes = require("./routes/admin.routes.js");
 const userRoutes = require("./routes/user.routes.js");
+const componentTemplateRoutes = require("./routes/component_template.routes.js");
+const warehouseRoutes = require("./routes/warehouse.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -81,6 +83,8 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/component-templates", componentTemplateRoutes);
+app.use("/api/warehouse", warehouseRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

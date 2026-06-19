@@ -25,7 +25,7 @@ class ProductService {
     if (existing) throw new Error(`Mã sản phẩm '${product_code}' đã tồn tại!`);
     const formattedComponents = (components || []).map((comp) => ({
       ...comp,
-      waste_rate: comp.waste_rate ? parseFloat(comp.waste_rate) : 0, // Mặc định hao phí là 0%
+      waste_configs: comp.waste_configs || {}, // Lưu nguyên object cấu hình tiêu hao tuyệt đối
     }));
     return await prisma.products.create({
       data: {
@@ -122,7 +122,7 @@ class ProductService {
     if (!existing) throw new Error("Sản phẩm không tồn tại");
     const formattedComponents = (components || []).map((comp) => ({
       ...comp,
-      waste_rate: comp.waste_rate ? parseFloat(comp.waste_rate) : 0, // Mặc định hao phí là 0%
+      waste_configs: comp.waste_configs || {}, // Lưu nguyên object cấu hình tiêu hao tuyệt đối
     }));
     return await prisma.products.update({
       where: { id },

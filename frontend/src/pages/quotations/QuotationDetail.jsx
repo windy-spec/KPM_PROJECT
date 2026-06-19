@@ -53,7 +53,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
       const qData = res.data?.data || res.data || null;
       setData(qData);
       if (qData) {
-        setCustomPrice(qData.total_quoted_price || '');
+        setCustomPrice(qData.user_proposed_price || qData.admin_proposed_price || qData.total_quoted_price || '');
       }
     } catch (e) {
       showError(
@@ -119,7 +119,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   async function handleApproveAndSendEmail() {
     try {
       await apiClient.put(`/quotations/${id}/approve`, {
-        total_quoted_price: Number(customPrice)
+        admin_proposed_price: Number(customPrice)
       });
       showSuccess("Đã duyệt và gửi báo giá qua email cho khách hàng!");
       await load();

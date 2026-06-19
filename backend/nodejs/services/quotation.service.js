@@ -113,7 +113,7 @@ class QuotationService {
 
   // 3.1 GỬI YÊU CẦU BÁO GIÁ (Khách hàng tạo request mới)
   async requestCustomQuote(data) {
-    const { user_id, title, product_id, components, note } = data;
+    const { user_id, title, nick_name, product_id, components, note } = data;
 
     if (!user_id) throw new Error("Vui lòng đăng nhập để gửi yêu cầu báo giá!");
 
@@ -157,6 +157,7 @@ class QuotationService {
       data: {
         user_id,
         title: title || "Yêu cầu báo giá tùy chỉnh",
+        nick_name: nick_name || null,
         total_quoted_price: priceData.total_amount,
         status: "pending_admin",
         quotation_specs: { create: specsData },
@@ -325,7 +326,6 @@ class QuotationService {
     const quotation_specs_data = [];
 
     const profit = 1.3;
-    const wasted = 1.05;
     // 1. Thu thập toàn bộ ID
     const materialIds = new Set();
     const thicknessIds = new Set();
@@ -399,15 +399,23 @@ class QuotationService {
         const w = parseFloat(width || 0);
         const area = (l / 1000) * (w / 1000);
 
-        // Công thức tính có hệ số hao hụt
+        // Công thức tính không dùng % hao hụt (wasted) nữa, mà dùng số lượng tuyệt đối từ waste_configs hoặc waste_rate
         const mat_multiplier = thickness
           ? parseFloat(thickness.price_multiplier || 1)
           : 1.0;
+          
+        let consumedQty = area * 1.05;
+        if (comp.waste_configs && comp.waste_configs[material_id]) {
+          consumedQty = parseFloat(comp.waste_configs[material_id].rate || 0);
+        } else if (comp.waste_rate) {
+          consumedQty = parseFloat(comp.waste_rate);
+        }
+
         const material_cost =
-          parseFloat(material.base_price) * mat_multiplier * area * wasted;
+          parseFloat(material.base_price) * mat_multiplier * consumedQty;
 
         const paint_cost = paint
-          ? parseFloat(paint.price_per_sqm) * area * wasted
+          ? parseFloat(paint.price_per_sqm) * area
           : 0;
         const labor_cost = labor_price_per_sqm * area;
 
@@ -490,7 +498,6 @@ class QuotationService {
     const componentDetails = [];
 
     const profit = 1.3;
-    const wasted = 1.05;
 
     // 2. Lặp tính giá cho từng linh kiện
     for (const comp of components) {
@@ -536,11 +543,18 @@ class QuotationService {
         : 1.0;
       const mat_base_price = parseFloat(material.base_price || 0);
 
-      // Áp dụng wasted và profit cho cấu hình real-time giống hệt Bulk
+      // Áp dụng định mức tiêu hao tuyệt đối
+      let consumedQty = area * 1.05;
+      if (comp.waste_configs && comp.waste_configs[material_id]) {
+        consumedQty = parseFloat(comp.waste_configs[material_id].rate || 0);
+      } else if (comp.waste_rate) {
+        consumedQty = parseFloat(comp.waste_rate);
+      }
+      
       const material_price =
-        mat_base_price * mat_multiplier * area * wasted * profit;
+        mat_base_price * mat_multiplier * consumedQty * profit;
       const paint_price = paint
-        ? parseFloat(paint.price_per_sqm || 0) * area * wasted * profit
+        ? parseFloat(paint.price_per_sqm || 0) * area * profit
         : 0;
 
       total_material_price += material_price;

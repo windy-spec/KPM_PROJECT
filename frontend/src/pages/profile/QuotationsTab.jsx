@@ -102,7 +102,7 @@ const QuotationsTab = () => {
               <div className="flex flex-col items-end gap-2">
                 {getStatusBadge(q.status)}
                 {q.status !== 'pending_admin' && (
-                  <p className="text-lg font-black text-error">{formatCurrency(q.total_quoted_price)}</p>
+                  <p className="text-lg font-black text-error">{formatCurrency(q.user_proposed_price || q.admin_proposed_price || q.total_quoted_price)}</p>
                 )}
               </div>
             </div>

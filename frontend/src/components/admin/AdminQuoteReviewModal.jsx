@@ -43,7 +43,7 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
                 quantity_per_item: spec.dimensions?.quantity || 1
             }));
             setComponents(mappedComponents);
-            setFinalPrice(data.total_quoted_price || '');
+            setFinalPrice(data.user_proposed_price || data.admin_proposed_price || data.total_quoted_price || '');
         } catch (e) {
             showError('Không lấy được chi tiết báo giá này.');
         }
@@ -133,7 +133,7 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
 
         setLoading(true);
         const payload = {
-            final_price: Number(finalPrice),
+            admin_proposed_price: Number(finalPrice),
             components: components.map(c => ({
                 component_name: c.component_name,
                 material_id: c.material_id,
@@ -208,7 +208,10 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
                             <h2 className="text-base font-black uppercase tracking-wide text-on-surface">Thẩm Định & Điều Chỉnh Thông Số Kỹ Thuật</h2>
                             <span className="text-xs font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-sm">#{quoteId.slice(0, 8).toUpperCase()}</span>
                         </div>
-                        <p className="text-xs text-on-surface-variant/70 mt-0.5">Sản phẩm yêu cầu: <span className="font-black text-primary">{quote.product_name || quote.productName}</span></p>
+                        <p className="text-xs text-on-surface-variant/70 mt-0.5">Sản phẩm yêu cầu: <span className="font-black text-primary">{quote.title || quote.product_name || quote.productName}</span></p>
+                        {quote.nick_name && quote.nick_name !== quote.title && (
+                            <p className="text-xs text-on-surface-variant/70 mt-0.5">Tên tùy chỉnh: <span className="font-black text-amber-600">{quote.nick_name}</span></p>
+                        )}
                     </div>
                     <button onClick={onClose} className="rounded-xl p-2 hover:bg-surface-container/60 text-on-surface-variant/80 transition-colors cursor-pointer"><X className="h-5 w-5" /></button>
                 </div>

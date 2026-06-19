@@ -18,18 +18,17 @@ import {
   ClipboardList,
   CreditCard,
 } from "lucide-react";
-import { CATEGORY_BLUEPRINTS } from "../../config/categoryBlueprints";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { fetchCartCount } = useCart();
+
   const [product, setProduct] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [thicknesses, setThicknesses] = useState([]);
   const [paints, setPaints] = useState([]);
-  const [laborRates, setLaborRates] = useState([]);
 
   const [componentsConfig, setComponentsConfig] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(0);
@@ -42,7 +41,7 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [expandedSpecs, setExpandedSpecs] = useState(false);
-  const [isAgreed, setIsAgreed] = useState(false); // Checkbox state
+  const [isAgreed, setIsAgreed] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -54,7 +53,7 @@ export default function ProductDetail() {
             materialService.getMaterials(),
             materialService.getThicknesses(),
             materialService.getPaints(),
-            materialService.getLaborRates(),
+            apiClient.get("/component-templates"),
           ]);
 
         const pData = prodRes.data?.data || prodRes.data;
@@ -71,11 +70,9 @@ export default function ProductDetail() {
         setMaterials(matRes.data?.data || matRes.data || []);
         setThicknesses(thickRes.data?.data || thickRes.data || []);
         setPaints(paintRes.data?.data || paintRes.data || []);
-        setLaborRates(laborRes.data?.data || laborRes.data || []);
 
         // Khởi tạo config cho từng linh kiện từ DB (pData.components)
-        const categoryCode = pData?.product_categories?.category_code;
-        const blueprint = CATEGORY_BLUEPRINTS[categoryCode] || [];
+
         let baseConfig = [];
 
         if (
@@ -84,8 +81,6 @@ export default function ProductDetail() {
           pData.components.length > 0
         ) {
           baseConfig = pData.components.map((comp) => {
-            // Cố gắng tìm blueprint tương ứng để lấy allowed_materials
-            const bpMatch = blueprint.find((b) => b.name === comp.name);
             return {
               component_name: comp.component_name || comp.name || "Linh kiện",
               length: comp.length || "",
@@ -96,15 +91,14 @@ export default function ProductDetail() {
               material_id: comp.material_id || "",
               thickness_id: comp.thickness_id || "",
               paint_id: comp.paint_id || "",
-              allowed_materials:
-                comp.allowed_materials ||
-                (bpMatch ? bpMatch.allowed_materials : []),
+              waste_rate: comp.waste_rate || 0,
+              waste_unit: comp.waste_unit || "cây",
+
+              // KHÔNG DÙNG BLUEPRINT NỮA - LẤY TRỰC TIẾP TỪ DATABASE
+              allowed_materials: comp.allowed_materials || [],
               allow_paint:
-                comp.allow_paint !== undefined
-                  ? comp.allow_paint
-                  : bpMatch
-                    ? bpMatch.allow_paint
-                    : true,
+                comp.allow_paint !== undefined ? comp.allow_paint : true,
+              waste_configs: comp.waste_configs || {},
             };
           });
         }
@@ -146,7 +140,7 @@ export default function ProductDetail() {
         console.error("Error fetching product data:", error);
         toast.error(
           "Không thể tải thông tin sản phẩm: " +
-          (error.response?.data?.message || error.message),
+            (error.response?.data?.message || error.message),
         );
         // navigate(-1); // Tạm ẩn để debug
       }
@@ -154,89 +148,8 @@ export default function ProductDetail() {
     if (id) fetchData();
   }, [id, navigate]);
 
-  // Debounce API call
-  useEffect(() => {
-    if (!componentsConfig.length) return;
-
-    // Check xem tất cả component đã chọn đủ vật tư, độ dày, sơn chưa
-    const isFullyConfigured = componentsConfig.every((c) => {
-      if (!c.material_id) return false;
-      const hasThicknesses = thicknesses.some(
-        (t) => String(t.material_id) === String(c.material_id),
-      );
-      if (hasThicknesses && !c.thickness_id) return false;
-      if (c.allow_paint && !c.paint_id) return false;
-      return true;
-    });
-
-    if (!isFullyConfigured || !isModified) return;
-
-    const timer = setTimeout(async () => {
-      setIsCalculating(true);
-      try {
-        const laborRate = laborRates[0]; // Tạm dùng labor đầu tiên
-        const payload = {
-          product_id: product.id,
-          labor_category_id: laborRate?.category_id,
-          labor_model_id: laborRate?.model_id,
-          components: componentsConfig,
-        };
-        const res = await quotationService.calculateRealtime(payload);
-        if (res.data?.success === false) {
-          toast.error(res.data.message || "Lỗi khi tính giá");
-          setPriceData(null);
-        } else {
-          setPriceData(res.data?.data || res.data);
-        }
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Lỗi khi tính giá");
-      } finally {
-        setIsCalculating(false);
-      }
-    }, 500); // Debounce 500ms
-
-    return () => clearTimeout(timer);
-  }, [componentsConfig, product, laborRates]);
-
-  const handleConfigChange = (index, field, value) => {
-    const newConfig = [...componentsConfig];
-    newConfig[index][field] = value;
-    setComponentsConfig(newConfig);
-    if (initialConfig) {
-      // So sánh chỉ các field quan trọng: material_id, thickness_id, paint_id, length, width, height
-      const relevantKeys = [
-        "material_id",
-        "thickness_id",
-        "paint_id",
-        "length",
-        "width",
-        "height",
-      ];
-      const pickRelevant = (cfg) =>
-        cfg.map((c) => {
-          const obj = {};
-          relevantKeys.forEach((k) => {
-            obj[k] = c[k] ?? "";
-          });
-          return obj;
-        });
-      const initialParsed = JSON.parse(initialConfig);
-      setIsModified(
-        JSON.stringify(pickRelevant(newConfig)) !==
-        JSON.stringify(pickRelevant(initialParsed)),
-      );
-    }
-  };
-
   const handleAddToCart = async () => {
     if (!isAgreed) return;
-    if (isModified && !priceData) {
-      toast.warning(
-        "Vui lòng cấu hình đầy đủ linh kiện để xem giá trước khi thêm vào giỏ!",
-      );
-      return;
-    }
-
     try {
       await cartService.addToCart({
         product_id: product.id,
@@ -250,6 +163,7 @@ export default function ProductDetail() {
       toast.error(error.response?.data?.message || "Lỗi khi thêm vào giỏ hàng");
     }
   };
+
   const handleBuyNow = async () => {
     if (!isAgreed) return;
     try {
@@ -289,6 +203,7 @@ export default function ProductDetail() {
       toast.error(error.response?.data?.message || "Lỗi khi xử lý Mua ngay");
     }
   };
+
   const handleSaveFavorite = async () => {
     if (!priceData) {
       toast.warning("Vui lòng cấu hình đầy đủ trước khi lưu!");
@@ -316,32 +231,6 @@ export default function ProductDetail() {
       toast.success("Đã lưu thiết kế vào mục yêu thích!");
     } catch (error) {
       toast.error(error.response?.data?.message || "Lỗi lưu yêu thích");
-    }
-  };
-
-  const handleRequestQuote = async () => {
-    if (!priceData) {
-      toast.warning("Vui lòng cấu hình đầy đủ trước khi yêu cầu báo giá!");
-      return;
-    }
-    try {
-      await quotationService.requestCustomQuote({
-        product_id: product.id,
-        components: componentsConfig,
-        note: note,
-        quantity: quantity,
-      });
-      toast.success("Đã gửi yêu cầu báo giá! Admin sẽ liên hệ lại với bạn.");
-      navigate("/profile"); // Chuyển đến trang cá nhân
-    } catch (error) {
-      if (error.response?.data?.code === "PROFILE_INCOMPLETE") {
-        toast.error(
-          "Vui lòng cập nhật Số điện thoại và Địa chỉ ở trang Cá nhân trước khi gửi yêu cầu.",
-        );
-        navigate("/profile");
-      } else {
-        toast.error(error.response?.data?.message || "Lỗi gửi yêu cầu báo giá");
-      }
     }
   };
 
@@ -520,9 +409,6 @@ export default function ProductDetail() {
                         type="number"
                         disabled={true}
                         value={comp.length}
-                        onChange={(e) =>
-                          handleConfigChange(idx, "length", e.target.value)
-                        }
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
@@ -534,9 +420,6 @@ export default function ProductDetail() {
                         type="number"
                         disabled={true}
                         value={comp.width}
-                        onChange={(e) =>
-                          handleConfigChange(idx, "width", e.target.value)
-                        }
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
@@ -548,9 +431,6 @@ export default function ProductDetail() {
                         type="number"
                         disabled={true}
                         value={comp.height}
-                        onChange={(e) =>
-                          handleConfigChange(idx, "height", e.target.value)
-                        }
                         className="w-full bg-surface-container rounded-lg px-3 py-2 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none transition-all"
                       />
                     </div>
@@ -564,15 +444,8 @@ export default function ProductDetail() {
                       <select
                         value={comp.material_id}
                         disabled={true}
-                        onChange={(e) => {
-                          const newConfig = [...componentsConfig];
-                          newConfig[idx].material_id = e.target.value;
-                          newConfig[idx].thickness_id = ""; // Reset thickness when material changes
-                          setComponentsConfig(newConfig);
-                        }}
                         className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
                       >
-                        <option value="">-- Chọn loại vật tư --</option>
                         {materials
                           .filter(
                             (m) =>
@@ -591,38 +464,31 @@ export default function ProductDetail() {
                         !comp.material_id ||
                         String(t.material_id) === String(comp.material_id),
                     ) && (
-                        <div>
-                          <label className="block text-xs font-bold text-on-surface-variant mb-1">
-                            Độ dày
-                          </label>
-                          <select
-                            value={comp.thickness_id}
-                            disabled={true}
-                            onChange={(e) =>
-                              handleConfigChange(
-                                idx,
-                                "thickness_id",
-                                e.target.value,
-                              )
-                            }
-                            className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
-                          >
-                            <option value="">-- Chọn độ dày --</option>
-                            {thicknesses
-                              .filter(
-                                (t) =>
-                                  !comp.material_id ||
-                                  String(t.material_id) ===
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant mb-1">
+                          Độ dày
+                        </label>
+                        <select
+                          value={comp.thickness_id}
+                          disabled={true}
+                          className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
+                        >
+                          <option value="">-- Chọn độ dày --</option>
+                          {thicknesses
+                            .filter(
+                              (t) =>
+                                !comp.material_id ||
+                                String(t.material_id) ===
                                   String(comp.material_id),
-                              )
-                              .map((t) => (
-                                <option key={t.id} value={t.id}>
-                                  {t.thickness_value}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      )}
+                            )
+                            .map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.thickness_value}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
 
                     {comp.allow_paint && (
                       <div>
@@ -632,9 +498,6 @@ export default function ProductDetail() {
                         <select
                           value={comp.paint_id}
                           disabled={true}
-                          onChange={(e) =>
-                            handleConfigChange(idx, "paint_id", e.target.value)
-                          }
                           className="w-full bg-surface-container rounded-lg px-3 py-2.5 text-sm font-semibold border-none focus:ring-2 focus:ring-primary outline-none appearance-none"
                         >
                           <option value="">-- Chọn loại sơn --</option>
@@ -714,14 +577,14 @@ export default function ProductDetail() {
               {isModified
                 ? priceData
                   ? new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(priceData.total_amount)
+                      style: "currency",
+                      currency: "VND",
+                    }).format(priceData.total_amount)
                   : "--- ₫"
                 : new Intl.NumberFormat("vi-VN", {
-                  style: "currency",
-                  currency: "VND",
-                }).format(product.base_price || 0)}
+                    style: "currency",
+                    currency: "VND",
+                  }).format(product.base_price || 0)}
             </div>
 
             {priceData && (
@@ -763,39 +626,56 @@ export default function ProductDetail() {
               </button>
             </div>
 
-            {isModified ? (
-              <button
-                onClick={handleRequestQuote}
-                disabled={!isAgreed}
-                className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-primary text-white hover:bg-primary/90 shadow-primary/30"}`}
-              >
-                <ClipboardList className="w-5 h-5" />
-                Yêu cầu Báo giá
-              </button>
-            ) : (
-              <button
-                onClick={handleBuyNow}
-                disabled={!isAgreed}
-                className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-[#ff6b00] text-white hover:bg-[#ff6b00]/90 shadow-[#ff6b00]/30"}`}
-              >
-                <CreditCard className="w-5 h-5" />
-                Mua ngay
-              </button>
-            )}
+            {(() => {
+              // 1. Tính toán giá trị đơn hàng hiện tại
+              const currentSinglePrice = isModified
+                ? priceData?.total_amount || 0
+                : parseFloat(product?.base_price) || 0;
 
-            <button
-              onClick={handleAddToCart}
-              disabled={isModified || !isAgreed}
-              title={
-                isModified
-                  ? "Vui lòng yêu cầu báo giá cho sản phẩm đã thay đổi thông số"
-                  : "Thêm vào giỏ hàng"
+              const totalOrderValue = currentSinglePrice * quantity;
+
+              // 2. Kịch bản ĐƠN HÀNG LỚN (> 40 triệu): Ẩn hết, chỉ hiện nút liên hệ ký hợp đồng
+              if (totalOrderValue > 40000000) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toast.info(
+                        "Vui lòng liên hệ Hotline hoặc đến xưởng để ký hợp đồng cho đơn hàng lớn!",
+                      )
+                    }
+                    className="flex-[3] bg-amber-600 hover:bg-amber-700 text-white font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md uppercase tracking-wider animate-pulse cursor-pointer"
+                  >
+                    <ClipboardList className="w-5 h-5" />
+                    Yêu cầu gặp mặt ký hợp đồng (&gt; 40Tr)
+                  </button>
+                );
               }
-              className={`flex-1 font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${isModified || !isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-surface-container-highest text-on-surface hover:bg-outline-variant/30"}`}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              <span className="hidden sm:inline">Giỏ hàng</span>
-            </button>
+
+              // 3. Kịch bản ĐƠN HÀNG THƯỜNG (<= 40 triệu): Trả về nguyên vẹn các nút bấm cũ của bạn
+              return (
+                <>
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={!isAgreed}
+                    className={`flex-[2] font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${!isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-[#ff6b00] text-white hover:bg-[#ff6b00]/90 shadow-[#ff6b00]/30"}`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    Mua ngay
+                  </button>
+
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={!isAgreed}
+                    title={"Thêm vào giỏ hàng"}
+                    className={`flex-1 font-black py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${isModified || !isAgreed ? "bg-surface-container opacity-50 cursor-not-allowed text-on-surface-variant" : "bg-surface-container-highest text-on-surface hover:bg-outline-variant/30"}`}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="hidden sm:inline">Giỏ hàng</span>
+                  </button>
+                </>
+              );
+            })()}
 
             <button
               onClick={handleSaveFavorite}

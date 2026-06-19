@@ -102,6 +102,21 @@ class OrderController {
       res.status(400).json({ success: false, message: e.message });
     }
   }
+
+  async approveOrder(req, res) {
+    try {
+      const orderId = req.params.id;
+      const requirements = await orderService.approveOrderAndRequestMaterials(orderId);
+      
+      res.status(200).json({
+        success: true,
+        message: "Đã duyệt đơn và tạo yêu cầu vật tư xuống Kho.",
+        data: requirements
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
 }
 
 module.exports = new OrderController();

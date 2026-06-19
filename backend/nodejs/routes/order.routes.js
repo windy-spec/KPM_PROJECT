@@ -19,4 +19,5 @@ router.put(
 );
 router.put("/:id/status", authenticateToken, orderController.updateStatus);
 router.get("/:id/tracking", authenticateToken, orderController.getTracking);
+router.put("/:id/approve", authenticateToken, orderController.approveOrder);
 module.exports = router;
