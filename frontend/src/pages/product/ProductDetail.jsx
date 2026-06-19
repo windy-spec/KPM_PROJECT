@@ -74,6 +74,7 @@ export default function ProductDetail() {
         // Khởi tạo config cho từng linh kiện từ DB (pData.components)
         const categoryCode = pData?.product_categories?.category_code;
         const blueprint = CATEGORY_BLUEPRINTS[categoryCode] || [];
+        let baseConfig = [];
 
         if (
           pData?.components &&
@@ -208,6 +209,11 @@ export default function ProductDetail() {
   };
 
   const handleSaveFavorite = async () => {
+    if (!priceData) {
+      toast.warning("Vui lòng cấu hình đầy đủ trước khi lưu!");
+      return;
+    }
+
     // Thêm prompt hỏi tên cấu hình
     const title = window.prompt(
       "Nhập tên cho thiết kế yêu thích của bạn:",
@@ -660,7 +666,7 @@ export default function ProductDetail() {
 
                   <button
                     onClick={handleAddToCart}
-                    disabled={isModified || !isAgreed}
+                    disabled={!isAgreed}
                     title={
                       "Thêm vào giỏ hàng"
                     }

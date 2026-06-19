@@ -70,6 +70,7 @@ export default function ManageOrders() {
                 price: parseFloat(i.price) || 0,
                 unit: "Cái",
               })) || [],
+            total_amount: parseFloat(o.total_amount) || 0,
           }));
           setOrders(formattedOrders);
         }
@@ -294,11 +295,10 @@ export default function ManageOrders() {
                 setStatusFilter(st.key);
                 setPage(1);
               }}
-              className={`h-10 px-3.5 rounded-xl text-xs font-black transition-all ${
-                statusFilter === st.key
-                  ? "bg-primary text-white shadow-sm"
-                  : "border border-outline-variant/80 bg-surface text-on-surface hover:bg-surface-container-low"
-              }`}
+              className={`h-10 px-3.5 rounded-xl text-xs font-black transition-all ${statusFilter === st.key
+                ? "bg-primary text-white shadow-sm"
+                : "border border-outline-variant/80 bg-surface text-on-surface hover:bg-surface-container-low"
+                }`}
             >
               {st.label}
             </button>
@@ -608,10 +608,10 @@ export default function ManageOrders() {
 
                   {(selectedOrder.status === "completed" ||
                     selectedOrder.status === "cancelled") && (
-                    <span className="text-xs font-black text-on-surface-variant/60 italic">
-                      Đơn hàng này đã đóng vòng đời điều phối.
-                    </span>
-                  )}
+                      <span className="text-xs font-black text-on-surface-variant/60 italic">
+                        Đơn hàng này đã đóng vòng đời điều phối.
+                      </span>
+                    )}
                 </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
