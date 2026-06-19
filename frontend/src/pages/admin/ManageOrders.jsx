@@ -284,10 +284,12 @@ export default function ManageOrders() {
           {/* LƯU Ý PHẢI CÓ DẤU NGOẶC VUÔNG SAU DẤU NGOẶC NHỌN */}
           {[
             { key: "ALL", label: "Tất cả đơn" },
-            { key: "PENDING", label: "Chờ duyệt" },
-            { key: "CONFIRMED", label: "Đã xác nhận" },
-            { key: "DELIVERED", label: "Đã giao" },
-            { key: "CANCELLED", label: "Đã hủy" },
+            { key: "pending_payment", label: "Chờ thanh toán" },
+            { key: "pending", label: "Chờ duyệt" },
+            { key: "production", label: "Đang sản xuất" },
+            { key: "delivering", label: "Đang giao" },
+            { key: "completed", label: "Đã hoàn thành" },
+            { key: "cancelled", label: "Đã hủy" },
           ].map((st) => (
             <button
               key={st.key}
