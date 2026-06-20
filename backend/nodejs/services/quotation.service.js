@@ -217,7 +217,16 @@ class QuotationService {
             : quotation.total_quoted_price,
         status: "admin_quoted",
       },
-      include: { users: true },
+      include: {
+        users: {
+          include: { 
+            user_profiles: true 
+          }
+        },
+        quotation_specs: {
+          include: { materials: true, paint_types: true }
+        }
+      },
     });
     if (updateQuote.users && updateQuote.users.email) {
       try {
@@ -245,6 +254,12 @@ class QuotationService {
     }
     if (quotation.status !== "admin_quoted") {
       throw new Error("Chỉ có thể mặc cả báo giá khi đã được admin duyệt!");
+    }
+
+    const originalPrice = parseFloat(quotation.admin_proposed_price || quotation.total_quoted_price);
+    const minAllowedPrice = originalPrice * 0.9;
+    if (parseFloat(user_proposed_price) < minAllowedPrice) {
+      throw new Error("Giá mặc cả không được thấp hơn 10% so với giá xưởng đề xuất!");
     }
     const updateQuote = await prisma.quotations.update({
       where: { id },

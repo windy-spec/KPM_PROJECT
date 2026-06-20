@@ -90,6 +90,17 @@ const QuotationsTab = () => {
       showError("Vui lòng nhập số tiền hợp lệ muốn đề xuất!");
       return;
     }
+
+    const q = quotations.find((quote) => quote.id === id);
+    if (q) {
+      const originalPrice = Number(q.admin_proposed_price || q.total_quoted_price);
+      const minAllowedPrice = originalPrice * 0.9;
+      if (Number(priceToSubmit) < minAllowedPrice) {
+        showError(`Bạn không được mặc cả thấp hơn 10% (Tối thiểu phải là ${formatCurrency(minAllowedPrice)})`);
+        return;
+      }
+    }
+
     try {
       await apiClient.put(`/quotations/${id}/negotiate`, {
         price: Number(priceToSubmit),
@@ -98,7 +109,7 @@ const QuotationsTab = () => {
       setNegotiatePrices((prev) => ({ ...prev, [id]: "" }));
       fetchQuotations();
     } catch (e) {
-      showError(err?.response?.data?.message || "Gửi đề xuất mặc cả thất bại");
+      showError(e?.response?.data?.message || "Gửi đề xuất mặc cả thất bại");
     }
   };
 

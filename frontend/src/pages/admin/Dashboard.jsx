@@ -33,6 +33,7 @@ import ManageMaterialUnits from "../../components/admin/ManageMaterialUnits";
 import ManageInvalidBatches from "./ManageInvalidBatches";
 import ManageOrders from "./ManageOrders";
 import ManageUsers from "./ManageUsers";
+import ManageComponentTemplates from "./ManageComponentTemplates";
 import adminService from "../../services/admin.service";
 
 const topProducts = [
@@ -376,6 +377,12 @@ const Dashboard = () => {
             {activePanel === "categories" && (
               <section>
                 <ManageCategories />
+              </section>
+            )}
+
+            {activePanel === "component_templates" && (
+              <section>
+                <ManageComponentTemplates />
               </section>
             )}
 

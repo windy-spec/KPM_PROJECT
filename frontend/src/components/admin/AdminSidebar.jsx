@@ -56,6 +56,7 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
       items: [
         { label: 'Tổng quan doanh số', icon: LayoutDashboard, panel: 'overview' },
         { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
+        { label: 'Mẫu linh kiện', icon: Layers, panel: 'component_templates' },
         { label: 'Danh sách Báo giá', icon: FileText, panel: 'quotations' },
         { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
         { label: 'Quản lý lô', icon: Package, panel: 'invalid_batches' },

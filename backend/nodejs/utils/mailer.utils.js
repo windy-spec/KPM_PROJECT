@@ -8,20 +8,164 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// 1. EMAIL MÃ XÁC THỰC (OTP) - Giữ nguyên hoặc tinh chỉnh nhẹ
-const sendVerifyEmail = async (email, code, type = "REGISTER") => {
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount || 0);
+};
+
+// ============================================================================
+// 1. EMAIL MÃ XÁC THỰC (OTP) & HÓA ĐƠN CHI TIẾT
+// ============================================================================
+const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null, quotationData = null) => {
+  
+  // ---------------------------------------------------------
+  // KỊCH BẢN 1: NẾU LÀ HÓA ĐƠN (INVOICE)
+  // ---------------------------------------------------------
+  if (type === "INVOICE") {
+    let itemsHtml = "";
+    if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
+      // DÀNH CHO ĐƠN CÓ BÓC TÁCH BÁO GIÁ
+      itemsHtml = quotationData.quotation_specs.map((spec, index) => {
+        return `
+        <tr>
+          <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; vertical-align: top;">
+            <strong style="color: #1e3a8a; font-size: 14px;">${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.5;">
+              - Vật tư: ${spec.materials?.material_name || "Theo TC"}<br>
+              - Kích thước: ${spec.dimensions?.width || "-"} x ${spec.dimensions?.height || "-"} (mm)
+            </div>
+          </td>
+          <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; color: #1e3a8a; text-align: center; font-weight: bold; font-size: 14px; vertical-align: top;">
+            ${spec.dimensions?.quantity || 1}
+          </td>
+        </tr>
+      `}).join("");
+    } else if (orderData && orderData.order_items && orderData.order_items.length > 0) {
+      // DÀNH CHO ĐƠN MUA HÀNG TRỰC TIẾP (BÁN LẺ) CÓ HIỂN THỊ CẤU THÀNH LINH KIỆN
+      itemsHtml = orderData.order_items.map((item, index) => {
+        // Trích xuất mảng JSON components của product (nếu có)
+        const components = item.products?.components || [];
+        let componentDetails = "";
+        
+        if (components.length > 0) {
+          componentDetails = components.map(comp => 
+            `&nbsp;&nbsp;+ ${comp.component_name || 'Linh kiện'}: ${comp.width || '-'} x ${comp.length || comp.height || '-'} (mm)`
+          ).join("<br>");
+        }
+
+        return `
+        <tr>
+          <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; vertical-align: top;">
+            <strong style="color: #1e3a8a; font-size: 14px;">${index + 1}. ${item.products?.product_name || "Sản phẩm KPM"}</strong>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px; line-height: 1.5;">
+              - Đơn giá: ${formatCurrency(item.price)}
+              ${componentDetails ? `<br><div style="margin-top: 5px; color: #64748b;"><strong>Chi tiết vật tư & linh kiện:</strong><br>${componentDetails}</div>` : ""}
+            </div>
+          </td>
+          <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; color: #1e3a8a; text-align: center; font-weight: bold; font-size: 14px; vertical-align: top;">
+            ${item.quantity}
+          </td>
+        </tr>
+      `}).join("");
+    } else {
+      itemsHtml = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: #64748b; font-style: italic;">Hóa đơn bán lẻ sản phẩm tiêu chuẩn.</td></tr>`;
+    }
+
+    const finalTotal = orderData?.total_amount || 0;
+    const shippingFee = orderData?.shipping_fee || 0;
+    const installFee = orderData?.installation_fee || 0;
+    const subTotal = finalTotal - shippingFee - installFee;
+    
+    // Lấy tên khách hàng từ orderData hoặc quotationData, ưu tiên trường first_name
+    let invoiceCustomerName = orderData?.customer_name || 'Khách hàng';
+    let invoiceCustomerPhone = orderData?.customer_phone || 'Chưa cập nhật';
+    let invoiceShippingAddress = orderData?.shipping_address || 'Chưa cập nhật';
+
+    // Thử lấy first_name nếu được cung cấp qua data
+    if (orderData?.users?.user_profiles?.first_name) {
+      invoiceCustomerName = orderData.users.user_profiles.first_name;
+    } else if (quotationData?.users?.user_profiles?.first_name) {
+      invoiceCustomerName = quotationData.users.user_profiles.first_name;
+    }
+
+    const mailOptions = {
+      from: `"KPM Materials" <${process.env.MAIL_USER}>`,
+      to: email,
+      subject: "[KPM] Biên lai xác nhận thanh toán & Chi tiết Hóa đơn",
+      html: `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; padding: 40px 10px;">
+          <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center;">
+              <p style="color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Hóa Đơn Điện Tử Đã Thanh Toán</p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: 2px;">KPM MATERIALS</h1>
+            </div>
+            <div style="padding: 30px;">
+              <div style="background-color: #eff6ff; border: 2px dashed #bfdbfe; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+                <p style="margin: 0 0 5px 0; font-size: 12px; color: #3b82f6; text-transform: uppercase; font-weight: bold;">Mã Hóa Đơn</p>
+                <span style="font-size: 24px; font-weight: 800; color: #1e3a8a; letter-spacing: 2px;">${code}</span>
+              </div>
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 15px 20px; margin: 0 0 30px 0; text-align: left;">
+                <p style="margin: 0 0 5px 0; font-size: 13px; color: #1e3a8a; text-transform: uppercase;"><strong>Thông tin khách hàng:</strong></p>
+                <p style="margin: 0 0 3px 0; font-size: 13px; color: #475569;">Xin chào: <strong>${invoiceCustomerName}</strong></p>
+                <p style="margin: 0 0 3px 0; font-size: 13px; color: #475569;">SĐT: ${invoiceCustomerPhone}</p>
+                <p style="margin: 0; font-size: 13px; color: #475569;">Địa chỉ: ${invoiceShippingAddress}</p>
+              </div>
+
+              <h3 style="margin: 30px 0 15px 0; font-size: 15px; color: #1e3a8a; border-bottom: 2px solid #bfdbfe; padding-bottom: 8px; text-transform: uppercase;">Chi tiết Sản phẩm / Hạng mục</h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 20px;">
+                <thead>
+                  <tr style="background-color: #f8fafc;">
+                    <th style="padding: 12px; text-align: left; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #bfdbfe;">Hạng mục / Cấu hình</th>
+                    <th style="padding: 12px; text-align: center; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #bfdbfe; width: 120px;">Số lượng</th>
+                  </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                <tr>
+                  <td width="40%"></td>
+                  <td width="60%">
+                    <table width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Tiền vật tư & Gia công:</td>
+                        <td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right; font-weight: 500;">${formatCurrency(subTotal)}</td>
+                      </tr>
+                      ${shippingFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Vận chuyển:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(shippingFee)}</td></tr>` : ""}
+                      ${installFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Lắp đặt:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(installFee)}</td></tr>` : ""}
+                      <tr>
+                        <td style="padding: 12px; font-size: 15px; color: #1e3a8a; text-align: right; font-weight: bold; border-top: 1px solid #bfdbfe;">ĐÃ THANH TOÁN:</td>
+                        <td style="padding: 12px; font-size: 20px; color: #10b981; text-align: right; font-weight: 900; border-top: 1px solid #bfdbfe;">${formatCurrency(finalTotal)}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <div style="text-align: center; margin: 30px 0 10px 0;">
+                <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=orders" style="display: inline-block; background-color: #1e3a8a; color: #ffffff; text-decoration: none; padding: 14px 30px; font-size: 14px; font-weight: bold; border-radius: 6px;">KIỂM TRA ĐƠN HÀNG</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    };
+    return transporter.sendMail(mailOptions);
+  }
+
+  // ---------------------------------------------------------
+  // KỊCH BẢN 2: NẾU LÀ GỬI MÃ OTP (REGISTER / FORGOT_PASSWORD)
+  // ---------------------------------------------------------
   let subjectText = "";
   let greetingContext = "";
 
   if (type === "FORGOT_PASSWORD") {
     subjectText = "[KPM] Yêu cầu đặt lại mật khẩu";
-    greetingContext = `Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản trên hệ thống <strong style="color: #1e3a8a;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để tiến hành đổi mật khẩu mới:`;
-  } else if (type === "INVOICE") {
-    subjectText = "[KPM] Hóa Đơn Đặt Hàng KPM";
-    greetingContext = `Cảm ơn bạn đã tin tưởng và đặt hàng tại <strong style="color: #1e3a8a;">KPM Materials</strong>. Giao dịch của bạn đã được hệ thống ghi nhận. Mã hóa đơn điện tử của bạn là:`;
+    greetingContext = `Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản trên hệ thống <strong style="color: #2563eb;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để tiến hành đổi mật khẩu mới:`;
   } else {
     subjectText = "[KPM] Mã xác thực đăng ký tài khoản";
-    greetingContext = `Bạn vừa yêu cầu đăng ký tài khoản trên hệ thống <strong style="color: #1e3a8a;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để hoàn tất quá trình đăng ký:`;
+    greetingContext = `Bạn vừa yêu cầu đăng ký tài khoản trên hệ thống <strong style="color: #2563eb;">KPM Materials</strong>. Vui lòng sử dụng mã xác thực (OTP) dưới đây để hoàn tất quá trình đăng ký:`;
   }
 
   const mailOptions = {
@@ -30,28 +174,24 @@ const sendVerifyEmail = async (email, code, type = "REGISTER") => {
     subject: subjectText,
     html: `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; padding: 40px 10px;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-          
-          <div style="background: #1e293b; padding: 30px 20px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 2px;">KPM MATERIALS</h1>
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.08);">
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 35px 20px; text-align: center;">
+            <p style="color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Xác thực bảo mật</p>
+            <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: 2px;">KPM MATERIALS</h1>
           </div>
-
           <div style="padding: 40px 30px;">
             <h2 style="color: #0f172a; font-size: 20px; margin-top: 0;">Xin chào,</h2>
-            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
-              ${greetingContext}
-            </p>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <div style="display: inline-block; background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 15px 40px; border-radius: 8px;">
-                <span style="font-size: 32px; font-weight: 800; color: #0f172a; letter-spacing: 8px;">${code}</span>
+            <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 30px;">${greetingContext}</p>
+            <div style="text-align: center; margin: 35px 0;">
+              <div style="display: inline-block; background-color: #f8fafc; border: 2px dashed #cbd5e1; padding: 20px 40px; border-radius: 12px;">
+                <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Mã OTP của bạn</p>
+                <span style="font-size: 36px; font-weight: 800; color: #0f172a; letter-spacing: 8px;">${code}</span>
               </div>
-              ${type !== "INVOICE" ? `<p style="color: #ef4444; font-size: 13px; margin-top: 15px; font-weight: 600;">* Mã này chỉ có hiệu lực trong vòng 5 phút.</p>` : ""}
+              <p style="color: #ef4444; font-size: 13px; margin-top: 15px; font-weight: 600;">* Mã này chỉ có hiệu lực trong vòng 5 phút.</p>
             </div>
-
-            <p style="color: #64748b; font-size: 14px; line-height: 1.6; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-              Email này được gửi tự động. Vui lòng không trả lời email này.<br>
-              © 2026 KPM Materials.
+            <p style="color: #64748b; font-size: 13px; line-height: 1.6; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 25px; margin-top: 30px;">
+              Email này được gửi tự động từ hệ thống. Vui lòng không trả lời email này.<br>
+              © ${new Date().getFullYear()} KPM Materials.
             </p>
           </div>
         </div>
@@ -61,61 +201,116 @@ const sendVerifyEmail = async (email, code, type = "REGISTER") => {
   return transporter.sendMail(mailOptions);
 };
 
-// 2. EMAIL BÁO GIÁ SẢN PHẨM (Giao diện Cao cấp/Kỹ thuật)
+// ============================================================================
+// 2. EMAIL BÁO GIÁ SẢN PHẨM (Giao diện Cao cấp/Kỹ thuật chi tiết)
+// ============================================================================
 const sendQuotationEmail = async (email, quotationData) => {
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
+  let itemsHtml = "";
+  if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
+    itemsHtml = quotationData.quotation_specs.map((spec, index) => {
+      return `
+      <tr>
+        <td style="padding: 15px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
+          <strong style="color: #0f172a; font-size: 14px;">${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
+          <div style="font-size: 12px; color: #64748b; margin-top: 4px; line-height: 1.5;">
+            - Vật tư: ${spec.materials?.material_name || "Theo TC"}<br>
+            - Kích thước: ${spec.dimensions?.width || "-"} x ${spec.dimensions?.height || "-"} (mm)
+          </div>
+          ${spec.note ? `<div style="font-size: 12px; color: #d97706; font-style: italic; margin-top: 4px;">*${spec.note}</div>` : ""}
+        </td>
+        <td style="padding: 15px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a; text-align: center; font-weight: bold; font-size: 14px; vertical-align: top;">
+          ${spec.dimensions?.quantity || 1}
+        </td>
+      </tr>
+    `}).join("");
+  } else {
+    itemsHtml = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: #64748b; font-style: italic;">Chi tiết bóc tách vật tư được đính kèm trong hệ thống.</td></tr>`;
+  }
 
+  const originalPrice = quotationData?.total_quoted_price || 0;
+  const adminProposedPrice = quotationData?.admin_proposed_price;
+  const finalDisplayPrice = adminProposedPrice || originalPrice;
+  const hasDiscount = adminProposedPrice && adminProposedPrice < originalPrice;
+
+  const customerName = quotationData?.users?.user_profiles?.first_name 
+    ? `${quotationData.users.user_profiles.first_name}`.trim()
+    : (quotationData?.users?.username || 'Quý khách');
+  const customerPhone = quotationData?.users?.user_profiles?.phone_number || 'Đã cập nhật trên hệ thống';
+const customerEmail = quotationData?.users?.user_profiles?.email || 'Đã cập nhật trên hệ thống';
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
     to: email,
-    subject: `[KPM] Hồ sơ Báo giá Kỹ thuật - #${quotationData.id.slice(0, 8).toUpperCase()}`,
+    subject: `[KPM] Hồ sơ Báo giá Kỹ thuật - #${quotationData.id?.slice(0, 8).toUpperCase()}`,
     html: `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0fdf4; padding: 40px 10px; background: #e2e8f0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+        <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
           
-          <div style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 40px 30px; text-align: center;">
-            <p style="color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Hồ sơ Báo giá</p>
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px; letter-spacing: 1px;">KPM MATERIALS</h1>
+          <div style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 35px 30px; text-align: center; border-bottom: 4px solid #fbbf24;">
+            <p style="color: #fbbf24; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Hồ Sơ Báo Giá Sản Xuất</p>
+            <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: 1px; text-transform: uppercase;">KPM MATERIALS</h1>
+            <p style="color: #cbd5e1; font-size: 14px; margin-top: 8px;">Mã tham chiếu: <strong>#${quotationData.id?.slice(0, 8).toUpperCase()}</strong></p>
           </div>
 
-          <div style="padding: 40px 30px;">
-            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin-top: 0;">
-              Xin chào Quý khách,<br><br>
-              KPM Materials đã hoàn tất việc bóc tách bản vẽ và tính toán vật tư. Dưới đây là bảng tóm tắt chi phí cho hạng mục yêu cầu của Quý khách:
+          <div style="padding: 30px;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin-top: 0;">
+              Xin chào <strong>${customerName}</strong>,<br><br>
+              Phòng Kỹ thuật KPM Materials đã hoàn tất việc bóc tách bản vẽ và tính toán định mức vật tư cho yêu cầu gia công của bạn.
             </p>
 
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; margin: 30px 0;">
-              <h3 style="margin: 0 0 15px 0; color: #0f172a; font-size: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
-                ${quotationData.title || "Gia công cấu hình kỹ thuật"}
-              </h3>
-              
-              <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                <span style="color: #64748b; font-size: 15px;">Mã số báo giá:</span>
-                <strong style="color: #0f172a; font-size: 15px;">#${quotationData.id.slice(0, 8).toUpperCase()}</strong>
-              </div>
-              
-              <div style="background: #1e293b; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
-                <p style="margin: 0; font-size: 13px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Tổng chi phí dự kiến</p>
-                <p style="margin: 8px 0 0 0; font-size: 32px; font-weight: 800; color: #fbbf24;">
-                  ${formatCurrency(quotationData.total_quoted_price)}
-                </p>
-              </div>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #334155; border-radius: 8px; padding: 15px 20px; margin: 25px 0;">
+              <h3 style="margin: 0 0 5px 0; color: #0f172a; font-size: 16px;">${quotationData.title || "Gia công cấu hình kỹ thuật tùy chỉnh"}</h3>
+              <p style="margin: 0; font-size: 13px; color: #64748b;">Yêu cầu bởi: ${customerName} | SĐT: ${customerPhone} | Email: ${customerEmail}</p>
             </div>
 
-            <p style="color: #475569; font-size: 15px; line-height: 1.6;">
-              Mức giá trên được tính toán tối ưu dựa trên cấu hình vật tư chuẩn. Để xem bản vẽ chi tiết, danh sách linh kiện và tiến hành đặt hàng, Quý khách vui lòng truy cập hệ thống.
+            <h3 style="margin: 30px 0 15px 0; font-size: 15px; color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; display: inline-block; text-transform: uppercase;">Chi tiết Bóc tách & Phân bổ chi phí</h3>
+            
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 20px;">
+              <thead>
+                <tr style="background-color: #f8fafc;">
+                  <th style="padding: 12px; text-align: left; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #cbd5e1;">Hạng mục / Cấu hình</th>
+                  <th style="padding: 12px; text-align: center; font-size: 12px; color: #475569; text-transform: uppercase; border-bottom: 2px solid #cbd5e1; width: 120px;">Số lượng</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+
+            <div style="background: #1e293b; color: white; padding: 25px; border-radius: 12px; margin-top: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${hasDiscount ? `
+                <tr>
+                  <td style="padding-bottom: 10px; color: #94a3b8; font-size: 14px;">Giá gốc hệ thống tính:</td>
+                  <td style="padding-bottom: 10px; color: #94a3b8; font-size: 14px; text-align: right; text-decoration: line-through;">${formatCurrency(originalPrice)}</td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 10px; color: #34d399; font-size: 13px; font-style: italic;" colspan="2">
+                    * Đã áp dụng mức giá ưu đãi/đề xuất từ Admin KPM
+                  </td>
+                </tr>
+                ` : ""}
+                <tr>
+                  <td style="padding-top: 15px; border-top: 1px solid #334155; color: #cbd5e1; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">Tổng Chi Phí Đề Xuất:</td>
+                  <td style="padding-top: 15px; border-top: 1px solid #334155; color: #fbbf24; font-size: 26px; font-weight: 900; text-align: right;">
+                    ${formatCurrency(finalDisplayPrice)}
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <p style="color: #475569; font-size: 14px; line-height: 1.6; text-align: center; margin-top: 30px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+              Để xem chi tiết bản vẽ đính kèm, tải file PDF hoặc <strong>phản hồi/mặc cả lại mức giá này</strong>, Quý khách vui lòng truy cập vào hệ thống nội bộ.
             </p>
 
-            <div style="text-align: center; margin: 40px 0 20px 0;">
-              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=quotations" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 16px 40px; font-size: 16px; font-weight: bold; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(37,99,235,0.3);">
-                XEM CHI TIẾT HỒ SƠ
+            <div style="text-align: center; margin: 35px 0 10px 0;">
+              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=quotations" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 16px 35px; font-size: 15px; font-weight: bold; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); transition: all 0.3s;">
+                XEM BẢN VẼ & TRẢ LỜI BÁO GIÁ
               </a>
             </div>
+          </div>
+          
+          <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Phòng Kỹ thuật & Báo giá - KPM Materials</p>
           </div>
         </div>
       </div>
@@ -124,14 +319,42 @@ const sendQuotationEmail = async (email, quotationData) => {
   return transporter.sendMail(mailOptions);
 };
 
-// 3. EMAIL XÁC NHẬN ĐƠN HÀNG THÀNH CÔNG (Giao diện Thành công/Công xưởng)
+// ============================================================================
+// 3. EMAIL XÁC NHẬN ĐƠN HÀNG THÀNH CÔNG
+// ============================================================================
 const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
-  };
+  let itemsHtml = "";
+  if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
+    itemsHtml = quotationData.quotation_specs.map((spec, index) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; font-size: 14px;">
+          <strong>${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
+          <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+            - Vật tư: ${spec.materials?.material_name || "Theo TC"}<br>
+            - Kích thước: ${spec.dimensions?.width || "-"} x ${spec.dimensions?.height || "-"} (mm)
+          </div>
+          ${spec.note ? `<div style="font-size: 12px; color: #d97706; font-style: italic; margin-top: 4px;">*${spec.note}</div>` : ""}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; text-align: center; font-size: 14px;">${spec.dimensions?.quantity || 1}</td>
+      </tr>
+    `).join("");
+  } else if (orderData && orderData.order_items && orderData.order_items.length > 0) {
+    itemsHtml = orderData.order_items.map((item, index) => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; font-size: 14px;">
+          <strong>${index + 1}. ${item.products?.product_name || "Sản phẩm KPM"}</strong>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; text-align: center; font-size: 14px;">${item.quantity}</td>
+      </tr>
+    `).join("");
+  } else {
+    itemsHtml = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: #6b7280; font-style: italic;">Chi tiết gia công đính kèm trong hệ thống</td></tr>`;
+  }
+
+  const subTotal = quotationData?.total_quoted_price || (orderData?.total_amount - (orderData?.shipping_fee || 0) - (orderData?.installation_fee || 0)) || orderData?.total_amount;
+  const shippingFee = orderData?.shipping_fee || 0;
+  const installFee = orderData?.installation_fee || 0;
+  const finalTotal = orderData?.total_amount || quotationData?.total_quoted_price || 0;
 
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
@@ -139,62 +362,91 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
     subject: `[KPM] Xác nhận Đơn hàng #${orderData.order_code}`,
     html: `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; padding: 40px 10px;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
           
-          <div style="background: linear-gradient(135deg, #047857 0%, #064e3b 100%); padding: 40px 30px; text-align: center; border-bottom: 4px solid #10b981;">
-            <div style="display: inline-block; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 50%; margin-bottom: 15px;">
-              <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" width="40" height="40" alt="Success" style="filter: brightness(0) invert(1);" />
+          <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 35px 30px; text-align: center;">
+            <div style="display: inline-block; background: #ffffff; padding: 12px; border-radius: 50%; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <img src="https://cdn-icons-png.flaticon.com/512/190/190411.png" width="35" height="35" alt="Success" style="display: block; filter: hue-rotate(150deg) saturate(2) brightness(0.8);" />
             </div>
-            <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: 1px; text-transform: uppercase;">Xác nhận đơn hàng</h1>
-            <p style="color: #a7f3d0; font-size: 15px; margin-top: 10px; font-weight: 500;">Cảm ơn Quý khách đã tin tưởng KPM!</p>
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 0.5px; text-transform: uppercase;">Đặt hàng thành công</h1>
+            <p style="color: #d1fae5; font-size: 15px; margin-top: 8px;">Mã đơn: <strong>#${orderData.order_code}</strong></p>
           </div>
 
-          <div style="padding: 40px 30px;">
-            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-              Đơn hàng của Quý khách đã được hệ thống ghi nhận thành công và chính thức chuyển giao lệnh sản xuất xuống xưởng.
+          <div style="padding: 30px;">
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-top: 0;">
+              Xin chào Quý khách,<br><br>
+              Cảm ơn Quý khách đã tin tưởng KPM Materials. Đơn hàng của Quý khách đã được hệ thống ghi nhận và đang được chuyển xuống phân xưởng để xếp lịch sản xuất.
             </p>
 
-            <div style="border: 2px dashed #e5e7eb; border-radius: 12px; padding: 25px; margin: 30px 0;">
-              <div style="text-align: center; margin-bottom: 20px;">
-                <p style="color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0;">Mã Đơn Hàng</p>
-                <p style="color: #111827; font-size: 22px; font-weight: 800; margin: 5px 0 0 0;">#${orderData.order_code}</p>
-              </div>
-              
-              <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 15px;">
-                <tr>
-                  <td style="padding: 15px 0; color: #4b5563; border-bottom: 1px solid #f3f4f6;"><strong>Hạng mục gia công</strong></td>
-                  <td style="padding: 15px 0; color: #111827; text-align: right; font-weight: 500; border-bottom: 1px solid #f3f4f6;">
-                    ${quotationData?.title || "Vật tư & Linh kiện cơ khí"}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding: 15px 0; color: #4b5563; border-bottom: 1px solid #f3f4f6;"><strong>Trạng thái</strong></td>
-                  <td style="padding: 15px 0; color: #059669; text-align: right; font-weight: bold; border-bottom: 1px solid #f3f4f6;">
-                    Chờ sản xuất
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-top: 20px; color: #374151; font-size: 16px;"><strong>TỔNG GIÁ TRỊ</strong></td>
-                  <td style="padding-top: 20px; color: #dc2626; font-size: 22px; font-weight: 900; text-align: right;">
-                    ${formatCurrency(quotationData?.total_quoted_price || orderData?.total_amount || 0)}
-                  </td>
-                </tr>
-              </table>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 25px 0; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;">
+              <tr>
+                <td width="50%" style="padding: 20px; vertical-align: top; border-right: 1px solid #e5e7eb;">
+                  <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Thông tin khách hàng</h3>
+                  <p style="margin: 0 0 5px 0; font-size: 15px; color: #111827;"><strong>${orderData?.customer_name || 'Khách hàng KPM'}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #4b5563;">SĐT: ${orderData?.customer_phone || 'Đã cập nhật trên hệ thống'}</p>
+                </td>
+                <td width="50%" style="padding: 20px; vertical-align: top;">
+                  <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Địa chỉ giao hàng</h3>
+                  <p style="margin: 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
+                    ${orderData?.shipping_address || 'Nhận tại xưởng KPM / Theo thỏa thuận'}
+                  </p>
+                </td>
+              </tr>
+            </table>
 
-            <p style="color: #4b5563; font-size: 15px; line-height: 1.6; text-align: center;">
-              Kỹ thuật viên sẽ cập nhật tiến độ gia công liên tục. Quý khách có thể theo dõi tình trạng đơn hàng trực tiếp trên hệ thống Dashboard.
-            </p>
+            <h3 style="margin: 30px 0 15px 0; font-size: 16px; color: #111827; border-bottom: 2px solid #059669; padding-bottom: 8px; display: inline-block;">Chi tiết Đơn hàng</h3>
+            
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse; margin-bottom: 20px;">
+              <thead>
+                <tr style="background-color: #f3f4f6;">
+                  <th style="padding: 12px; text-align: left; font-size: 13px; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #e5e7eb;">Hạng mục / Sản phẩm</th>
+                  <th style="padding: 12px; text-align: center; font-size: 13px; color: #6b7280; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; width: 60px;">SL</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
 
-            <div style="text-align: center; margin: 40px 0 10px 0;">
-              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=orders" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 16px 40px; font-size: 16px; font-weight: bold; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(5,150,105,0.3);">
-                THEO DÕI TIẾN ĐỘ
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+              <tr>
+                <td width="50%"></td>
+                <td width="50%">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Tạm tính:</td>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(subTotal)}</td>
+                    </tr>
+                    ${shippingFee > 0 ? `
+                    <tr>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Phí vận chuyển:</td>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(shippingFee)}</td>
+                    </tr>
+                    ` : ""}
+                    ${installFee > 0 ? `
+                    <tr>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Phí lắp đặt:</td>
+                      <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(installFee)}</td>
+                    </tr>
+                    ` : ""}
+                    <tr>
+                      <td style="padding: 15px 12px; font-size: 16px; color: #111827; text-align: right; font-weight: bold; border-top: 1px solid #e5e7eb;">TỔNG THANH TOÁN:</td>
+                      <td style="padding: 15px 12px; font-size: 20px; color: #dc2626; text-align: right; font-weight: 900; border-top: 1px solid #e5e7eb;">${formatCurrency(finalTotal)}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <div style="text-align: center; margin: 35px 0 10px 0;">
+              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=orders" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 14px 35px; font-size: 15px; font-weight: bold; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 6px rgba(5,150,105,0.25);">
+                THEO DÕI TIẾN ĐỘ ĐƠN HÀNG
               </a>
             </div>
           </div>
           
           <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-            <p style="color: #94a3b8; font-size: 13px; margin: 0;">© 2026 KPM Materials - Công nghệ & Cơ khí chính xác</p>
+            <p style="color: #94a3b8; font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 1px;">KPM Materials - Công nghệ & Cơ khí chính xác</p>
           </div>
         </div>
       </div>

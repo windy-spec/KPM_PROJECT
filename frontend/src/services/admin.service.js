@@ -266,6 +266,23 @@ const adminService = {
 
   getDashboardStats() {
     return apiClient.get('/admin/dashboard/stats');
+  },
+
+  /* Component Templates */
+  getComponentTemplates(params) {
+    return apiClient.get('/component-templates', { params });
+  },
+
+  createComponentTemplate(data) {
+    return apiClient.post('/component-templates', data);
+  },
+
+  updateComponentTemplate(id, data) {
+    return apiClient.put(`/component-templates/${id}`, data);
+  },
+
+  deleteComponentTemplate(id) {
+    return apiClient.delete(`/component-templates/${id}`);
   }
 };
 

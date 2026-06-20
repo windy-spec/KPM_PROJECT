@@ -17,24 +17,36 @@ class InvoiceService {
         order_id: orderId,
         invoice_no: invoiceNo,
         total_amount: totalAmount,
-        email_sent_status: "sent", // Đánh dấu là đã gửi
+        email_sent_status: "sent",
       },
     });
 
-    // 3. Kéo thông tin User + Chi tiết Order để gửi Email
+    // 3. Kéo FULL thông tin User + Order + Quotation + Specs để vẽ Hóa đơn chi tiết
     const orderData = await prismaClient.orders.findUnique({
       where: { id: orderId },
       include: {
-        users: true, // Lấy bảng users để có email
+        users: true,
+        quotations: {
+          include: {
+            quotation_specs: {
+              include: { materials: true, paint_types: true }
+            }
+          }
+        },
+        order_items: {
+          include: { products: true }
+        }
       },
     });
 
     if (orderData && orderData.users?.email) {
-      // 4. Gửi mail hóa đơn (Bro cần tạo 1 template INVOICE trong mailer.utils)
+      // 4. Gọi hàm gửi email hóa đơn và truyền FULL data vào
       sendVerifyEmail(
         orderData.users.email,
-        invoiceNo, // Hoặc gửi nội dung chi tiết hóa đơn
-        "INVOICE", // Type email mới bro cần cấu hình thêm
+        invoiceNo,
+        "INVOICE",          // Từ khóa để mailer.utils biết đây là Hóa đơn
+        orderData,          // Dữ liệu Đơn hàng
+        orderData.quotations// Dữ liệu bóc tách
       ).catch((err) => console.error("Lỗi gửi mail hóa đơn:", err));
     }
 

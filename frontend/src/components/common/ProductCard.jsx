@@ -131,7 +131,7 @@ const ProductCard = ({ product }) => {
               className="flex-1 py-2.5 bg-surface-container border border-outline-variant/80 text-on-surface-variant text-[11px] font-black uppercase tracking-wider rounded-xl \
                                hover:bg-on-surface hover:text-white transition-all flex items-center justify-center text-center"
             >
-              Cấu hình
+              Xem cấu hình chi tiết
             </Link>
 
             {/* NÚT THÊM NHANH VẬT TƯ MẶC ĐỊNH VÀO GIỎ HÀNG */}
