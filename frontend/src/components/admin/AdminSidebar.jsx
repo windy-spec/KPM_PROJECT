@@ -54,13 +54,13 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
     {
       label: 'Quản trị kinh doanh',
       items: [
-        { label: 'Tổng quan doanh số', icon: LayoutDashboard, panel: 'overview' },
-        { label: 'Quản lý sản phẩm', icon: Package, panel: 'products' },
-        { label: 'Danh sách Báo giá', icon: FileText, panel: 'quotations' },
-        { label: 'Quản lý danh mục', icon: Package, panel: 'categories' },
-        { label: 'Quản lý lô', icon: Package, panel: 'invalid_batches' },
-        { label: 'Quản lý đơn hàng', icon: ShoppingCart, panel: 'orders' },
-        { label: 'Quản lý user', icon: User, panel: 'users' }
+        { label: 'Tổng Quan Doanh Số', icon: LayoutDashboard, panel: 'overview' },
+        { label: 'Quản Lý Sản Phẩm', icon: Package, panel: 'products' },
+        { label: 'Danh Sách Báo Giá', icon: FileText, panel: 'quotations' },
+        { label: 'Quản Lý Danh Mục', icon: Package, panel: 'categories' },
+        { label: 'Quản Lý Lô', icon: Package, panel: 'invalid_batches' },
+        { label: 'Quản Lý Đơn Hàng', icon: ShoppingCart, panel: 'orders' },
+        { label: 'Quản Lý User', icon: User, panel: 'users' }
       ],
     },
     {
@@ -74,12 +74,12 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
           isOpen: isConfigOpen,
           onToggle: () => setIsConfigOpen(!isConfigOpen),
           submenu: [
-            { label: 'Hệ số độ dày', icon: Ruler, panel: 'settings_thickness' },
-            { label: 'Đơn giá sơn', icon: Layers, panel: 'settings_paint' },
-            { label: 'Bảng giá nhân công', icon: Users, panel: 'settings_labor' },
-            { label: 'Loại vật tư', icon: Layers, panel: 'material_types' },
-            { label: 'Đơn vị tính', icon: Ruler, panel: 'material_units' },
-            { label: 'Quản lý vật tư', icon: Boxes, panel: 'materials' },
+            { label: 'Hệ Số Độ Dày', icon: Ruler, panel: 'settings_thickness' },
+            { label: 'Đơn Giá Sơn', icon: Layers, panel: 'settings_paint' },
+            { label: 'Bảng Giá Nhân Công', icon: Users, panel: 'settings_labor' },
+            { label: 'Loại Vật Tư', icon: Layers, panel: 'material_types' },
+            { label: 'Đơn Vị Tính', icon: Ruler, panel: 'material_units' },
+            { label: 'Quản Lý Vật Tư', icon: Boxes, panel: 'materials' },
           ],
         },
       ],

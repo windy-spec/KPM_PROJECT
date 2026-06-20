@@ -33,9 +33,11 @@ import TechnicalTerms from "./pages/legal/TechnicalTerms";
 import FAQ from "./pages/info/FAQ";
 import WarrantyPolicy from "./pages/legal/WarrantyPolicy";
 import CustomQuoteForm from './components/quotation/CustomQuoteForm';
+import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
 
 import ScrollToTop from "./components/common/ScrollToTop";
 import { CartProvider } from "./context/CartContext";
+
 
 const routeMap = [
   {
@@ -211,6 +213,14 @@ const routeMap = [
     element: (
       <RoleGuard allowedRoles={["ADMIN"]}>
         <AdminDashboard />
+      </RoleGuard>
+    ),
+  },
+  {
+    path: "/admin/warehouse",
+    element: (
+      <RoleGuard allowedRoles={["ADMIN_KHO"]}>
+        <WarehouseDashboard />
       </RoleGuard>
     ),
   },

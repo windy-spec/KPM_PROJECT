@@ -29,8 +29,13 @@ const RoleGuard = ({ allowedRoles = [], children }) => {
 
   // 2. Nếu đã đăng nhập nhưng SAI ROLE (Ví dụ: USER thường cố vào trang ADMIN)
   if (normalizedAllowedRoles.length > 0 && !normalizedAllowedRoles.includes(currentRole)) {
-    // Nếu là ADMIN thì về trang admin, ngược lại (USER) thì về trang chủ client
-    const defaultRedirect = currentRole === 'ADMIN' ? '/admin/dashboard' : '/';
+    let defaultRedirect = '/';
+
+    if (currentRole === 'ADMIN') {
+      defaultRedirect = '/admin/dashboard';
+    } else if (currentRole === 'ADMIN_KHO') {
+      defaultRedirect = '/admin/warehouse';
+    }
     return <Navigate to={defaultRedirect} replace />;
   }
 

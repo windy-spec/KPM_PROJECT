@@ -87,14 +87,15 @@ const Login = () => {
       localStorage.setItem("user", JSON.stringify(user));
       window.dispatchEvent(new Event('auth-change'));
 
-      const destination =
-        user && String(user.role || "").toUpperCase() === "ADMIN"
-          ? "/admin/dashboard"
-          : "/";
+      // --- SỬA LOGIC PHÂN LUỒNG ĐIỀU HƯỚNG FORM ĐĂNG NHẬP THƯỜNG ---
+      const userRole = String(user?.role || "").toUpperCase();
+      let destination = "/";
 
-      setSuccessMessage(
-        "Đăng nhập thành công! Đang chuyển bạn về trang chủ...",
-      );
+      if (userRole === "ADMIN") {
+        destination = "/admin/dashboard";
+      } else if (userRole === "ADMIN_KHO") {
+        destination = "/admin/warehouse"; // Trả thủ kho về đúng trang quản lý kho
+      }
       setCountdown(2);
       setShowSuccessOverlay(true);
 

@@ -18,6 +18,8 @@ function StatusBadge({ status }) {
     rejected: 'bg-red-50 text-red-700 border-red-200',
     cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
     favorite: 'bg-pink-50 text-pink-700 border-pink-200',
+    under_review: 'bg-gray-50 text-gray-700 border-gray-200',
+    admin_quoted: 'bg-sky-50 text-sky-700 border-sky-200',
   };
   const labelMap = {
     draft: 'Nháp',
@@ -29,6 +31,8 @@ function StatusBadge({ status }) {
     rejected: 'Từ chối',
     cancelled: 'Đã hủy',
     favorite: 'Yêu thích',
+    under_review: 'Xem xét',
+    admin_quoted: 'Admin báo giá',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border ${map[status] || 'bg-surface-container text-on-surface-variant border-outline-variant/40'}`}>

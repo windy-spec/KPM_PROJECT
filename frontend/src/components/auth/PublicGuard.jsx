@@ -27,7 +27,11 @@ const PublicGuard = ({ children }) => {
     if (currentRole === 'ADMIN') {
       return <Navigate to="/admin/dashboard" replace />;
     }
-    
+
+    if (currentRole === 'ADMIN_KHO') {
+      return <Navigate to="/admin/warehouse" replace />;
+    }
+
     // Nếu là USER hoặc các role khác, về trang chủ client
     return <Navigate to="/" replace />;
   }

@@ -148,6 +148,18 @@ const QuotationsTab = () => {
             <XCircle className="w-3 h-3" /> Đã từ chối
           </span>
         );
+      case "under_review":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
+            <Clock className="w-3 h-3" /> Đang chờ xem xét
+          </span>
+        );
+      case "admin_quoted":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700">
+            <CheckCircle2 className="w-3 h-3" /> Admin đã báo giá
+          </span>
+        );
       default:
         return (
           <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
@@ -199,8 +211,8 @@ const QuotationsTab = () => {
                   <p className="text-lg font-black text-error">
                     {formatCurrency(
                       q.user_proposed_price ||
-                        q.admin_proposed_price ||
-                        q.total_quoted_price,
+                      q.admin_proposed_price ||
+                      q.total_quoted_price,
                     )}
                   </p>
                 )}
@@ -237,8 +249,8 @@ const QuotationsTab = () => {
               <span className="text-base font-black text-rose-600">
                 {formatCurrency(
                   q.user_proposed_price ||
-                    q.admin_proposed_price ||
-                    q.total_quoted_price,
+                  q.admin_proposed_price ||
+                  q.total_quoted_price,
                 )}
               </span>
             </div>

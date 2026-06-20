@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft, ChevronRight, Loader2, Pencil, Shield,
-  Search, Users, CircleDot, ShieldBan, X
+  Search, Users, CircleDot, ShieldBan, X, User, Box
 } from 'lucide-react';
 import adminService from '../../services/admin.service';
 import Portal from '../../components/common/Portal';
@@ -167,7 +167,30 @@ export default function ManageUsers() {
     ));
   };
 
+  const getRoleBadge = (roleName) => {
+    const normalizedRole = String(roleName || 'USER').toUpperCase();
 
+    switch (normalizedRole) {
+      case 'ADMIN':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <Shield className="w-3 h-3" /> ADMIN
+          </span>
+        );
+      case 'ADMIN_KHO':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] bg-teal-50 text-teal-700 border border-teal-200">
+            <Box className="w-3 h-3" /> ADMIN KHO
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] bg-surface-container text-on-surface-variant border border-outline-variant/30">
+            <User className="w-3 h-3" /> {roleName || 'USER'}
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -256,13 +279,8 @@ export default function ManageUsers() {
                     </td>
 
                     <td className="p-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] ${user.roles?.role_name === 'ADMIN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-surface-container text-on-surface-variant'
-                        }`}>
-                        <Shield className="w-3 h-3" /> {user.roles?.role_name || 'USER'}
-                      </span>
+                      {getRoleBadge(user.roles?.role_name)}
                     </td>
-
-
 
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
@@ -376,6 +394,7 @@ export default function ManageUsers() {
                   >
                     <option value="USER">Người dùng cơ bản (USER)</option>
                     <option value="ADMIN">Quản trị viên hệ thống (ADMIN)</option>
+                    <option value="ADMIN_KHO">Quản lý kho (ADMIN KHO)</option>
                   </select>
                 </div>
 
