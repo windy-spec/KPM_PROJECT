@@ -93,10 +93,14 @@ const QuotationsTab = () => {
 
     const q = quotations.find((quote) => quote.id === id);
     if (q) {
-      const originalPrice = Number(q.admin_proposed_price || q.total_quoted_price);
+      const originalPrice = Number(
+        q.admin_proposed_price || q.total_quoted_price,
+      );
       const minAllowedPrice = originalPrice * 0.9;
       if (Number(priceToSubmit) < minAllowedPrice) {
-        showError(`Bạn không được mặc cả thấp hơn 10% (Tối thiểu phải là ${formatCurrency(minAllowedPrice)})`);
+        showError(
+          `Bạn không được mặc cả thấp hơn 10% (Tối thiểu phải là ${formatCurrency(minAllowedPrice)})`,
+        );
         return;
       }
     }
@@ -222,8 +226,8 @@ const QuotationsTab = () => {
                   <p className="text-lg font-black text-error">
                     {formatCurrency(
                       q.user_proposed_price ||
-                      q.admin_proposed_price ||
-                      q.total_quoted_price,
+                        q.admin_proposed_price ||
+                        q.total_quoted_price,
                     )}
                   </p>
                 )}
@@ -260,8 +264,8 @@ const QuotationsTab = () => {
               <span className="text-base font-black text-rose-600">
                 {formatCurrency(
                   q.user_proposed_price ||
-                  q.admin_proposed_price ||
-                  q.total_quoted_price,
+                    q.admin_proposed_price ||
+                    q.total_quoted_price,
                 )}
               </span>
             </div>
