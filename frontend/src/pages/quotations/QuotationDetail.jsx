@@ -143,6 +143,16 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
       showError("Vui lòng nhập số tiền muốn mặc cả.");
       return;
     }
+
+    if (data) {
+      const originalPrice = Number(data.admin_proposed_price || data.total_quoted_price);
+      const minAllowedPrice = originalPrice * 0.9;
+      if (Number(negotiatePrice) < minAllowedPrice) {
+        showError(`Bạn không được mặc cả thấp hơn 10% (Tối thiểu phải là ${formatVND(minAllowedPrice)})`);
+        return;
+      }
+    }
+
     try {
       await apiClient.put(`/quotations/${id}/negotiate`, {
         price: Number(negotiatePrice)

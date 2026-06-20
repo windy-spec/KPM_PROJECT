@@ -60,7 +60,8 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
         { label: 'Quản Lý Danh Mục', icon: Package, panel: 'categories' },
         { label: 'Quản Lý Lô', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản Lý Đơn Hàng', icon: ShoppingCart, panel: 'orders' },
-        { label: 'Quản Lý User', icon: User, panel: 'users' }
+        { label: 'Quản Lý User', icon: User, panel: 'users' },
+        { label: 'Mẫu Linh Kiện', icon: Layers, panel: 'component_templates' },
       ],
     },
     {
