@@ -19,6 +19,9 @@ const ExportRequestsPanel = ({ onConfirmOrderExport, isWarehouseActionLoading })
             const waitingOrders = Array.isArray(allOrders)
                 ? allOrders.filter(order => order.production_status === "WAITING_WAREHOUSE")
                 : [];
+                
+            // Sửa lỗi: Cập nhật state bằng danh sách đã lọc
+            setOrders(waitingOrders);
         } catch (err) {
             console.error("Lỗi lấy danh sách lệnh xuất kho:", err);
             setError("Không thể tải danh sách lệnh xuất kho từ máy chủ.");

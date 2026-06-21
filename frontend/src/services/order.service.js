@@ -24,6 +24,11 @@ const orderService = {
   getOrderTracking: async (id) => {
     const response = await apiClient.get(`/orders/${id}/tracking`);
     return response.data;
+  },
+
+  approveOrderAndRequestMaterials: async (orderId) => {
+    const response = await apiClient.put(`/orders/${orderId}/approve`);
+    return response.data;
   }
 };
 

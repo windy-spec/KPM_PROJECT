@@ -2,13 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import WarehouseSidebar from "../../components/warehouse/WarehouseSidebar";
 import WarehouseTopbar from "../../components/warehouse/WarehouseTopbar";
-import ManageMaterials from "../admin/ManageMaterials"; // Dùng lại view vật tư có sẵn
+import ManageMaterials from "../admin/ManageMaterials";
 import ManageMaterialTypes from "../../components/admin/ManageMaterialTypes";
 import ManageMaterialUnits from "../../components/admin/ManageMaterialUnits";
-import ExportRequestsPanel from "../../components/warehouse/ExportRequestsPanel"; // UI duyệt xuất lệnh sx riêng
+import ExportRequestsPanel from "../../components/warehouse/ExportRequestsPanel";
+import WarehouseInventory from "./WarehouseInventory";
+import WarehouseRequest from "./WarehouseRequest";
 import { authService } from "../../services/auth.service";
 import warehouseService from "../../services/warehouse.service";
-import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react"; // Đã thêm icon X để tắt thông báo
+import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react";
 
 const WarehouseDashboard = () => {
     const location = useLocation();
@@ -203,6 +205,19 @@ const WarehouseDashboard = () => {
                                 onConfirmOrderExport={handleConfirmWarehouseExport}
                                 isWarehouseActionLoading={warehouseLoading}
                             />
+                        </section>
+                    )}
+
+                    {activePanel === "request" && (
+                        <section>
+                            <WarehouseRequest />
+                        </section>
+                    )}
+
+
+                    {activePanel === "inventory" && (
+                        <section>
+                            <WarehouseInventory />
                         </section>
                     )}
 

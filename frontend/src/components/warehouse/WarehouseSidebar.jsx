@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Boxes, Layers, Ruler, ClipboardList, LogOut, ChevronRight, ChevronDown, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, Boxes, Layers, Ruler, ClipboardList, LogOut, ChevronRight, ChevronDown, ClipboardCheck, Box } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
 
@@ -28,6 +28,8 @@ const WarehouseSidebar = () => {
                 { label: 'Tổng Quan Kho', icon: LayoutDashboard, panel: 'overview' },
                 { label: 'Yêu Cầu Xuất Vật Tư', icon: ClipboardList, panel: 'export_requests' },
                 { label: 'Lịch Sử Nhập/Xuất', icon: ClipboardCheck, panel: 'warehouse_logs' },
+                { label: 'Quản Lý Kho', icon: Box, panel: 'inventory' },
+                { label: 'Yêu cầu Nhập hàng', icon: ClipboardCheck, panel: 'request' },
             ],
         },
         {

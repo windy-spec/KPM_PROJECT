@@ -14,7 +14,8 @@ import {
   Layers,
   Ruler,
   AlertCircle,
-  User
+  User,
+  ClipboardList
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
@@ -62,6 +63,7 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
         { label: 'Quản Lý Đơn Hàng', icon: ShoppingCart, panel: 'orders' },
         { label: 'Quản Lý User', icon: User, panel: 'users' },
         { label: 'Mẫu Linh Kiện', icon: Layers, panel: 'component_templates' },
+        { label: 'Phê duyệt sản xuất', icon: ClipboardList, panel: 'production_requests' },
       ],
     },
     {
@@ -81,6 +83,7 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
             { label: 'Loại Vật Tư', icon: Layers, panel: 'material_types' },
             { label: 'Đơn Vị Tính', icon: Ruler, panel: 'material_units' },
             { label: 'Quản Lý Vật Tư', icon: Boxes, panel: 'materials' },
+
           ],
         },
       ],
