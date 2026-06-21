@@ -170,19 +170,27 @@ class OrderService {
     });
 
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
-    
-    const requiredMaterials = {}; 
+
+    const requiredMaterials = {};
 
     // TÍNH TOÁN (CHỈ LÀM DUY NHẤT Ở ĐÂY)
     for (const item of order.order_items) {
       // products.components là mảng JSON
-      const components = item.products?.components || []; 
-      const productQty = item.quantity || 1; 
+      const components = item.products?.components || [];
+      const productQty = item.quantity || 1;
 
       for (const comp of components) {
-        // Lấy waste_rate (định mức tuyệt đối) nhân với số lượng sản phẩm
-        const consumedQty = (parseFloat(comp.waste_rate) || 0) * productQty; 
         const matId = comp.material_id;
+
+        // Sửa lỗi: Lấy định mức tuyệt đối (ưu tiên lấy từ waste_configs, nếu không có thì lấy default_waste hoặc waste_rate)
+        let waste = 0;
+        if (matId && comp.waste_configs && comp.waste_configs[matId] && comp.waste_configs[matId].rate !== undefined) {
+          waste = parseFloat(comp.waste_configs[matId].rate);
+        } else {
+          waste = parseFloat(comp.default_waste) || parseFloat(comp.waste_rate) || 0;
+        }
+
+        const consumedQty = waste * productQty;
 
         if (matId && consumedQty > 0) {
           if (!requiredMaterials[matId]) requiredMaterials[matId] = 0;
@@ -190,17 +198,17 @@ class OrderService {
         }
       }
     }
-    
+
     // Đổi trạng thái và LƯU SNAPSHOT (Lưu vĩnh viễn bảng vật tư cần dùng vào cột material_requirements)
     await prisma.orders.update({
-        where: { id: orderId },
-        data: { 
-            production_status: "WAITING_WAREHOUSE",
-            material_requirements: requiredMaterials
-        }
+      where: { id: orderId },
+      data: {
+        production_status: "WAITING_WAREHOUSE",
+        material_requirements: requiredMaterials
+      }
     });
 
-    return requiredMaterials; 
+    return requiredMaterials;
   }
 }
 

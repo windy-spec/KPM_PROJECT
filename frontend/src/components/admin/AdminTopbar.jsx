@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Search, User, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, Search, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
 import { authService } from "../../services/auth.service";
+import apiClient from "../../services/apiClient";
 
 const AdminTopbar = () => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const syncAuthState = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -28,8 +31,22 @@ const AdminTopbar = () => {
         ...backendUser,
         ...backendProfile,
       });
+      
+      // Lấy danh sách tồn kho thấp
+      fetchLowStock();
     } catch {
       setCurrentUser(null);
+    }
+  };
+
+  const fetchLowStock = async () => {
+    try {
+      const res = await apiClient.get('/warehouse/inventory/low-stock');
+      if (res.data?.success) {
+        setLowStockItems(res.data.data);
+      }
+    } catch (e) {
+      console.error("Lỗi lấy danh sách tồn kho thấp:", e);
     }
   };
 
@@ -75,6 +92,51 @@ const AdminTopbar = () => {
       </div>
 
       <div className="flex items-center gap-3 ml-auto">
+        
+        {/* Nút Thông báo (Low Stock) */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-2.5 rounded-full hover:bg-surface-container transition-colors relative text-on-surface-variant hover:text-primary"
+          >
+            <Bell className="w-5 h-5" />
+            {lowStockItems.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-error rounded-full animate-pulse border-2 border-white"></span>
+            )}
+          </button>
+
+          {/* Menu Dropdown Thông báo */}
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-outline-variant rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95">
+              <div className="p-4 border-b border-outline-variant/60 flex justify-between items-center bg-surface-container-low">
+                <h3 className="text-sm font-bold text-on-surface">Thông báo</h3>
+                <span className="text-[10px] font-black uppercase bg-primary text-white px-2 py-0.5 rounded-full">{lowStockItems.length} Mới</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto p-2">
+                {lowStockItems.length > 0 ? (
+                  lowStockItems.map((item, idx) => (
+                    <div key={idx} className="p-3 hover:bg-surface-container/50 rounded-xl transition-colors border-b border-outline-variant/30 last:border-0 flex gap-3 items-start">
+                      <div className="p-2 bg-error/10 text-error rounded-full shrink-0">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-on-surface mb-0.5">Sắp hết vật liệu</p>
+                        <p className="text-xs text-on-surface-variant">
+                          <span className="font-bold">{item.materials?.material_name}</span> chỉ còn <span className="text-error font-bold">{item.quantity}</span> đơn vị.
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-sm text-outline font-medium">
+                    Không có thông báo mới.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <label className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant/70 bg-surface-container/30 min-w-[280px]">
           <Search className="w-4 h-4 text-on-surface-variant/50 shrink-0" />
           <input

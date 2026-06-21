@@ -62,11 +62,27 @@ class WarehouseService {
 
       await tx.orders.update({
         where: { id: orderId },
-        data: { production_status: "MANUFACTURING" },
+        data: { production_status: "EXPORTING_WAREHOUSE" },
       });
     });
 
-    return { message: "Kho đã xuất hàng đủ. Lệnh sản xuất bắt đầu!" };
+    return { message: "Kho đã xác nhận xuất hàng. Đơn hàng chuyển sang Kiểm xuất kho!" };
+  }
+
+  // Chuyển từ "Kiểm xuất kho" sang "Đang sản xuất"
+  async completeOrderExport(orderId) {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Không tìm thấy đơn hàng!");
+    if (order.production_status !== "EXPORTING_WAREHOUSE") {
+      throw new Error("Đơn hàng này không ở trạng thái kiểm xuất kho!");
+    }
+
+    await prisma.orders.update({
+      where: { id: orderId },
+      data: { production_status: "MANUFACTURING" },
+    });
+
+    return { message: "Hoàn tất kiểm xuất kho. Lệnh sản xuất bắt đầu!" };
   }
   // Lấy tất cả thông tin tồn kho
   async getAllInventory() {
@@ -81,6 +97,26 @@ class WarehouseService {
         },
       },
       orderBy: { updated_at: "desc" },
+    });
+  }
+
+  // Lấy danh sách tồn kho sắp hết (dưới 20)
+  async getLowStock() {
+    return await prisma.inventory.findMany({
+      where: {
+        quantity: {
+          lt: 20, // Threshold = 20
+        },
+      },
+      include: {
+        materials: {
+          select: {
+            material_code: true,
+            material_name: true,
+          },
+        },
+      },
+      orderBy: { quantity: "asc" },
     });
   }
   // Lấy thông tin tồn kho theo ID vật tư

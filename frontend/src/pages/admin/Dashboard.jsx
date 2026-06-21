@@ -34,6 +34,7 @@ import ManageInvalidBatches from "./ManageInvalidBatches";
 import ManageOrders from "./ManageOrders";
 import ManageUsers from "./ManageUsers";
 import ManageComponentTemplates from "./ManageComponentTemplates";
+import ManageProductionRequests from "./ManageProductionRequests";
 import adminService from "../../services/admin.service";
 
 const topProducts = [
@@ -401,6 +402,12 @@ const Dashboard = () => {
             {activePanel === "material_units" && (
               <section>
                 <ManageMaterialUnits />
+              </section>
+            )}
+
+            {activePanel === "production_requests" && (
+              <section>
+                <ManageProductionRequests />
               </section>
             )}
 

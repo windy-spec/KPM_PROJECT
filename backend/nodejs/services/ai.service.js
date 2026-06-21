@@ -6,7 +6,7 @@ const Groq = require("groq-sdk");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 class AIService {
-  // --- BƯỚC 1: TÌM KIẾM KIẾN THỨC BẰNG VECTOR
+  // --- BƯỚC 1: TÌM KIẾM KIẾN THỨC BẰNG VECTOR ---
   async searchKnowledge(userMessage) {
     // 1. Biến câu hỏi của khách thành mảng số
     const queryVector = await embedder.getVector(userMessage);
@@ -21,6 +21,7 @@ class AIService {
     `;
     return matchRules;
   }
+
   // --- BƯỚC 2: LUỒNG CHAT CHÍNH (RAG) ---
   async chatWithAI(userMessage, sessionID, mode, userId = null) {
     // 1. Quản lý Phiên Chat (Session)
@@ -35,6 +36,7 @@ class AIService {
       });
       currentSessionId = newSession.id;
     }
+
     // 2. Lưu tin nhắn của Khách hàng vào DB
     await prisma.ai_chat_messages.create({
       data: {
@@ -43,6 +45,7 @@ class AIService {
         message_text: userMessage,
       },
     });
+
     // 3. Tìm kiếm kiến thức (Vector Search)
     const rules = await this.searchKnowledge(userMessage);
     let contextText = "";
@@ -54,10 +57,21 @@ class AIService {
       contextText = "Không có thông tin cụ thể trong hệ thống.";
     }
 
+    // 3.5 Lấy thông tin user profile để AI biết tên khách hàng
+    let userName = "quý khách";
+    if (userId) {
+      const userProfile = await prisma.user_profiles.findFirst({
+        where: { user_id: userId }
+      });
+      if (userProfile && userProfile.full_name) {
+        userName = userProfile.full_name;
+      }
+    }
+
     // 4. Tạo Prompt và gọi LLM (Groq)
     const systemPrompt = `
       Bạn là Trợ lý Tư vấn Kỹ thuật & Bán hàng chuyên nghiệp của xưởng cơ khí KPM.
-      Nhiệm vụ của bạn là tư vấn, báo giá và giải đáp thắc mắc của khách hàng một cách lịch sự, thân thiện (luôn xưng "em", gọi khách là "anh/chị", dùng từ "Dạ", "ạ").
+      Khách hàng hiện tại của bạn tên là: "${userName}". Hãy xưng hô lịch sự, thân thiện (luôn xưng "em", gọi khách là "anh/chị ${userName}" hoặc tên của họ, dùng từ "Dạ", "ạ").
 
       QUY TẮC CỐT LÕI:
       [CẤM BỊA ĐẶT]: TUYỆT ĐỐI KHÔNG tự bịa ra giá cả, thông số kỹ thuật, hay thời gian bảo hành nếu không có trong dữ liệu bên dưới. Mọi thông tin phải chính xác 100% dựa trên DỮ LIỆU CỦA XƯỞNG.
@@ -72,15 +86,12 @@ class AIService {
     let selectedModel = "llama-3.1-8b-instant"; // Khởi tạo biến
 
     if (mode === "fast") {
-      // Khách ép dùng Nhanh
       selectedModel = "llama-3.1-8b-instant";
       console.log(`⚡ Khách hàng yêu cầu trả lời NHANH -> Chọn model 8B`);
     } else if (mode === "slow") {
-      // Khách ép dùng Chậm/Sâu
       selectedModel = "llama-3.3-70b-versatile";
       console.log(`🧠 Khách hàng yêu cầu tư vấn SÂU -> Chọn model 70B`);
     } else {
-      // Nếu Frontend không gửi mode (hoặc để 'auto'), hệ thống tự quyết định
       if (rules.length > 0) {
         selectedModel = "llama-3.3-70b-versatile";
         console.log(`🤖 Auto: Có luật kỹ thuật -> Chọn model 70B`);
@@ -95,17 +106,17 @@ class AIService {
     // 5.5 TRUY XUẤT LỊCH SỬ CHAT (MEMORY)
     let chatHistory = await prisma.ai_chat_messages.findMany({
       where: { session_id: currentSessionId },
-      orderBy: { sent_at: "desc" }, // Lấy mới nhất trước
-      take: 10, // Giới hạn 10 tin nhắn gần nhất để tránh tốn Token
+      orderBy: { sent_at: "desc" },
+      take: 10,
     });
-    chatHistory = chatHistory.reverse(); // Đảo lại đúng thứ tự thời gian
+    chatHistory = chatHistory.reverse();
 
     const conversationMessages = chatHistory.map((msg) => ({
       role: msg.sender_type === "ai" ? "assistant" : "user",
       content: msg.message_text,
     }));
 
-    // 6. GỌI API & CƠ CHẾ FALLBACK (Vẫn giữ nguyên khả năng tự cứu vãn)
+    // 6. GỌI API & CƠ CHẾ FALLBACK
     try {
       const chatCompletion = await groq.chat.completions.create({
         messages: [
@@ -120,7 +131,6 @@ class AIService {
     } catch (error) {
       console.error(`❌ Mô hình ${selectedModel} gặp lỗi:`, error.message);
 
-      // Nếu khách chọn "slow" (70B) mà bị sập, hệ thống vẫn tự lùi về 8B để cứu
       if (selectedModel === "llama-3.3-70b-versatile") {
         console.log(
           "🔄 Kích hoạt dự phòng: Lùi về llama-3.1-8b-instant để không gián đoạn...",
@@ -140,6 +150,7 @@ class AIService {
           "Dạ hệ thống AI đang bảo trì đột xuất, anh/chị vui lòng chờ trong giây lát rồi nhắn lại nhé ạ.";
       }
     }
+
     // 7. Lưu câu trả lời của AI vào DB
     await prisma.ai_chat_messages.create({
       data: {
@@ -148,16 +159,39 @@ class AIService {
         message_text: aiReply,
       },
     });
+
     // 8. Trả về cho Controller
     return {
       sessionId: currentSessionId,
       reply: aiReply,
     };
   }
+
   // --- BƯỚC 3: AI VISION PHÂN TÍCH ẢNH BẢN VẼ (TRÍCH XUẤT JSON) ---
-  async analyzeDrawing(imageUrl, messageId = null) {
+  async analyzeDrawing(imageUrl, sessionId, userId = null) {
     console.log(`🚀 Bắt đầu phân tích bản vẽ từ URL: ${imageUrl}`);
-    // 1. Tạo System Prompt bọc thép (Ép chuẩn JSON 100%)
+    
+    // Tạo session nếu chưa có
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      const newSession = await prisma.ai_chat_sessions.create({
+        data: {
+          user_id: userId,
+          session_title: "Phân tích bản vẽ cơ khí",
+        },
+      });
+      currentSessionId = newSession.id;
+    }
+
+    // Tạo tin nhắn placeholder để lấy messageId làm Foreign Key cho bảng ai_drawing_analyses
+    const placeholderMessage = await prisma.ai_chat_messages.create({
+      data: {
+        session_id: currentSessionId,
+        sender_type: "user",
+        message_text: "Khách hàng đã tải lên một bản vẽ.",
+      },
+    });
+
     const visionSystemPrompt = `
       Bạn là một kỹ sư bóc tách khối lượng cơ khí lành nghề.
       Nhiệm vụ của bạn là phân tích hình ảnh bản vẽ và BẮT BUỘC trả về kết quả dưới định dạng JSON hợp lệ (Valid JSON).
@@ -181,8 +215,8 @@ class AIService {
       - Phải đảm bảo đóng mở ngoặc nhọn {} và dấu phẩy (,) đúng chuẩn JSON.
       - ĐỊNH VỊ TRỤC: Các thông số nằm theo trục DỌC (thẳng đứng) của bản vẽ luôn luôn là "height" (Chiều cao). Các thông số nằm theo trục NGANG luôn luôn là "length" (Chiều dài) hoặc "width" (Chiều rộng).
     `;
+
     try {
-      //
       const response = await groq.chat.completions.create({
         messages: [
           {
@@ -192,40 +226,95 @@ class AIService {
               {
                 type: "image_url",
                 image_url: {
-                  url: imageUrl, // URL ảnh công khai từ S3/Cloudinary do FE đẩy lên
+                  url: imageUrl,
                 },
               },
             ],
           },
         ],
-        model: "meta-llama/llama-4-scout-17b-16e-instruct", // Model chuyên dụng đọc ảnh
-        response_format: { type: "json_object" }, // Ép Groq bật chế độ JSON Mode
-        temperature: 0.1, // Giảm tối đa sự sáng tạo để đọc thông số chuẩn xác nhất
+        model: "meta-llama/llama-4-scout-17b-16e-instruct", // Model Vision Llama-4 mới nhất trên Groq
+        temperature: 0.1,
       });
-      //
-      const rawJsonString = response.choices[0].message.content;
-      const extractedSpecs = JSON.parse(rawJsonString);
-      console.log(
-        "✅ AI đã bóc tách dữ liệu bản vẽ thành công:",
-        extractedSpecs,
-      );
-      // 4. Lưu kết quả bóc tách vào bảng ai_drawing_analyses theo đúng schema
+
+      let rawJsonString = response.choices[0].message.content;
+      
+      // 1. Trích xuất JSON từ markdown block nếu có
+      const jsonMatch = rawJsonString.match(/```(?:json)?\n([\s\S]*?)\n```/);
+      if (jsonMatch && jsonMatch[1]) {
+        rawJsonString = jsonMatch[1].trim();
+      }
+
+      // 2. Lấy nội dung từ dấu ngoặc nhọn đầu tiên đến cuối cùng để loại bỏ text rác
+      const firstBrace = rawJsonString.indexOf('{');
+      const lastBrace = rawJsonString.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        rawJsonString = rawJsonString.substring(firstBrace, lastBrace + 1);
+      }
+
+      let extractedSpecs = {};
+      try {
+        extractedSpecs = JSON.parse(rawJsonString);
+        console.log("✅ AI đã bóc tách dữ liệu bản vẽ thành công:", extractedSpecs);
+      } catch (parseError) {
+        console.warn("⚠️ AI trả về JSON lỗi, dùng fallback. Dữ liệu gốc:", rawJsonString);
+        extractedSpecs = {
+           drawing_name: "Bản vẽ (AI không đọc được)",
+           dimensions: {},
+           scale_ratio: "N/A",
+           description: "AI không thể định dạng đúng cấu trúc thông số. Lỗi: " + parseError.message
+        };
+      }
+
       const drawingAnalysis = await prisma.ai_drawing_analyses.create({
         data: {
-          message_id: messageId,
+          message_id: placeholderMessage.id, // Dùng ID tin nhắn vừa tạo
           drawing_name: extractedSpecs.drawing_name || "Bản vẽ chưa rõ tên",
           image_url: imageUrl,
-          specifications: extractedSpecs.dimensions, // Lưu cục Json dimensions
+          specifications: extractedSpecs.dimensions || {},
           scale_ratio: extractedSpecs.scale_ratio,
-          // Vì schema của bro không có cột description riêng trong bảng này,
-          // nên chúng ta có thể nạp luôn description vào metadata hoặc xử lý tùy FE.
         },
       });
+      
+      // Gắn thêm sessionId vào response để trả về cho Client
+      drawingAnalysis.sessionId = currentSessionId;
       return drawingAnalysis;
     } catch (error) {
       console.error("❌ Lỗi khi AI Vision phân tích bản vẽ:", error.message);
       throw error;
     }
+  }
+
+  // --- BƯỚC 4: LẤY LỊCH SỬ CHAT (HISTORY) ---
+  async getUserSessions(userId) {
+    if (!userId) return [];
+    return await prisma.ai_chat_sessions.findMany({
+      where: { user_id: userId },
+      orderBy: { started_at: "desc" },
+      select: {
+        id: true,
+        session_title: true,
+        started_at: true,
+      },
+    });
+  }
+
+  async getSessionDetails(sessionId, userId) {
+    const session = await prisma.ai_chat_sessions.findUnique({
+      where: { id: sessionId },
+    });
+    if (!session || session.user_id !== userId) {
+      throw new Error("Phiên chat không tồn tại hoặc không có quyền truy cập!");
+    }
+
+    const messages = await prisma.ai_chat_messages.findMany({
+      where: { session_id: sessionId },
+      orderBy: { sent_at: "asc" },
+      include: {
+        ai_drawing_analyses: true,
+      },
+    });
+
+    return { session, messages };
   }
 }
 

@@ -32,11 +32,36 @@ class WarehouseController {
       });
     }
   }
+
+  async completeOrderExport(req, res) {
+    try {
+      const { orderId } = req.params;
+      const result = await warehouseService.completeOrderExport(orderId);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Đã xảy ra lỗi hệ thống!",
+      });
+    }
+  }
   // --- QUẢN LÝ TỒN KHO (CRUD) ---
 
   async getAllInventory(req, res) {
     try {
       const data = await warehouseService.getAllInventory();
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async getLowStock(req, res) {
+    try {
+      const data = await warehouseService.getLowStock();
       res.status(200).json({ success: true, data });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

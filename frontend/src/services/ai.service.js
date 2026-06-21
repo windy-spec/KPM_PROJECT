@@ -5,7 +5,7 @@ const aiService = {
     // Để X-No-Loading để không block UI chính khi đang chat
     const response = await apiClient.post(
       "/ai/chat",
-      { message, sessionID: sessionId, mode },
+      { message, sessionId, mode },
       { headers: { "X-No-Loading": true } }
     );
     return response.data;
@@ -22,14 +22,34 @@ const aiService = {
     });
     return response.data;
   },
-  analyzeDrawing: async (imageUrl, messageId) => {
+  analyzeDrawing: async (imageUrl, sessionId) => {
     const response = await apiClient.post(
       "/ai/analyze-drawing",
-      { imageUrl, messageId },
+      { imageUrl, sessionId },
       { headers: { "X-No-Loading": true } }
     );
     return response.data;
   },
+
+  getSessions: async () => {
+    try {
+      const response = await apiClient.get("/ai/sessions");
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi lấy danh sách lịch sử AI:", error);
+      throw error;
+    }
+  },
+
+  getSessionDetails: async (sessionId) => {
+    try {
+      const response = await apiClient.get(`/ai/sessions/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi lấy chi tiết phiên chat AI:", error);
+      throw error;
+    }
+  }
 };
 
 export default aiService;

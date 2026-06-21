@@ -31,9 +31,11 @@ class AIController {
       });
     }
   }
+
   async analyze(req, res) {
     try {
-      const { imageUrl, messageId } = req.body;
+      const { imageUrl, sessionId } = req.body;
+      const userId = req.user ? req.user.id : null;
 
       if (!imageUrl) {
         return res.status(400).json({
@@ -42,10 +44,11 @@ class AIController {
         });
       }
 
-      // Đẩy xuống Service và BẮT BUỘC lưu vào biến tên là: analysisResult
+      // Đẩy xuống Service và lấy kết quả
       const analysisResult = await aiService.analyzeDrawing(
         imageUrl,
-        messageId,
+        sessionId,
+        userId
       );
 
       // Trả kết quả về cho Postman / Frontend
@@ -56,29 +59,29 @@ class AIController {
           id: analysisResult.id,
           drawingName: analysisResult.drawing_name,
           scaleRatio: analysisResult.scale_ratio,
-          dimensions: analysisResult.specifications, // Cục JSON Dài x Rộng x Cao
+          dimensions: analysisResult.specifications,
+          sessionId: analysisResult.sessionId // Frontend cần cái này để cập nhật
         },
       });
     } catch (error) {
       console.error("Lỗi Controller Phân Tích Ảnh:", error);
       res.status(500).json({
         success: false,
-        message:
-          "AI Vision không thể đọc bản vẽ này, vui lòng thử lại ảnh khác!",
+        message: "AI Vision không thể đọc bản vẽ này, vui lòng thử lại ảnh khác!",
+        error: error.message
       });
     }
   }
+
   // Hàm xử lý Upload ảnh bản vẽ
   async uploadDrawingImage(req, res) {
     try {
-      // req.file do Multer cung cấp sau khi đẩy thành công lên Cloudinary
       if (!req.file) {
         return res
           .status(400)
           .json({ success: false, message: "Không tìm thấy file ảnh!" });
       }
 
-      // Trả về cái link URL xịn xò của Cloudinary
       res.status(200).json({
         success: true,
         message: "Upload bản vẽ thành công!",
@@ -93,5 +96,33 @@ class AIController {
         .json({ success: false, message: "Lỗi server khi upload ảnh." });
     }
   }
+
+  // GET /api/ai/sessions
+  async getSessions(req, res) {
+    try {
+      const userId = req.user.id;
+      console.log("[getSessions] Received request for userId:", userId);
+      const sessions = await aiService.getUserSessions(userId);
+      console.log("[getSessions] Found sessions:", sessions.length);
+      res.status(200).json({ success: true, data: sessions });
+    } catch (error) {
+      console.error("[getSessions] Error:", error.message);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    }
+  }
+
+  // GET /api/ai/sessions/:id
+  async getSessionDetails(req, res) {
+    try {
+      const userId = req.user.id;
+      const sessionId = req.params.id;
+      const sessionData = await aiService.getSessionDetails(sessionId, userId);
+      res.status(200).json({ success: true, data: sessionData });
+    } catch (error) {
+      console.error("[getSessionDetails] Error:", error.message);
+      res.status(500).json({ success: false, message: "Lỗi Server!" });
+    }
+  }
 }
+
 module.exports = new AIController();
