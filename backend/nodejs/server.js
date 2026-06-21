@@ -9,11 +9,11 @@ require("./cron/importCleanup.cron");
 const app = express();
 
 const server = http.createServer(app);
-const io = new Server(server, { 
-  cors: { 
+const io = new Server(server, {
+  cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-  } 
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  },
 });
 
 // Quản lý Socket
@@ -62,6 +62,7 @@ const adminRoutes = require("./routes/admin.routes.js");
 const userRoutes = require("./routes/user.routes.js");
 const componentTemplateRoutes = require("./routes/component_template.routes.js");
 const warehouseRoutes = require("./routes/warehouse.routes.js");
+const aiRoutes = require("./routes/ai.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -85,6 +86,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/component-templates", componentTemplateRoutes);
 app.use("/api/warehouse", warehouseRoutes);
+app.use("/api/ai", aiRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

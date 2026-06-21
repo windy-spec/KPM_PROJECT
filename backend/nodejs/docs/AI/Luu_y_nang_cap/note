@@ -1,0 +1,79 @@
+# KẾ HOẠCH NÂNG CẤP PHASE 2: FUNCTION CALLING (AI CHỌC VÀO DATABASE THỰC)
+
+## 1. Bản chất Function Calling là gì?
+Ở Phase 1, AI KPM đang dùng RAG (đọc tài liệu Word tĩnh) để trả lời.
+Ở Phase 2, chúng ta biến AI thành "Hacker". AI sẽ không tự trả lời ngay, mà nó sẽ gửi cho Node.js một Yêu cầu: *"Ê Node.js, chạy lệnh lấy giá của Thép Hộp 1.4ly cho tao"*.
+
+## 2. Luồng hoạt động (Ping-Pong 3 nhịp)
+- **Nhịp 1 (Khách -> AI):** Khách hỏi "Giá gỗ sồi mã GS01 bao nhiêu?".
+- **Nhịp 2 (AI -> Node.js):** AI phân tích và thấy cần chọc vào DB. Nó đình chỉ việc chat, trả về cho Node.js một cục JSON: `{ "name": "get_material_price", "arguments": { "code": "GS01" } }`.
+- **Nhịp 3 (Node.js -> DB -> AI):** 1. Node.js nhận JSON, chạy Prisma chọc vào bảng `materials` lấy ra giá `150,000đ`.
+  2. Node.js gửi giá này ngược lại cho AI.
+  3. AI dệt câu text cuối cùng gửi cho khách: *"Dạ mã GS01 đang có giá 150k ạ"*.
+
+## 3. Cấu trúc Code dự kiến (Sử dụng Groq SDK)
+Để làm được, trong hàm `chat.completions.create()`, chúng ta phải khai báo biến `tools`:
+
+```javascript
+// Khai báo công cụ cho AI biết nó có quyền làm gì
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "get_material_price",
+      description: "Lấy giá tiền mới nhất của một loại vật tư trong Database",
+      parameters: {
+        type: "object",
+        properties: {
+          material_code: { type: "string", description: "Mã vật tư, vd: THEP_HOP_1.4" }
+        },
+        required: ["material_code"],
+      },
+    },
+  }
+];
+
+// Ném công cụ vào Groq
+const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: messages,
+    tools: tools, // <--- ĐIỂM ĂN TIỀN Ở ĐÂY
+    tool_choice: "auto", 
+});
+
+---- NOTE -----
+MỖI LẦN CHAT SINH RA 1 SESSION NHƯ VẬY CHƯA ỔN CHO LẮM, CẦN TỐI ƯU
+# KẾ HOẠCH TỐI ƯU HÓA: TỰ ĐỘNG DỌN RÁC CLOUDINARY BẰNG CRONJOB
+
+## 1. Ý tưởng (Logic)
+- Ảnh bản vẽ chỉ có tác dụng MỘT LẦN duy nhất là để AI đọc ra thông số. Đọc xong thì ảnh đó trở thành "rác".
+- Cứ đúng 12h đêm (hoặc 2h sáng lúc ít người dùng), hệ thống tự động thức dậy, tìm tất cả các ảnh bản vẽ đã upload quá 24 giờ và gửi lệnh xóa lên Cloudinary để giải phóng dung lượng.
+
+## 2. Thư viện cần dùng
+- Cài đặt thư viện: `npm install node-cron` (Dùng để lên lịch tự động chạy hàm theo giờ).
+
+## 3. Cấu trúc Code mẫu (Viết trong `server.js` hoặc file `cron.js` riêng)
+\`\`\`javascript
+const cron = require('node-cron');
+const cloudinary = require('cloudinary').v2;
+
+// Cấu hình Cloudinary (Dùng thông tin của xưởng)
+cloudinary.config({
+  cloud_name: 'YOUR_CLOUD_NAME',
+  api_key: 'YOUR_API_KEY',
+  api_secret: 'YOUR_API_SECRET'
+});
+
+// Chạy hàm này vào lúc 02:00 sáng mỗi ngày
+cron.schedule('0 2 * * *', async () => {
+  console.log("🧹 Bắt đầu dọn dẹp ảnh bản vẽ cũ trên Cloudinary...");
+  try {
+    // Xóa các ảnh trong thư mục 'kpm_drawings' tải lên quá 1 ngày
+    // (Lưu ý: Cần thêm tag khi upload để dễ tìm và xóa)
+    const result = await cloudinary.api.delete_resources_by_tag('temp_drawing');
+    console.log("✅ Đã dọn rác thành công:", result);
+  } catch (error) {
+    console.error("❌ Lỗi khi dọn rác Cloudinary:", error);
+  }
+});
+\`\`\`

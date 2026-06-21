@@ -3,7 +3,7 @@ const router = express.Router();
 const productController = require("../controllers/product.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 const adminMiddleware = require("../middlewares/admin.middleware");
-const upload = require("../middlewares/upload.middleware"); // Gọi lính gác Cloudinary
+const { upload } = require("../middlewares/upload.middleware"); // Gọi lính gác Cloudinary
 
 // 1. GET: Public cho khách hàng vãng lai xem danh sách sản phẩm
 router.get("/", productController.getAll);

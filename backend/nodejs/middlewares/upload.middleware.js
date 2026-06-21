@@ -20,5 +20,15 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage: storage });
+// 2. Kho chứa Bản vẽ AI (THÊM MỚI BẮT BUỘC)
+const drawingStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "KPM_Drawings", // Thư mục riêng cho bản vẽ
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    tags: ["temp_drawing"], // <--- ĐIỂM ĂN TIỀN: Gắn thẻ để Cronjob quét dọn rác
+  },
+});
+const uploadDrawing = multer({ storage: drawingStorage });
 
-module.exports = upload;
+module.exports = { upload, uploadDrawing };

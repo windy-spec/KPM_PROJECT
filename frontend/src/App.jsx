@@ -37,6 +37,8 @@ import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
 
 import ScrollToTop from "./components/common/ScrollToTop";
 import { CartProvider } from "./context/CartContext";
+import { AIChatProvider } from "./context/AIChatContext";
+import ChatWindow from "./components/chat/ChatWindow";
 
 
 const routeMap = [
@@ -325,21 +327,24 @@ function App() {
   return (
     <GoogleOAuthProvider clientId={clientId}>
       <CartProvider>
-        <Router>
-          <AppRoutes />
-          <ToastContainer
-            position="top-right"
-            autoClose={3800}
-            hideProgressBar
-            newestOnTop
-            closeOnClick={false}
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-        </Router>
+        <AIChatProvider>
+          <Router>
+            <AppRoutes />
+            <ChatWindow />
+            <ToastContainer
+              position="top-right"
+              autoClose={3800}
+              hideProgressBar
+              newestOnTop
+              closeOnClick={false}
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+          </Router>
+        </AIChatProvider>
       </CartProvider>
     </GoogleOAuthProvider>
   );

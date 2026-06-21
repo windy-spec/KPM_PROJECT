@@ -1,0 +1,10 @@
+[
+  {
+    "rule_title": "So sánh Thép mạ kẽm và Thép đen",
+    "rule_content": "Thép mạ kẽm đắt hơn thép đen khoảng 20-30%. Mạ kẽm chống rỉ tốt hơn, bắt buộc dùng cho công trình ngoài trời. Thép đen rẻ hơn, dùng cho đồ nội thất trong nhà không tiếp xúc với nước."
+  },
+  {
+    "rule_title": "Chênh lệch Inox 304 và Inox 201",
+    "rule_content": "Inox 304 giá cao hơn Inox 201 khoảng 30% đến 40%. Hệ số giá (price_multiplier) của 304 là 1.35 so với 201. Inox 304 chống rỉ sét tuyệt đối ngoài trời, còn 201 để ngoài trời mưa nắng lâu ngày vẫn sẽ bị hoen rỉ mờ rỗ bề mặt."
+  }
+]

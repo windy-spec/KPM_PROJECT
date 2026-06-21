@@ -1,11 +1,13 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  extensions = [vector]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -35,7 +37,7 @@ model ai_knowledge_base {
   id                    String                 @id @default(uuid()) @db.Uuid
   rule_title            String                 @db.VarChar(255)
   rule_content          String
-  embedding_vector      String?
+  embedding_vector      Unsupported("vector(384)")?
   created_at            DateTime?              @default(now()) @db.Timestamptz(6)
   pattern_id            String?                @db.Uuid
   ai_knowledge_patterns ai_knowledge_patterns? @relation(fields: [pattern_id], references: [id], onUpdate: NoAction)
