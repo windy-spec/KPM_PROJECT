@@ -10,6 +10,9 @@ import {
   FileSignature,
   Ellipsis,
   ArrowDown,
+  Boxes,
+  TrendingUp,
+  Package
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -37,12 +40,14 @@ import ManageComponentTemplates from "./ManageComponentTemplates";
 import ManageProductionRequests from "./ManageProductionRequests";
 import adminService from "../../services/admin.service";
 
-const topProducts = [
-  { label: "Cổng Sắt CNC", percentage: 45 },
-  { label: "Lan Can Cầu Thang", percentage: 25 },
-  { label: "Kết Cấu Thép", percentage: 20 },
-  { label: "Phụ Kiện Khác", percentage: 10 },
-];
+
+// BỔ SUNG HÀM NÀY TẠI ĐÂY (NẰM NGOÀI COMPONENT DASHBOARD)
+const formatMoney = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount || 0);
+};
 
 const StatCard = ({ title, value, subtext, icon: Icon, trend, tone }) => (
   <div className="bg-white border border-outline-variant/70 rounded-2xl p-5 shadow-sm min-h-[132px] flex flex-col justify-between">
@@ -86,72 +91,93 @@ const Dashboard = () => {
     const queryParams = new URLSearchParams(location.search);
     return queryParams.get("panel") || "overview";
   };
-
+  const [currentUser, setCurrentUser] = useState(null);
   const [activePanel, setActivePanel] = useState(getPanelFromUrl);
   const [dashboardData, setDashboardData] = useState(null);
 
+  const [statsData, setStatsData] = useState({
+    revenue: { value: 0, change: 0 },
+    orders: { value: 0, change: 0 },
+    pendingQuotations: { value: 0, change: 0 },
+    users: { value: 0, change: 0 }
+  });
+  const [chartData, setChartData] = useState([]);
+  const [recentItems, setRecentItems] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await adminService.getDashboardStats();
-        if (res.success) {
-          setDashboardData(res.data);
-        }
-      } catch (e) {
-        console.error(e);
+    setActivePanel(getPanelFromUrl());
+  }, [location.search]);
+
+  const fetchDashboardStats = async () => {
+    setIsStatsLoading(true);
+    try {
+      const res = await adminService.getDashboardStats();
+      const data = res?.data?.data || res?.data || res || {};
+      if (data) {
+        setStatsData({
+          revenue: data.stats?.revenue || { value: 0, change: 0 },
+          orders: data.stats?.orders || { value: 0, change: 0 },
+          pendingQuotations: data.stats?.pendingQuotations || { value: 0, change: 0 },
+          users: data.stats?.users || { value: 0, change: 0 }
+        });
+        setChartData(data.chartData || []);
+        setRecentItems(data.recentItems || []);
+        setTopProducts(data.topProducts || [
+          { label: "Cổng Sắt CNC", percentage: 45 },
+          { label: "Lan Can Cầu Thang", percentage: 30 },
+          { label: "Hàng Rào Sắt", percentage: 25 }
+        ]);
       }
-    };
+    } catch (e) {
+      console.error("Lỗi khi tải thông số tổng quan:", e);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (activePanel === "overview") {
-      fetchDashboard();
+      fetchDashboardStats();
     }
   }, [activePanel]);
 
-  // 2. QUAN TRỌNG: Lắng nghe URL thay đổi khi bấm vào Sidebar để ép Dashboard chuyển trang
-  useEffect(() => {
-    const currentPanel = getPanelFromUrl();
-    setActivePanel(currentPanel);
-  }, [location.search]); // Mỗi khi query ?panel=... thay đổi, hàm này sẽ chạy
+  const dynamicStats = [
+    {
+      title: "Doanh số tháng",
+      value: formatMoney(statsData.revenue.value),
+      subtext: "Tổng doanh thu thực tế",
+      icon: CircleDollarSign,
+      trend: statsData.revenue.change >= 0 ? `+${statsData.revenue.change}%` : `${statsData.revenue.change}%`,
+      tone: statsData.revenue.change >= 0 ? "teal" : "amber",
+    },
+    {
+      title: "Đơn hàng mới",
+      value: `${statsData.orders.value} đơn`,
+      subtext: "Cần xử lý & xuất kho",
+      icon: ClipboardList,
+      trend: statsData.orders.change >= 0 ? `+${statsData.orders.change}%` : `${statsData.orders.change}%`,
+      tone: statsData.orders.change >= 0 ? "teal" : "amber",
+    },
+    {
+      title: "Báo giá chờ duyệt",
+      value: `${statsData.pendingQuotations.value} yêu cầu`,
+      subtext: "Khách hàng đang đợi",
+      icon: FileSignature,
+      trend: statsData.pendingQuotations.change ? `Tồn ${statsData.pendingQuotations.change}` : null,
+      tone: "amber",
+    },
+    {
+      title: "Tổng thành viên",
+      value: `${statsData.users.value} người`,
+      subtext: "Tài khoản hệ thống",
+      icon: UserRound,
+      trend: statsData.users.change >= 0 ? `+${statsData.users.change} mới` : null,
+      tone: "teal",
+    },
+  ];
 
-  const formatMoney = (val) =>
-    new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(val);
-
-  const dynamicStats = dashboardData
-    ? [
-      {
-        title: "Doanh thu tháng",
-        value: formatMoney(dashboardData.stats.revenue.value),
-        subtext: `${dashboardData.stats.revenue.change}% so với tháng trước`,
-        icon: CircleDollarSign,
-        trend: `${dashboardData.stats.revenue.change}% ↗`,
-        tone: "teal",
-      },
-      {
-        title: "Đơn hàng mới",
-        value: dashboardData.stats.orders.value,
-        subtext: "Trong tháng này",
-        icon: ClipboardList,
-        trend: `${dashboardData.stats.orders.change}% ↗`,
-        tone: "teal",
-      },
-      {
-        title: "Tổng khách hàng",
-        value: dashboardData.stats.users.value,
-        subtext: "Toàn quốc",
-        icon: UserRound,
-      },
-      {
-        title: "Báo giá chờ duyệt",
-        value: dashboardData.stats.pendingQuotations.value,
-        subtext: "Cần xử lý gấp",
-        icon: FileSignature,
-        trend: "Cần xử lý",
-        tone: "amber",
-      },
-    ]
-    : [];
 
   return (
     <div className="min-h-screen w-full bg-[#f6f8f8] text-on-surface">
@@ -165,7 +191,7 @@ const Dashboard = () => {
           <AdminTopbar />
 
           <main className="p-4 md:p-6 xl:p-8 space-y-6">
-            {activePanel === "overview" && dashboardData && (
+            {activePanel === "overview" && (
               <>
                 <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                   {dynamicStats.map((item) => (
@@ -179,30 +205,15 @@ const Dashboard = () => {
                       <div className="flex items-center gap-2">
                         <ChartColumn className="w-4.5 h-4.5 text-primary" />
                         <h2 className="text-sm font-black uppercase tracking-[0.22em]">
-                          Biến động doanh thu theo tuần
+                          Doanh thu các tháng gần đây
                         </h2>
-                      </div>
-
-                      <div className="flex rounded-lg bg-surface-container/80 p-0.5 text-[10px] font-black uppercase tracking-[0.18em]">
-                        <button
-                          type="button"
-                          className="px-3 py-1.5 rounded-md bg-white text-primary shadow-sm"
-                        >
-                          Tuần này
-                        </button>
-                        <button
-                          type="button"
-                          className="px-3 py-1.5 rounded-md text-on-surface-variant/60"
-                        >
-                          Tháng trước
-                        </button>
                       </div>
                     </div>
 
                     <div className="h-[280px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                          data={dashboardData.chartData}
+                          data={chartData}
                           margin={{ top: 12, right: 8, left: -20, bottom: 0 }}
                         >
                           <CartesianGrid
@@ -312,7 +323,7 @@ const Dashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/30 text-xs font-bold text-on-surface-variant">
-                        {dashboardData.recentItems.map((order) => (
+                        {recentItems && recentItems.map((order) => (
                           <tr
                             key={order.id}
                             className="hover:bg-surface-container/20 transition-colors"

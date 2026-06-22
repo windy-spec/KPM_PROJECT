@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import orderService from "../../services/order.service";
+import Pagination from "../../components/common/Pagination";
 import {
     CheckCircle,
     Loader2,
@@ -20,6 +21,9 @@ const ManageProductionRequests = () => {
     // Tab hiện tại: "PENDING" (Chờ bóc tách định mức) hoặc "ALL" (Tất cả yêu cầu/đơn hàng)
     const [activeTab, setActiveTab] = useState("PENDING");
 
+    const [page, setPage] = useState(1);
+    const [limit] = useState(6);
+
     // Hàm fetch dữ liệu tập trung từ API Orders
     const fetchOrders = async () => {
         setLoading(true);
@@ -37,6 +41,31 @@ const ManageProductionRequests = () => {
     useEffect(() => {
         fetchOrders();
     }, []);
+
+    // Logic lọc dữ liệu phía client dựa trên Tab đang active
+    const filteredOrders = useMemo(() => {
+        return orders.filter((order) => {
+            if (activeTab === "PENDING") {
+                return order.production_status?.toUpperCase() === "PENDING";
+            }
+            return true; // Tab "ALL"
+        });
+    }, [orders, activeTab]);
+
+    // 2. Cập nhật lại useMemo phân trang để dùng đúng biến limit và filteredOrders
+    const pagedItems = useMemo(() => {
+        const startIndex = (page - 1) * limit;
+        return filteredOrders.slice(startIndex, startIndex + limit);
+    }, [filteredOrders, page, limit]);
+
+    const totalPages = useMemo(() => {
+        return Math.ceil(filteredOrders.length / limit) || 1;
+    }, [filteredOrders, limit]);
+
+    // Reset về trang 1 khi đổi Tab lọc dữ liệu để tránh lỗi lệch trang dữ liệu rỗng
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab]);
 
     // Xử lý phê duyệt lệnh và bóc tách định mức kỹ thuật chuyển giao sang kho
     const handleApproveAndProcessSnapshot = async (orderId) => {
@@ -68,14 +97,6 @@ const ManageProductionRequests = () => {
             setSubmittingId(null);
         }
     };
-
-    // Logic lọc dữ liệu phía client dựa trên Tab đang active
-    const filteredOrders = orders.filter((order) => {
-        if (activeTab === "PENDING") {
-            return order.production_status?.toUpperCase() === "PENDING";
-        }
-        return true; // Tab "ALL": hiển thị toàn bộ trạng thái lệnh
-    });
 
     // Đếm số lượng lệnh đang xếp hàng chờ duyệt bóc tách để hiển thị badge nhấp nháy
     const pendingCount = orders.filter(o => o.production_status?.toUpperCase() === "PENDING").length;
@@ -166,7 +187,7 @@ const ManageProductionRequests = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-outline-variant/40 font-semibold text-slate-600">
-                            {filteredOrders.map((order) => (
+                            {pagedItems.map((order) => (
                                 <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
 
                                     {/* Mã Lệnh */}
@@ -239,6 +260,13 @@ const ManageProductionRequests = () => {
                     </table>
                 </div>
             )}
+            <div className="border-t border-outline-variant/40 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end md:px-5 bg-white">
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => setPage(p)}
+                />
+            </div>
         </div>
     );
 };

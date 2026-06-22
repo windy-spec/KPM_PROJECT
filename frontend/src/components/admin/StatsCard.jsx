@@ -16,15 +16,14 @@ const StatCard = ({ title, value, subtext, icon: Icon, trend, trendColor }) => {
           <Icon className="w-5 h-5" />
         </div>
       </div>
-      
+
       <div className="flex justify-between items-center mt-2 pt-2 border-t border-dashed border-outline-variant/40">
         <span className="text-[11px] font-bold text-on-surface-variant/60">
           {subtext}
         </span>
         {trend && (
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-            trendColor === 'green' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
-          }`}>
+          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${trendColor === 'green' ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
+            }`}>
             {trend}
           </span>
         )}

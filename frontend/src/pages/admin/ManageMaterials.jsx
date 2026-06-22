@@ -203,11 +203,10 @@ function MaterialModal({
                   setForm({ ...form, base_price: e.target.value })
                 }
                 placeholder="VD: 125000"
-                className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${
-                  hasNegativePrice
+                className={`w-full rounded-xl border px-4 py-3 text-sm outline-none transition-colors ${hasNegativePrice
                     ? "border-rose-500 bg-rose-50 focus:border-rose-500"
                     : "border-outline-variant/60 bg-surface-container/20 focus:border-primary"
-                }`}
+                  }`}
               />
               {hasNegativePrice ? (
                 <p className="text-xs text-rose-600">Giá gốc không được âm.</p>
@@ -293,8 +292,8 @@ const ManageMaterials = () => {
       setItems([]);
       setError(
         e?.response?.data?.message ||
-          e?.message ||
-          "Không tải được danh sách vật tư",
+        e?.message ||
+        "Không tải được danh sách vật tư",
       );
     } finally {
       setLoading(false);

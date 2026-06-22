@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import adminService from '../../services/admin.service';
 import Portal from '../../components/common/Portal';
+import Pagination from '../../components/common/Pagination';
 import { showSuccess, showError } from '../../utils/notify';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import {
@@ -108,12 +109,15 @@ const ManageCategories = () => {
   const [expandedIds, setExpandedIds] = useState(new Set()); // Lưu các ID cha đang được mở dropdown
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
   const pageSize = 6;
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [total, setTotal] = useState(0);
 
   const load = async () => {
     setLoading(true);
@@ -147,6 +151,10 @@ const ManageCategories = () => {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   // Hàm toggle trạng thái đóng mở của danh mục cha
   const toggleExpand = (id) => {
@@ -192,15 +200,14 @@ const ManageCategories = () => {
     return result;
   }, [items, search, expandedIds]);
 
-  const totalPages = Math.max(1, Math.ceil(visibleItems.length / pageSize));
   const pagedItems = useMemo(() => {
-    const safePage = Math.min(page, totalPages);
-    const startIndex = (safePage - 1) * pageSize;
+    const startIndex = (page - 1) * pageSize;
     return visibleItems.slice(startIndex, startIndex + pageSize);
-  }, [visibleItems, page, totalPages]);
+  }, [visibleItems, page, pageSize]);
 
-  useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  const totalPages = useMemo(() => {
+    return Math.ceil(visibleItems.length / pageSize) || 1;
+  }, [visibleItems, pageSize]);
 
   const handleCreate = () => { setEditing(null); setShowForm(true); };
 
@@ -465,28 +472,15 @@ const ManageCategories = () => {
         </div>
 
         {/* Pagination Section */}
-        <div className="border-t border-outline-variant/40 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:px-5">
-          <div className="text-xs font-semibold text-on-surface-variant/70">Dữ liệu được lấy trực tiếp từ backend `product_categories`.</div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors disabled:opacity-40"
-              disabled={page === 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button type="button" className="h-9 w-9 rounded-lg bg-primary text-white font-black">{page}</button>
-            <button type="button" className="h-9 px-3 rounded-lg border border-outline-variant/60 text-xs font-bold hover:bg-surface-container">/ {totalPages}</button>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-9 w-9 rounded-lg border border-outline-variant/60 flex items-center justify-center hover:bg-surface-container transition-colors disabled:opacity-40"
-              disabled={page >= totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+        <div className="border-t border-outline-variant/40 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:px-5 bg-white">
+          <div className="text-xs font-semibold text-on-surface-variant/70">
+            Dữ liệu được quản lý theo cấu trúc phân cấp trực quan.
           </div>
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
         </div>
       </div>
 

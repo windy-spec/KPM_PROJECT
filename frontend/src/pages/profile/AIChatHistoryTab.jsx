@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquareCode, Clock, ArrowRight, Bot, PenTool, X } from 'lucide-react';
 import aiService from '../../services/ai.service';
+import Portal from '../../components/common/Portal';
 
 const formatDate = (dateString) => {
   if (!dateString) return "---";
   const date = new Date(dateString);
   return date.toLocaleDateString('vi-VN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit'
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
   });
 };
 
@@ -67,11 +68,11 @@ const AIChatHistoryTab = () => {
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                       <Bot className="w-4 h-4 text-primary" />
                     </div>
-                    <span className="text-xs font-black uppercase tracking-widest text-primary/70">SES-{session.id.substring(0,6)}</span>
+                    <span className="text-xs font-black uppercase tracking-widest text-primary/70">SES-{session.id.substring(0, 6)}</span>
                   </div>
                 </div>
                 <h3 className="text-base font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">{session.session_title}</h3>
-                
+
                 <div className="flex items-center gap-4 text-xs font-medium text-on-surface-variant">
                   <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatDate(session.started_at)}</span>
                 </div>
@@ -90,50 +91,52 @@ const AIChatHistoryTab = () => {
 
       {/* Modal / Overlay Chi Tiết */}
       {selectedSession && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-surface w-full max-w-3xl h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
-            <div className="bg-primary text-white p-4 flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-lg flex items-center gap-2"><MessageSquareCode /> Chi tiết Phiên Chat</h3>
-              <button onClick={() => setSelectedSession(null)} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-background">
-              {loadingDetails ? (
-                <div className="text-center py-10 animate-pulse text-secondary font-bold">Đang tải lịch sử...</div>
-              ) : sessionDetails?.messages?.length > 0 ? (
-                sessionDetails.messages.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${msg.sender_type === 'user' ? 'bg-primary text-white rounded-tr-sm' : 'bg-white text-on-surface border border-outline-variant/50 rounded-tl-sm'}`}>
-                      <div className="text-sm whitespace-pre-wrap">{msg.message_text}</div>
-                      
-                      {/* Hiển thị bản vẽ nếu có */}
-                      {msg.ai_drawing_analyses && msg.ai_drawing_analyses.length > 0 && (
-                        <div className="mt-3 space-y-3">
-                          {msg.ai_drawing_analyses.map(draw => (
-                            <div key={draw.id} className="bg-surface rounded-xl p-3 border border-outline-variant/60 shadow-inner">
-                              <h4 className="font-bold text-primary mb-2 text-center text-sm border-b border-outline-variant/50 pb-2">📋 Bản vẽ: <span className="text-secondary">{draw.drawing_name}</span></h4>
-                              {draw.image_url && <img src={draw.image_url} alt="Bản vẽ" className="w-full max-h-40 object-contain rounded-lg mb-2" />}
-                              <div className="text-xs space-y-1.5 mt-2 bg-white p-2 rounded border border-outline-variant/50">
-                                <div className="flex justify-between"><b>Chiều dài:</b> <span>{draw.specifications?.length || '___'}</span></div>
-                                <div className="flex justify-between"><b>Chiều rộng:</b> <span>{draw.specifications?.width || '___'}</span></div>
-                                <div className="flex justify-between"><b>Chiều cao:</b> <span>{draw.specifications?.height || '___'}</span></div>
-                                <div className="flex justify-between"><b>Tỉ lệ:</b> <span className="text-primary font-bold">{draw.scale_ratio || 'N/A'}</span></div>
+        <Portal>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-surface w-full max-w-3xl h-[80vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95">
+              <div className="bg-primary text-white p-4 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg flex items-center gap-2"><MessageSquareCode /> Chi tiết Phiên Chat</h3>
+                <button onClick={() => setSelectedSession(null)} className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-all">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-background">
+                {loadingDetails ? (
+                  <div className="text-center py-10 animate-pulse text-secondary font-bold">Đang tải lịch sử...</div>
+                ) : sessionDetails?.messages?.length > 0 ? (
+                  sessionDetails.messages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${msg.sender_type === 'user' ? 'bg-primary text-white rounded-tr-sm' : 'bg-white text-on-surface border border-outline-variant/50 rounded-tl-sm'}`}>
+                        <div className="text-sm whitespace-pre-wrap">{msg.message_text}</div>
+
+                        {/* Hiển thị bản vẽ nếu có */}
+                        {msg.ai_drawing_analyses && msg.ai_drawing_analyses.length > 0 && (
+                          <div className="mt-3 space-y-3">
+                            {msg.ai_drawing_analyses.map(draw => (
+                              <div key={draw.id} className="bg-surface rounded-xl p-3 border border-outline-variant/60 shadow-inner">
+                                <h4 className="font-bold text-primary mb-2 text-center text-sm border-b border-outline-variant/50 pb-2">📋 Bản vẽ: <span className="text-secondary">{draw.drawing_name}</span></h4>
+                                {draw.image_url && <img src={draw.image_url} alt="Bản vẽ" className="w-full max-h-40 object-contain rounded-lg mb-2" />}
+                                <div className="text-xs space-y-1.5 mt-2 bg-white p-2 rounded border border-outline-variant/50">
+                                  <div className="flex justify-between"><b>Chiều dài:</b> <span>{draw.specifications?.length || '___'}</span></div>
+                                  <div className="flex justify-between"><b>Chiều rộng:</b> <span>{draw.specifications?.width || '___'}</span></div>
+                                  <div className="flex justify-between"><b>Chiều cao:</b> <span>{draw.specifications?.height || '___'}</span></div>
+                                  <div className="flex justify-between"><b>Tỉ lệ:</b> <span className="text-primary font-bold">{draw.scale_ratio || 'N/A'}</span></div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 text-outline">Không có tin nhắn nào.</div>
-              )}
+                  ))
+                ) : (
+                  <div className="text-center py-10 text-outline">Không có tin nhắn nào.</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );
