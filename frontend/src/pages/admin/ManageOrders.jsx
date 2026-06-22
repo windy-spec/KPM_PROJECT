@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   X,
   FileText,
   TrendingUp,
   Package,
   Truck,
+  Warehouse,
 } from "lucide-react";
 import Portal from "../../components/common/Portal";
 import Pagination from "../../components/common/Pagination";
@@ -62,21 +64,21 @@ export default function ManageOrders() {
             status: o.production_status || "pending",
             shipping_address: o.quotations?.address || "Liên hệ nhận hàng",
             notes: o.quotations?.notes || "",
-            items: o.order_items?.length > 0 
+            items: o.order_items?.length > 0
               ? o.order_items.map((i) => ({
-                  id: i.id,
-                  product_name: i.products?.product_name || "Sản phẩm",
-                  quantity: i.quantity,
-                  price: parseFloat(i.price) || 0,
-                  unit: "Cái",
-                })) 
+                id: i.id,
+                product_name: i.products?.product_name || "Sản phẩm",
+                quantity: i.quantity,
+                price: parseFloat(i.price) || 0,
+                unit: "Cái",
+              }))
               : o.quotations?.quotation_specs?.map((spec) => ({
-                  id: spec.id,
-                  product_name: spec.component_name || "Linh kiện",
-                  quantity: 1,
-                  price: parseFloat(spec.snapshot_price) || 0,
-                  unit: "Hệ",
-                })) || [],
+                id: spec.id,
+                product_name: spec.component_name || "Linh kiện",
+                quantity: 1,
+                price: parseFloat(spec.snapshot_price) || 0,
+                unit: "Hệ",
+              })) || [],
             total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
           }));
           setOrders(formattedOrders);
@@ -176,10 +178,36 @@ export default function ManageOrders() {
             <Clock className="w-3 h-3" /> Chờ xử lý
           </span>
         );
+      case "WAITING_WAREHOUSE":
+      case "warehouse_received":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-cyan-50 text-cyan-700 border border-cyan-200">
+            <Warehouse className="w-3 h-3" /> Kho đang xử lý
+          </span>
+        );
+      case "out_of_stock":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertCircle className="w-3 h-3" /> Thiếu vật tư - Chờ duyệt nhập
+          </span>
+        );
+      case "import_approved":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-teal-50 text-teal-700 border border-teal-200">
+            <CheckCircle2 className="w-3 h-3" /> Đã duyệt nhập hàng
+          </span>
+        );
       case "production":
+      case "production_ready":
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-amber-50 text-amber-700 border border-amber-200">
             <Package className="w-3 h-3" /> Đang sản xuất
+          </span>
+        );
+      case "production_completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-purple-50 text-purple-700 border border-purple-200">
+            <Package className="w-3 h-3" /> Sản xuất xong
           </span>
         );
       case "delivering":
@@ -293,7 +321,10 @@ export default function ManageOrders() {
             { key: "ALL", label: "Tất cả đơn" },
             { key: "pending_payment", label: "Chờ thanh toán" },
             { key: "pending", label: "Chờ duyệt" },
-            { key: "production", label: "Đang sản xuất" },
+            { key: "WAITING_WAREHOUSE", label: "Chờ kho" },
+            { key: "out_of_stock", label: "Thiếu vật tư" },
+            { key: "production_ready", label: "Đang sản xuất" },
+            { key: "production_completed", label: "Sản xuất xong" },
             { key: "delivering", label: "Đang giao" },
             { key: "completed", label: "Đã hoàn thành" },
             { key: "cancelled", label: "Đã hủy" },
@@ -555,20 +586,6 @@ export default function ManageOrders() {
                         onClick={() =>
                           handleUpdateStatus(
                             selectedOrder.id,
-                            "production",
-                            "Đang sản xuất",
-                            "Đơn hàng đã được chuyển xuống xưởng sản xuất",
-                          )
-                        }
-                        className="h-9 px-3 bg-amber-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-amber-700 transition-all"
-                      >
-                        Bắt đầu sản xuất
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateStatus(
-                            selectedOrder.id,
                             "cancelled",
                             "Đã hủy đơn",
                             "Đơn hàng bị hủy",
@@ -581,7 +598,24 @@ export default function ManageOrders() {
                     </>
                   )}
 
-                  {selectedOrder.status === "production" && (
+                  {selectedOrder.status === "out_of_stock" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStatus(
+                          selectedOrder.id,
+                          "import_approved",
+                          "Duyệt yêu cầu nhập hàng",
+                          "Admin đã duyệt yêu cầu nhập vật tư bổ sung cho đơn hàng.",
+                        )
+                      }
+                      className="h-9 px-3 bg-teal-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-teal-700 transition-all"
+                    >
+                      Duyệt yêu cầu nhập hàng
+                    </button>
+                  )}
+
+                  {(selectedOrder.status === "production" || selectedOrder.status === "production_completed" || selectedOrder.status === "production_ready") && (
                     <button
                       type="button"
                       onClick={() =>

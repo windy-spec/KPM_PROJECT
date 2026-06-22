@@ -21,5 +21,10 @@ router.post(
   "/orders/:orderId/complete-export",
   warehouseController.completeOrderExport,
 );
+router.post("/orders/:orderId/receive", warehouseController.receiveOrder);
+router.post("/orders/:orderId/confirm-stock", warehouseController.confirmSufficientStock);
+router.post("/orders/:orderId/out-of-stock", warehouseController.reportOutOfStock);
+router.post("/orders/:orderId/import-ready", warehouseController.completeImportAndReady);
+router.post("/orders/:orderId/complete-production", warehouseController.completeProduction);
 router.delete("/inventory/:id", warehouseController.deleteInventory);
 module.exports = router;

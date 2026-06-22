@@ -48,54 +48,103 @@ const WarehouseDashboard = () => {
     };
 
     // =========================================================
-    // 2. HÀM XỬ LÝ GỌI API XÁC NHẬN XUẤT KHO (CONNECT TO BE)
+    // 2. CÁC HÀM XỬ LÝ ĐIỀU HƯỚNG TRẠNG THÁI ĐƠN HÀNG PHÍA KHO
     // =========================================================
-    const handleConfirmWarehouseExport = async (orderId, callBackSuccess) => {
+
+    // Nút 1: Tiếp nhận đơn (admin_approved -> warehouse_received)
+    const handleReceiveOrder = async (orderId, callBackSuccess) => {
         setWarehouseLoading(true);
-        setWarehouseSuccess("");
-        setWarehouseError("");
-        setMissingMaterials([]);
+        handleClearAlert();
         setProcessingOrderId(orderId);
         try {
-            // Gọi đến API: POST /api/warehouse/confirm-order/:orderId
-            const response = await warehouseService.confirmOrderMaterials(orderId);
+            const response = await warehouseService.receiveOrder(orderId);
             if (response.data?.success) {
-                setWarehouseSuccess(response.data.message || "Xuất kho thành công! Đơn hàng đã được chuyển sang chế độ sản xuất.");
+                setWarehouseSuccess(response.data.message || "Tiếp nhận đơn hàng thành công! Đã chuyển trạng thái sang Chờ kiểm kho.");
+                if (callBackSuccess) callBackSuccess();
+            }
+        } catch (e) {
+            setWarehouseError(e.response?.data?.message || "Lỗi khi tiếp nhận đơn hàng.");
+        } finally {
+            setWarehouseLoading(false);
+        }
+    };
 
-                // Nếu component danh sách đơn hàng có truyền hàm reload, kích hoạt để cập nhật lại UI
-                if (callBackSuccess) {
-                    callBackSuccess();
-                }
+    // Nút 2: Đủ hàng -> Bắt đầu sản xuất (warehouse_received -> production_ready)
+    const handleConfirmSufficientStock = async (orderId, callBackSuccess) => {
+        setWarehouseLoading(true);
+        handleClearAlert();
+        setProcessingOrderId(orderId);
+        try {
+            const response = await warehouseService.confirmSufficientStock(orderId);
+            if (response.data?.success) {
+                setWarehouseSuccess(response.data.message || "Xác nhận đủ vật tư! Đơn hàng đã chuyển sang Sẵn sàng sản xuất.");
+                if (callBackSuccess) callBackSuccess();
             }
         } catch (e) {
             const errResponse = e.response;
             if (errResponse?.status === 400 && errResponse.data?.missing_list) {
-                setWarehouseError(errResponse.data.message || "Kho hiện tại không đủ số lượng vật tư yêu cầu!");
-                // Lưu mảng vật tư thiếu để vẽ bảng đỏ
+                setWarehouseError(errResponse.data.message || "Hệ thống đối soát thấy vật tư hiện tại không đủ!");
                 setMissingMaterials(errResponse.data.missing_list);
-            }
-            else {
-                setWarehouseError(errResponse.data?.message || "Đã xảy ra sai sót khi kết nối đến hệ thống xử lý kho!");
+            } else {
+                setWarehouseError(errResponse.data?.message || "Lỗi khi xác nhận đủ hàng.");
             }
         } finally {
             setWarehouseLoading(false);
         }
     };
 
-    const handleCompleteWarehouseExport = async (orderId, callBackSuccess) => {
+    // Nút 3: Thiếu hàng -> Yêu cầu nhập (warehouse_received -> out_of_stock)
+    const handleReportOutOfStock = async (orderId, callBackSuccess) => {
+        const confirmReport = window.confirm("Xác nhận báo thiếu hàng và gửi yêu cầu nhập vật tư bổ sung lên hệ thống?");
+        if (!confirmReport) return;
+
         setWarehouseLoading(true);
-        setWarehouseSuccess("");
-        setWarehouseError("");
-        setMissingMaterials([]);
+        handleClearAlert();
         setProcessingOrderId(orderId);
         try {
-            const response = await warehouseService.completeOrderExport(orderId);
+            const response = await warehouseService.reportOutOfStock(orderId);
             if (response.data?.success) {
-                setWarehouseSuccess(response.data.message || "Hoàn tất kiểm xuất kho! Đơn hàng đã chuyển sang Đang sản xuất.");
+                setWarehouseSuccess(response.data.message || "Đã ghi nhận trạng thái thiếu hàng! Hệ thống đã tạo yêu cầu nhập kho chờ duyệt.");
                 if (callBackSuccess) callBackSuccess();
             }
         } catch (e) {
-            setWarehouseError(e.response?.data?.message || "Lỗi khi hoàn tất kiểm xuất kho.");
+            setWarehouseError(e.response?.data?.message || "Lỗi khi gửi báo cáo thiếu hàng.");
+        } finally {
+            setWarehouseLoading(false);
+        }
+    };
+
+    // Nút 4: Đã nhập hàng & Cập nhật tồn kho (import_approved -> production_ready)
+    const handleCompleteImportAndReady = async (orderId, callBackSuccess) => {
+        setWarehouseLoading(true);
+        handleClearAlert();
+        setProcessingOrderId(orderId);
+        try {
+            const response = await warehouseService.completeImportAndReady(orderId);
+            if (response.data?.success) {
+                setWarehouseSuccess(response.data.message || "Cập nhật tồn kho thành công! Đơn hàng đã tự động chuyển sang Sẵn sàng sản xuất.");
+                if (callBackSuccess) callBackSuccess();
+            }
+        } catch (e) {
+            setWarehouseError(e.response?.data?.message || "Lỗi khi cập nhật nhập kho và chuyển trạng thái sản xuất.");
+        } finally {
+            setWarehouseLoading(false);
+        }
+    };
+
+    // Nút 5: Gia công xong (Gửi báo cáo Admin) (production_ready -> production_completed)
+    const handleCompleteProduction = async (orderId, callBackSuccess) => {
+        setWarehouseLoading(true);
+        handleClearAlert();
+        setProcessingOrderId(orderId);
+        try {
+            const response = await warehouseService.completeProduction(orderId);
+            if (response.data?.success) {
+                setWarehouseSuccess(response.data.message || "Xác nhận gia công xong! Đã gửi báo cáo nghiệm thu tới Admin.");
+                if (callBackSuccess) callBackSuccess();
+            }
+        } catch (e) {
+            setWarehouseError(e.response?.data?.message || "Lỗi khi hoàn tất gia công đơn hàng.");
         } finally {
             setWarehouseLoading(false);
         }
@@ -221,8 +270,11 @@ const WarehouseDashboard = () => {
                     {activePanel === "export_requests" && (
                         <section>
                             <ExportRequestsPanel
-                                onConfirmOrderExport={handleConfirmWarehouseExport}
-                                onCompleteOrderExport={handleCompleteWarehouseExport}
+                                onReceiveOrder={handleReceiveOrder}
+                                onConfirmSufficientStock={handleConfirmSufficientStock}
+                                onReportOutOfStock={handleReportOutOfStock}
+                                onCompleteImportAndReady={handleCompleteImportAndReady}
+                                onCompleteProduction={handleCompleteProduction}
                                 isWarehouseActionLoading={warehouseLoading}
                             />
                         </section>

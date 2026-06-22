@@ -48,8 +48,58 @@ class WarehouseController {
       });
     }
   }
-  // --- QUẢN LÝ TỒN KHO (CRUD) ---
+  // ==========================================
+  // CÁC HÀM ĐIỀU HƯỚNG TRẠNG THÁI ĐƠN HÀNG MỚI
+  // ==========================================
+  async receiveOrder(req, res) {
+    try {
+      const result = await warehouseService.receiveOrder(req.params.orderId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
+  async confirmSufficientStock(req, res) {
+    try {
+      const result = await warehouseService.confirmSufficientStock(req.params.orderId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      if (error.isMissingMaterialError) {
+        return res.status(400).json({ success: false, message: error.message, missing_list: error.missingList });
+      }
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async reportOutOfStock(req, res) {
+    try {
+      const result = await warehouseService.reportOutOfStock(req.params.orderId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async completeImportAndReady(req, res) {
+    try {
+      const result = await warehouseService.completeImportAndReady(req.params.orderId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async completeProduction(req, res) {
+    try {
+      const result = await warehouseService.completeProduction(req.params.orderId);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // --- QUẢN LÝ TỒN KHO (CRUD) ---
   async getAllInventory(req, res) {
     try {
       const data = await warehouseService.getAllInventory();
