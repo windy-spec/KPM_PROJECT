@@ -36,6 +36,14 @@ export const AIChatProvider = ({ children }) => {
   };
 
   const fetchSessions = async () => {
+    // 1. Chặn ngay từ cửa nếu là khách vãng lai (không có token)
+    const token = localStorage.getItem('accessToken'); 
+    if (!token) {
+      setSessions([]); // Reset mảng lịch sử về rỗng
+      return; // Dừng hàm, không gọi API để tránh lỗi 401 đỏ console
+    }
+
+    // 2. Nếu có token (đã đăng nhập) thì mới gọi API
     try {
       const res = await aiService.getSessions();
       console.log("Fetch Sessions API Response:", res);
@@ -58,18 +66,27 @@ export const AIChatProvider = ({ children }) => {
           type: 'text'
         });
 
-        // Load drawing analyses nếu có
-        if (msg.ai_drawing_analyses && msg.ai_drawing_analyses.length > 0) {
-          msg.ai_drawing_analyses.forEach(draw => {
-            loadedMessages.push({
-              role: 'assistant',
-              content: 'Thông số bản vẽ đã phân tích:',
-              type: 'drawing_form',
-              specs: draw.specifications,
-              drawingName: draw.drawing_name,
-              scaleRatio: draw.scale_ratio,
-              analysisId: draw.id
-            });
+        // 
+        if (msg.ai_drawing_analyses) {
+          const draw = msg.ai_drawing_analyses;
+          
+          // 1. CHÈN THÊM ẢNH GỐC VÀO TRƯỚC FORM BẢN VẼ
+          loadedMessages.push({
+            role: 'user',
+            content: 'Nhờ AI phân tích bản vẽ này giúp.',
+            type: 'image',
+            imageUrl: draw.image_url // Link ảnh lấy từ DB
+          });
+
+          // 2. Chèn form thông số (Code cũ của bro)
+          loadedMessages.push({
+            role: 'assistant',
+            content: 'Thông số bản vẽ đã phân tích:',
+            type: 'drawing_form',
+            specs: draw.specifications,
+            drawingName: draw.drawing_name,
+            scaleRatio: draw.scale_ratio,
+            analysisId: draw.id
           });
         }
       });
@@ -143,21 +160,36 @@ export const AIChatProvider = ({ children }) => {
         setSessionId(analysisData.sessionId);
       }
 
-      setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: 'Dạ em đã đọc xong bản vẽ! Dưới đây là các thông số em trích xuất được. Anh/chị xem và điền thêm số lượng để em báo giá nhé:',
-          type: 'drawing_form',
-          specs: analysisData?.dimensions,
-          drawingName: analysisData?.drawingName,
-          scaleRatio: analysisData?.scaleRatio,
-          analysisId: analysisData?.id
-      }]);
+      if (analyzeRes.isChatMessageOnly) {
+          setMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: analysisData.reply,
+              type: 'text'
+          }]);
+      } else {
+          setMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: 'Dạ em đã đọc xong bản vẽ! Dưới đây là các thông số em trích xuất được. Anh/chị xem và điền thêm số lượng để em báo giá nhé:',
+              type: 'drawing_form',
+              specs: analysisData?.dimensions,
+              drawingName: analysisData?.drawingName,
+              scaleRatio: analysisData?.scaleRatio,
+              analysisId: analysisData?.id
+          }]);
+      }
 
     } catch (error) {
         console.error('Lỗi khi bóc tách bản vẽ:', error);
+        
+        // Bóc tách câu báo lỗi từ Backend gửi lên
+        const errorMessage = error.response?.data?.error || "Dạ hệ thống AI Vision đang gặp sự cố khi đọc ảnh, anh/chị thử lại file rõ nét hơn nhé ạ!";
+        
         setMessages((prev) => prev.filter(msg => msg.id !== uploadingMsgId));
         setMessages((prev) => [...prev, {
-            role: 'assistant', content: 'Dạ hệ thống AI Vision đang gặp sự cố khi đọc ảnh, anh/chị thử lại file rõ nét hơn nhé ạ!', type: 'text', isError: true
+            role: 'assistant', 
+            content: errorMessage, // In ra lý do AI từ chối ảnh
+            type: 'text', 
+            isError: true
         }]);
     } finally {
         setIsTyping(false);
@@ -190,21 +222,36 @@ export const AIChatProvider = ({ children }) => {
         setSessionId(analysisData.sessionId);
       }
 
-      setMessages((prev) => [...prev, {
-          role: 'assistant',
-          content: 'Dạ em đã đọc xong bản vẽ từ link! Dưới đây là các thông số em trích xuất được:',
-          type: 'drawing_form',
-          specs: analysisData?.dimensions,
-          drawingName: analysisData?.drawingName,
-          scaleRatio: analysisData?.scaleRatio,
-          analysisId: analysisData?.id
-      }]);
+      if (analyzeRes.isChatMessageOnly) {
+          setMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: analysisData.reply,
+              type: 'text'
+          }]);
+      } else {
+          setMessages((prev) => [...prev, {
+              role: 'assistant',
+              content: 'Dạ em đã đọc xong bản vẽ từ link! Dưới đây là các thông số em trích xuất được:',
+              type: 'drawing_form',
+              specs: analysisData?.dimensions,
+              drawingName: analysisData?.drawingName,
+              scaleRatio: analysisData?.scaleRatio,
+              analysisId: analysisData?.id
+          }]);
+      }
 
     } catch (error) {
         console.error('Lỗi khi bóc tách bản vẽ online:', error);
+        
+        // Bóc tách câu báo lỗi từ Backend gửi lên giống hàm upload
+        const errorMessage = error.response?.data?.error || "Dạ hệ thống AI Vision đang gặp sự cố khi đọc ảnh, anh/chị thử lại file rõ nét hơn nhé ạ!";
+        
         setMessages((prev) => prev.filter(msg => msg.id !== uploadingMsgId));
         setMessages((prev) => [...prev, {
-            role: 'assistant', content: 'Dạ link ảnh không đọc được hoặc lỗi hệ thống, anh/chị kiểm tra lại link nhé!', type: 'text', isError: true
+            role: 'assistant', 
+            content: errorMessage, 
+            type: 'text', 
+            isError: true
         }]);
     } finally {
         setIsTyping(false);

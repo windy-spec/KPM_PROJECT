@@ -199,6 +199,8 @@ class AIService {
 
       CẤU TRÚC JSON BẮT BUỘC PHẢI TUÂN THỦ NGHIÊM NGẶT NHƯ VÍ DỤ SAU:
       {
+      "is_valid_drawing": true, // Đánh giá: true nếu là bản vẽ/bản phác thảo cơ khí. Trả về false nếu là ảnh chụp người, động vật, phong cảnh, hoặc ảnh rác không liên quan.
+        "message": "Để trống nếu hợp lệ. Nếu is_valid_drawing là false, hãy giải thích ngắn gọn lý do (VD: 'Dạ ảnh này có vẻ là ảnh chụp người, không phải bản vẽ kỹ thuật. Anh/chị gửi lại ảnh bản vẽ giúp em nhé!').",
         "drawing_name": "Tên chủ thể của bản vẽ",
         "dimensions": {
           "length": 290,
@@ -254,6 +256,7 @@ class AIService {
       let extractedSpecs = {};
       try {
         extractedSpecs = JSON.parse(rawJsonString);
+        
         console.log("✅ AI đã bóc tách dữ liệu bản vẽ thành công:", extractedSpecs);
       } catch (parseError) {
         console.warn("⚠️ AI trả về JSON lỗi, dùng fallback. Dữ liệu gốc:", rawJsonString);
@@ -262,6 +265,25 @@ class AIService {
            dimensions: {},
            scale_ratio: "N/A",
            description: "AI không thể định dạng đúng cấu trúc thông số. Lỗi: " + parseError.message
+        };
+      }
+      // KIỂM TRA ẢNH RÁC NGAY TẠI ĐÂY
+      if (extractedSpecs.is_valid_drawing === false) {
+        const errorMessage = extractedSpecs.message || "Ảnh không hợp lệ, vui lòng tải lên bản vẽ kỹ thuật.";
+        
+        // Lưu câu trả lời từ chối của AI vào DB để lưu lịch sử
+        await prisma.ai_chat_messages.create({
+          data: {
+            session_id: currentSessionId,
+            sender_type: "ai",
+            message_text: errorMessage,
+          },
+        });
+
+        return {
+          isErrorResponse: true,
+          message: errorMessage,
+          sessionId: currentSessionId
         };
       }
 

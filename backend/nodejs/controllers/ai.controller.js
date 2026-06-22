@@ -51,6 +51,18 @@ class AIController {
         userId
       );
 
+      // Nếu là ảnh rác, AI trả về message text thay vì bản vẽ
+      if (analysisResult.isErrorResponse) {
+        return res.status(200).json({
+          success: true,
+          isChatMessageOnly: true,
+          data: {
+            reply: analysisResult.message,
+            sessionId: analysisResult.sessionId
+          }
+        });
+      }
+
       // Trả kết quả về cho Postman / Frontend
       res.status(200).json({
         success: true,
@@ -65,7 +77,7 @@ class AIController {
       });
     } catch (error) {
       console.error("Lỗi Controller Phân Tích Ảnh:", error);
-      res.status(500).json({
+      res.status(400).json({
         success: false,
         message: "AI Vision không thể đọc bản vẽ này, vui lòng thử lại ảnh khác!",
         error: error.message

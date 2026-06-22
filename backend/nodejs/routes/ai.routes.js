@@ -7,7 +7,7 @@ const authMiddleware = require("../middlewares/auth.middleware");
 // API Chat AI: POST /api/ai/chat
 router.post("/chat", optionalAuth, aiController.chat);
 // API Phân tích bản vẽ bằng Vision: POST /api/ai/analyze-drawing
-router.post("/analyze-drawing", aiController.analyze);
+router.post("/analyze-drawing", optionalAuth,aiController.analyze);
 router.post(
   "/upload-drawing",
   uploadDrawing.single("image"),
