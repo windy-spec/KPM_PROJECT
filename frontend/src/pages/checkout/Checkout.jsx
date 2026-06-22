@@ -155,19 +155,13 @@ const Checkout = () => {
         });
         if (res.data?.success) setQrData(res.data.data);
       } else if (paymentMethod === "cod") {
+        await apiClient.post("/payments/cash", { order_id: orderId });
         if (finalTotal >= 20000000) {
-          const res = await apiClient.post("/payments/vnpay", {
-            order_id: orderId,
-            is_deposit: true,
-          });
-          if (res.data?.data?.payUrl) {
-            window.location.href = res.data.data.payUrl;
-          }
+          notify.showSuccess("Đã đặt hàng! Vui lòng kiểm tra Email để thanh toán cọc 10%.");
         } else {
-          await apiClient.post("/payments/cash", { order_id: orderId });
           notify.showSuccess("Đã ghi nhận đặt hàng thành công!");
-          navigate("/profile?panel=orders");
         }
+        navigate("/profile?panel=orders");
       }
     } catch (e) {
       notify.showError(
@@ -411,7 +405,7 @@ const Checkout = () => {
                     {finalTotal >= 20000000 && (
                       <p className="mt-1.5 text-xs font-medium text-rose-600 flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        Đơn hàng trên 20 triệu yêu cầu thanh toán chuyển khoản cọc trước 10% ({(finalTotal * 0.1).toLocaleString("vi-VN")}đ).
+                        Đơn hàng trên 20 triệu. Sau khi Đặt hàng, hệ thống sẽ gửi Email yêu cầu cọc 10% ({(finalTotal * 0.1).toLocaleString("vi-VN")}đ) để bắt đầu sản xuất.
                       </p>
                     )}
                   </div>

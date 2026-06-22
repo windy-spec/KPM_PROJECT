@@ -137,6 +137,11 @@ model orders {
   order_notes       String?
 
   material_requirements Json?      @default("{}")
+
+  // Thông tin cọc (Dành cho Đơn hàng COD giá trị lớn)
+  is_deposit_required Boolean?     @default(false)
+  is_deposit_paid     Boolean?     @default(false)
+  deposit_amount      Decimal?     @db.Decimal(15, 2)
   
   // Quan hệ
   user_id           String?        @db.Uuid

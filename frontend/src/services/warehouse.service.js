@@ -22,6 +22,22 @@ const warehouseService = {
         return apiClient.post(`/warehouse/orders/${orderId}/complete-export`);
     },
 
+    receiveOrder(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/receive`);
+    },
+    confirmSufficientStock(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/confirm-stock`);
+    },
+    reportOutOfStock(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/out-of-stock`);
+    },
+    completeImportAndReady(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/import-ready`);
+    },
+    completeProduction(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/complete-production`);
+    },
+
     /**
      * ==========================================
      * 2. DANH MỤC QUẢN LÝ TỒN KHO (CRUD)

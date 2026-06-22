@@ -18,7 +18,7 @@ const formatCurrency = (amount) => {
 // ============================================================================
 // 1. EMAIL MÃ XÁC THỰC (OTP) & HÓA ĐƠN CHI TIẾT
 // ============================================================================
-const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null, quotationData = null) => {
+const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null, quotationData = null, isDepositPayment = false) => {
   
   // ---------------------------------------------------------
   // KỊCH BẢN 1: NẾU LÀ HÓA ĐƠN (INVOICE)
@@ -135,10 +135,23 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
                       </tr>
                       ${shippingFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Vận chuyển:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(shippingFee)}</td></tr>` : ""}
                       ${installFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Lắp đặt:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(installFee)}</td></tr>` : ""}
-                      <tr>
-                        <td style="padding: 12px; font-size: 15px; color: #1e3a8a; text-align: right; font-weight: bold; border-top: 1px solid #bfdbfe;">ĐÃ THANH TOÁN:</td>
-                        <td style="padding: 12px; font-size: 20px; color: #10b981; text-align: right; font-weight: 900; border-top: 1px solid #bfdbfe;">${formatCurrency(finalTotal)}</td>
+                        <td style="padding: 12px; font-size: 15px; color: #1e3a8a; text-align: right; font-weight: bold; border-top: 1px solid #bfdbfe;">
+                          ${isDepositPayment ? "ĐÃ ĐẶT CỌC (10%):" : "ĐÃ THANH TOÁN:"}
+                        </td>
+                        <td style="padding: 12px; font-size: 20px; color: #10b981; text-align: right; font-weight: 900; border-top: 1px solid #bfdbfe;">
+                          ${isDepositPayment ? formatCurrency(orderData?.deposit_amount || 0) : formatCurrency(finalTotal)}
+                        </td>
                       </tr>
+                      ${isDepositPayment ? `
+                      <tr>
+                        <td style="padding: 12px; font-size: 14px; color: #ef4444; text-align: right; font-weight: bold; border-top: 1px dashed #bfdbfe;">
+                          CÒN LẠI PHẢI THANH TOÁN (COD):
+                        </td>
+                        <td style="padding: 12px; font-size: 16px; color: #ef4444; text-align: right; font-weight: bold; border-top: 1px dashed #bfdbfe;">
+                          ${formatCurrency(finalTotal - (orderData?.deposit_amount || 0))}
+                        </td>
+                      </tr>
+                      ` : ""}
                     </table>
                   </td>
                 </tr>
@@ -455,8 +468,54 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
   return transporter.sendMail(mailOptions);
 };
 
+// ============================================================================
+// 4. EMAIL YÊU CẦU ĐẶT CỌC 10% (ĐƠN HÀNG LỚN)
+// ============================================================================
+const sendDepositRequestEmail = async (email, orderData) => {
+  const depositAmount = orderData?.deposit_amount || 0;
+  const finalTotal = orderData?.total_amount || 0;
+  const customerName = orderData?.customer_name || 'Khách hàng KPM';
+
+  const mailOptions = {
+    from: `"KPM Materials" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: `[KPM] Yêu cầu Đặt cọc Đơn hàng #${orderData.order_code}`,
+    html: `
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6; padding: 40px 10px;">
+        <div style="max-width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 35px 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 0.5px; text-transform: uppercase;">Yêu cầu Đặt cọc Đơn hàng</h1>
+            <p style="color: #fef3c7; font-size: 15px; margin-top: 8px;">Mã đơn: <strong>#${orderData.order_code}</strong></p>
+          </div>
+          <div style="padding: 30px;">
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin-top: 0;">
+              Xin chào <strong>${customerName}</strong>,<br><br>
+              Đơn hàng của bạn có tổng giá trị <strong>${formatCurrency(finalTotal)}</strong> (Lớn hơn 20.000.000đ).<br>
+              Theo quy định của KPM Materials đối với các đơn hàng giá trị lớn, quý khách vui lòng <strong>đặt cọc trước 10%</strong> giá trị đơn hàng để chúng tôi tiến hành sản xuất.
+            </p>
+            <div style="background-color: #fffbeb; border: 1px dashed #fcd34d; padding: 20px; text-align: center; border-radius: 8px; margin: 25px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #b45309; text-transform: uppercase; font-weight: bold;">Số tiền cọc cần thanh toán</p>
+              <p style="margin: 0; font-size: 28px; font-weight: 900; color: #ea580c;">${formatCurrency(depositAmount)}</p>
+            </div>
+            <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">
+              Sau khi thanh toán cọc thành công, đơn hàng sẽ được tự động chuyển trạng thái sang <strong>Đang sản xuất</strong>. Số tiền còn lại <strong>(${formatCurrency(finalTotal - depositAmount)})</strong> sẽ được thanh toán cho nhân viên giao hàng (COD).
+            </p>
+            <div style="text-align: center; margin: 35px 0 10px 0;">
+              <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/deposit-payment?order_id=${orderData.id}" style="display: inline-block; background-color: #ea580c; color: #ffffff; text-decoration: none; padding: 14px 35px; font-size: 15px; font-weight: bold; border-radius: 6px; text-transform: uppercase; box-shadow: 0 4px 6px rgba(234,88,12,0.25);">
+                THANH TOÁN CỌC NGAY
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+  };
+  return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   sendVerifyEmail,
   sendQuotationEmail,
   sendOrderConfirmationEmail,
+  sendDepositRequestEmail
 };

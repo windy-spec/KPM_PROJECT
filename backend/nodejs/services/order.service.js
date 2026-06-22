@@ -128,6 +128,12 @@ class OrderService {
     const order = await prisma.orders.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Đơn hàng không tồn tại!");
 
+    // VALIDATE CHUYỂN TRẠNG THÁI
+    // Ví dụ: chỉ cho phép chuyển từ out_of_stock sang import_approved
+    if (order.production_status === "out_of_stock" && status !== "import_approved") {
+      throw new Error("Đơn hàng đang hết vật tư, chỉ có thể chuyển sang trạng thái import_approved!");
+    }
+
     // Transaction lỗi sẽ không bị thừa
     return await prisma.$transaction(async (tx) => {
       // cập nhật trạng thái tổng
@@ -145,6 +151,7 @@ class OrderService {
             order_id: orderId,
             stage_name: stage_name,
             stage_description: stage_description || "",
+            tracked_at: new Date(), // Lưu mốc thời gian rõ ràng để tính 3 ngày giao hàng
           },
         });
       }

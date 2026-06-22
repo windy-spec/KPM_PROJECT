@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const embedder = require("../utils/embedder.util");
 const Groq = require("groq-sdk");
-
+const { toolsDefinition, executeTool } = require("./ai-tools/index");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 class AIService {
@@ -61,7 +61,7 @@ class AIService {
     let userName = "quý khách";
     if (userId) {
       const userProfile = await prisma.user_profiles.findFirst({
-        where: { user_id: userId }
+        where: { user_id: userId },
       });
       if (userProfile && userProfile.full_name) {
         userName = userProfile.full_name;
@@ -73,12 +73,16 @@ class AIService {
       Bạn là Trợ lý Tư vấn Kỹ thuật & Bán hàng chuyên nghiệp của xưởng cơ khí KPM.
       Khách hàng hiện tại của bạn tên là: "${userName}". Hãy xưng hô lịch sự, thân thiện (luôn xưng "em", gọi khách là "anh/chị ${userName}" hoặc tên của họ, dùng từ "Dạ", "ạ").
 
+      [THÔNG TIN XƯỞNG KPM]: Chuyên gia công các sản phẩm cơ khí dân dụng như: Cửa cổng (Sắt/Inox), Cầu thang, Lan can, Hàng rào, Mái che, Khung bảo vệ...
+
       QUY TẮC CỐT LÕI:
-      [CẤM BỊA ĐẶT]: TUYỆT ĐỐI KHÔNG tự bịa ra giá cả, thông số kỹ thuật, hay thời gian bảo hành nếu không có trong dữ liệu bên dưới. Mọi thông tin phải chính xác 100% dựa trên DỮ LIỆU CỦA XƯỞNG.
-      [NGOÀI PHẠM VI]: Nếu khách hỏi những câu lạc đề hoặc thông tin không có trong DỮ LIỆU CỦA XƯỞNG, hãy khéo léo từ chối bằng mẫu câu: "Dạ, vấn đề này hiện tại em chưa có thông tin chính xác, để em ghi nhận lại và nhờ kỹ thuật viên liên hệ tư vấn sâu hơn cho mình nhé ạ."
-      [TRÌNH BÀY]: BẮT BUỘC phải trình bày dễ nhìn. Sử dụng gạch đầu dòng (-) cho các ý chính. Phải **in đậm** các con số, giá tiền, phần trăm chênh lệch và tên vật tư để khách dễ đọc.
-      [CHỐT SALE]: TUYỆT ĐỐI BẮT BUỘC câu cuối cùng của bạn luôn phải là một CÂU HỎI MỞ liên quan đến nhu cầu của khách để duy trì cuộc hội thoại và chốt sale (Ví dụ: "Dạ nhà mình dự định làm cổng khoảng bao nhiêu mét vuông ạ?", "Anh/chị đã có bản vẽ thiết kế chưa để em bóc tách cho chuẩn ạ?").
-      DỮ LIỆU CỦA XƯỞNG CUNG CẤP:
+      [CẤM BỊA ĐẶT]: TUYỆT ĐỐI KHÔNG tự bịa giá. Chỉ dùng giá từ DỮ LIỆU TĨNH hoặc TỪ CÁC HÀM (TOOLS).
+      [TRỌNG TÂM THỰC TẾ]: Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Khi khách hỏi công dụng vật tư, BẮT BUỘC phải liên hệ tới các sản phẩm mà Xưởng KPM hay thi công (Ví dụ: Inox 304 bóng BA bên em hay dùng làm lan can, cổng vì nó sáng bóng và chống gỉ tốt). TUYỆT ĐỐI KHÔNG kể lể lan man sang ngành y tế, hàng không, thực phẩm.
+      [NGOÀI PHẠM VI]: Nếu khách hỏi lạc đề, hãy khéo léo đáp: "Dạ, vấn đề này em chưa rõ, để em nhờ thợ kỹ thuật tư vấn thêm cho mình nhé ạ."
+      [TRÌNH BÀY]: Dùng gạch đầu dòng (-). **In đậm** các con số, giá tiền, tên vật tư.
+      [CHỐT SALE KHÉO LÉO]: Đặt MỘT câu hỏi mở tự nhiên ở cuối để dẫn dắt khách làm sản phẩm. KHÔNG hỏi máy móc. (Ví dụ chuẩn: "Dạ nhà mình dự định làm cổng hay lan can để em tư vấn độ dày phù hợp ạ?").
+
+      DỮ LIỆU TĨNH CỦA XƯỞNG:
       ${contextText}
     `;
 
@@ -118,16 +122,62 @@ class AIService {
 
     // 6. GỌI API & CƠ CHẾ FALLBACK
     try {
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...conversationMessages,
-        ],
+      // Nhịp 1: Ném câu hỏi và Vali đồ nghề cho AI
+      let messagesForGroq = [
+        { role: "system", content: systemPrompt },
+        ...conversationMessages,
+      ];
+
+      let chatCompletion = await groq.chat.completions.create({
+        messages: messagesForGroq,
         model: selectedModel,
         temperature: 0.2,
         max_tokens: 1024,
+        tools: toolsDefinition, // <--- CẮM USB ĐỒ NGHỀ VÀO ĐÂY
+        tool_choice: "auto",
       });
-      aiReply = chatCompletion.choices[0].message.content;
+
+      let responseMessage = chatCompletion.choices[0].message;
+
+      // Nhịp 2: Nếu AI quyết định dùng Tool
+      if (responseMessage.tool_calls) {
+        console.log("🛠️ AI ĐANG KÍCH HOẠT FUNCTION CALLING!");
+        messagesForGroq.push(responseMessage); // Lưu lại bước gọi hàm
+
+        // Chạy lần lượt các tool mà AI yêu cầu
+        for (const toolCall of responseMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+
+          console.log(`▶️ Thực thi: ${functionName}`, functionArgs);
+
+          // Cỗ máy tự động tìm file tool và chạy DB
+          const functionResult = await executeTool(
+            functionName,
+            functionArgs,
+            prisma,
+          );
+
+          // Nhồi kết quả DB gửi lại cho AI
+          messagesForGroq.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: functionResult,
+          });
+        }
+
+        // Nhịp 3: AI đọc kết quả DB và trả lời khách
+        const secondResponse = await groq.chat.completions.create({
+          messages: messagesForGroq,
+          model: selectedModel,
+        });
+
+        aiReply = secondResponse.choices[0].message.content;
+      } else {
+        // Nếu câu hỏi giao tiếp bình thường, không cần tool
+        aiReply = responseMessage.content;
+      }
     } catch (error) {
       console.error(`❌ Mô hình ${selectedModel} gặp lỗi:`, error.message);
 
@@ -170,7 +220,7 @@ class AIService {
   // --- BƯỚC 3: AI VISION PHÂN TÍCH ẢNH BẢN VẼ (TRÍCH XUẤT JSON) ---
   async analyzeDrawing(imageUrl, sessionId, userId = null) {
     console.log(`🚀 Bắt đầu phân tích bản vẽ từ URL: ${imageUrl}`);
-    
+
     // Tạo session nếu chưa có
     let currentSessionId = sessionId;
     if (!currentSessionId) {
@@ -239,7 +289,7 @@ class AIService {
       });
 
       let rawJsonString = response.choices[0].message.content;
-      
+
       // 1. Trích xuất JSON từ markdown block nếu có
       const jsonMatch = rawJsonString.match(/```(?:json)?\n([\s\S]*?)\n```/);
       if (jsonMatch && jsonMatch[1]) {
@@ -247,8 +297,8 @@ class AIService {
       }
 
       // 2. Lấy nội dung từ dấu ngoặc nhọn đầu tiên đến cuối cùng để loại bỏ text rác
-      const firstBrace = rawJsonString.indexOf('{');
-      const lastBrace = rawJsonString.lastIndexOf('}');
+      const firstBrace = rawJsonString.indexOf("{");
+      const lastBrace = rawJsonString.lastIndexOf("}");
       if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
         rawJsonString = rawJsonString.substring(firstBrace, lastBrace + 1);
       }
@@ -256,21 +306,31 @@ class AIService {
       let extractedSpecs = {};
       try {
         extractedSpecs = JSON.parse(rawJsonString);
-        
-        console.log("✅ AI đã bóc tách dữ liệu bản vẽ thành công:", extractedSpecs);
+
+        console.log(
+          "✅ AI đã bóc tách dữ liệu bản vẽ thành công:",
+          extractedSpecs,
+        );
       } catch (parseError) {
-        console.warn("⚠️ AI trả về JSON lỗi, dùng fallback. Dữ liệu gốc:", rawJsonString);
+        console.warn(
+          "⚠️ AI trả về JSON lỗi, dùng fallback. Dữ liệu gốc:",
+          rawJsonString,
+        );
         extractedSpecs = {
-           drawing_name: "Bản vẽ (AI không đọc được)",
-           dimensions: {},
-           scale_ratio: "N/A",
-           description: "AI không thể định dạng đúng cấu trúc thông số. Lỗi: " + parseError.message
+          drawing_name: "Bản vẽ (AI không đọc được)",
+          dimensions: {},
+          scale_ratio: "N/A",
+          description:
+            "AI không thể định dạng đúng cấu trúc thông số. Lỗi: " +
+            parseError.message,
         };
       }
       // KIỂM TRA ẢNH RÁC NGAY TẠI ĐÂY
       if (extractedSpecs.is_valid_drawing === false) {
-        const errorMessage = extractedSpecs.message || "Ảnh không hợp lệ, vui lòng tải lên bản vẽ kỹ thuật.";
-        
+        const errorMessage =
+          extractedSpecs.message ||
+          "Ảnh không hợp lệ, vui lòng tải lên bản vẽ kỹ thuật.";
+
         // Lưu câu trả lời từ chối của AI vào DB để lưu lịch sử
         await prisma.ai_chat_messages.create({
           data: {
@@ -283,7 +343,7 @@ class AIService {
         return {
           isErrorResponse: true,
           message: errorMessage,
-          sessionId: currentSessionId
+          sessionId: currentSessionId,
         };
       }
 
@@ -296,7 +356,7 @@ class AIService {
           scale_ratio: extractedSpecs.scale_ratio,
         },
       });
-      
+
       // Gắn thêm sessionId vào response để trả về cho Client
       drawingAnalysis.sessionId = currentSessionId;
       return drawingAnalysis;

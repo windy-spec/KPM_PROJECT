@@ -2,11 +2,14 @@ const prisma = require("../models/prisma");
 const { sendVerifyEmail } = require("../utils/mailer.utils");
 class InvoiceService {
   // Hàm này được gọi tự động sau khi thanh toán thành công
-  async createInvoice(orderId, totalAmount, prismaClient = prisma) {
+  async createInvoice(orderId, totalAmount, prismaClient = prisma, isDepositPayment = false) {
     // 1. Kiểm tra xem đã có hóa đơn chưa
     const existing = await prismaClient.invoices.findUnique({
       where: { order_id: orderId },
     });
+    // Nếu có rồi và không phải cọc, return luôn. Nếu là cọc thì có thể tạo thêm hoá đơn cọc (tạm thời không thay đổi logic tạo, chỉ update nội dung email)
+    // NOTE: Tạm giữ nguyên logic không tạo nhiều invoice để tránh lỗi, vì đây là Invoice duy nhất cho order này.
+    // Nếu đã có invoice (VD: từ lần chạy webhook trước đó) thì bỏ qua
     if (existing) return existing;
 
     const invoiceNo = `INV-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -25,9 +28,10 @@ class InvoiceService {
     const orderData = await prismaClient.orders.findUnique({
       where: { id: orderId },
       include: {
-        users: true,
+        users: { include: { user_profiles: true } },
         quotations: {
           include: {
+            users: { include: { user_profiles: true } },
             quotation_specs: {
               include: { materials: true, paint_types: true }
             }
@@ -46,7 +50,8 @@ class InvoiceService {
         invoiceNo,
         "INVOICE",          // Từ khóa để mailer.utils biết đây là Hóa đơn
         orderData,          // Dữ liệu Đơn hàng
-        orderData.quotations// Dữ liệu bóc tách
+        orderData.quotations,// Dữ liệu bóc tách
+        isDepositPayment
       ).catch((err) => console.error("Lỗi gửi mail hóa đơn:", err));
     }
 

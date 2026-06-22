@@ -3,8 +3,8 @@ const paymentService = require("../services/payment.service");
 class PaymentController {
   async checkoutMomo(req, res) {
     try {
-      const { quotation_id, order_id } = req.body;
-      const result = await paymentService.createMomoPayment(req.user.id, { quotation_id, order_id });
+      const { quotation_id, order_id, is_deposit } = req.body;
+      const result = await paymentService.createMomoPayment(req.user.id, { quotation_id, order_id, is_deposit });
       res.status(200).json({ success: true, data: result });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
@@ -15,7 +15,7 @@ class PaymentController {
     try {
       const { quotation_id, order_id } = req.body;
       const result = await paymentService.createCashPayment(req.user.id, { quotation_id, order_id });
-      res.status(200).json({ success: true, message: "Đã ghi nhận thanh toán tiền mặt.", data: result });
+      res.status(200).json({ success: true, message: "Đã ghi nhận đơn hàng.", data: result });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
     }
@@ -23,8 +23,8 @@ class PaymentController {
 
   async checkoutVietQR(req, res) {
     try {
-      const { quotation_id, order_id } = req.body;
-      const result = await paymentService.createVietQRPayment(req.user.id, { quotation_id, order_id });
+      const { quotation_id, order_id, is_deposit } = req.body;
+      const result = await paymentService.createVietQRPayment(req.user.id, { quotation_id, order_id, is_deposit });
       res.status(200).json({ success: true, data: result });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
@@ -33,9 +33,9 @@ class PaymentController {
 
   async checkoutVnpay(req, res) {
     try {
-      const { quotation_id, order_id } = req.body;
+      const { quotation_id, order_id, is_deposit } = req.body;
       const ipAddr = req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.ip;
-      const result = await paymentService.createVnpayPayment(req.user.id, { quotation_id, order_id, ipAddr });
+      const result = await paymentService.createVnpayPayment(req.user.id, { quotation_id, order_id, ipAddr, is_deposit });
       res.status(200).json({ success: true, data: result });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
@@ -60,6 +60,16 @@ class PaymentController {
     } catch (e) {
       console.error("Lỗi Webhook VNPay:", e.message);
       res.status(200).json({ RspCode: "99", Message: "Unknown error" });
+    }
+  }
+
+  async cancelDeposit(req, res) {
+    try {
+      const { order_id } = req.body;
+      const result = await paymentService.cancelDeposit(req.user.id, order_id);
+      res.status(200).json({ success: true, data: result, message: "Đã hủy thanh toán cọc, chuyển sang thanh toán toàn bộ." });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
     }
   }
 }

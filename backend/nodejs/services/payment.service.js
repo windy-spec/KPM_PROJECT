@@ -1,4 +1,6 @@
 const prisma = require("../models/prisma");
+const emailService = require("./email.service"); // Thêm email service
+const { sendDepositRequestEmail } = require("../utils/mailer.utils");
 const axios = require("axios");
 const { momoConfig, createSignature } = require("../utils/momo.config");
 const vnpayConfig = require("../utils/vnpay.config");
@@ -9,7 +11,7 @@ const moment = require("moment");
 
 class PaymentService {
   // 1. THANH TOÁN MOMO
-  async createMomoPayment(userId, { quotation_id, order_id }) {
+  async createMomoPayment(userId, { quotation_id, order_id, is_deposit }) {
     let amount = 0;
     let title = "";
 
@@ -27,6 +29,10 @@ class PaymentService {
       if (!order) throw new Error("Không tìm thấy đơn hàng!");
       amount = Number(order.total_amount);
       title = order.order_code || order_id;
+      if (is_deposit && order.deposit_amount) {
+        amount = Number(order.deposit_amount);
+        title = `Coc 10% don hang ${title}`;
+      }
     } else {
       throw new Error("Vui lòng cung cấp quotation_id hoặc order_id");
     }
@@ -95,6 +101,8 @@ class PaymentService {
       throw new Error("Vui lòng cung cấp quotation_id hoặc order_id");
     }
 
+    const isDepositRequired = amount >= 20000000;
+
     const transaction = await prisma.transactions.create({
       data: {
         quotation_id: quotation_id || null,
@@ -105,12 +113,19 @@ class PaymentService {
         status: "pending", // Admin sẽ duyệt tay sau
       },
     });
+
     if (order_id) {
       await prisma.orders.update({
         where: { id: order_id },
-        data: { production_status: "pending" },
+        data: {
+          production_status: isDepositRequired ? "pending_deposit" : "pending",
+          is_deposit_required: isDepositRequired,
+          deposit_amount: isDepositRequired ? amount * 0.1 : 0,
+        },
       });
-      await invoiceService.createInvoice(order_id, amount);
+      if (!isDepositRequired) {
+        await invoiceService.createInvoice(order_id, amount);
+      }
     } else if (quotation_id) {
       const order = await prisma.orders.findUnique({
         where: { quotation_id: quotation_id },
@@ -118,9 +133,34 @@ class PaymentService {
       if (order) {
         await prisma.orders.update({
           where: { id: order.id },
-          data: { production_status: "pending" },
+          data: {
+            production_status: isDepositRequired
+              ? "pending_deposit"
+              : "pending",
+            is_deposit_required: isDepositRequired,
+            deposit_amount: isDepositRequired ? amount * 0.1 : 0,
+          },
         });
-        await invoiceService.createInvoice(order.id, amount);
+        if (!isDepositRequired) {
+          await invoiceService.createInvoice(order.id, amount);
+        }
+      }
+    }
+
+    // GỬI EMAIL NẾU YÊU CẦU CỌC
+    if (isDepositRequired) {
+      const user = await prisma.users.findUnique({ where: { id: userId } });
+      let orderData = null;
+      if (order_id) {
+        orderData = await prisma.orders.findUnique({ where: { id: order_id } });
+      } else if (quotation_id) {
+        orderData = await prisma.orders.findUnique({
+          where: { quotation_id: quotation_id },
+        });
+      }
+      if (user && user.email && orderData) {
+        // Chạy ngầm không đợi để response nhanh
+        sendDepositRequestEmail(user.email, orderData).catch(console.error);
       }
     }
 
@@ -143,11 +183,14 @@ class PaymentService {
       where: { transaction_code: orderId },
     });
     if (!transaction) throw new Error("Giao dịch không tồn tại!");
-    
+
     // Ngăn chặn xử lý lặp lại nếu webhook gọi nhiều lần hoặc frontend tự gọi
     if (transaction.status !== "pending") {
       return true;
     }
+
+    const decodedExtraData = JSON.parse(Buffer.from(extraData, 'base64').toString('utf-8'));
+    const isDepositPayment = decodedExtraData.is_deposit || false;
 
     // Nếu thanh toán thành công
     if (Number(resultCode) === 0) {
@@ -171,20 +214,46 @@ class PaymentService {
             where: { quotation_id: transaction.quotation_id },
           });
           if (order) {
-            // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+            // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
             await tx.orders.update({
               where: { id: order.id },
-              data: { production_status: "pending" },
+              data: {
+                production_status: "pending",
+                is_deposit_paid: true,
+              },
             });
-            await invoiceService.createInvoice(order.id, amount, tx);
+            await invoiceService.createInvoice(order.id, amount, tx, isDepositPayment);
+
+            // Gửi email xác nhận
+            const user = await tx.users.findUnique({
+              where: { id: order.user_id },
+            });
+            if (user && user.email) {
+              emailService
+                .sendPaymentSuccessConfirmation(user.email, order)
+                .catch(console.error);
+            }
           }
         } else if (transaction.order_id) {
-          // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
-          await tx.orders.update({
+          // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
+          const order = await tx.orders.update({
             where: { id: transaction.order_id },
-            data: { production_status: "pending" },
+            data: {
+              production_status: "pending",
+              is_deposit_paid: true,
+            },
           });
-          await invoiceService.createInvoice(transaction.order_id, amount, tx);
+          await invoiceService.createInvoice(transaction.order_id, amount, tx, isDepositPayment);
+
+          // Gửi email xác nhận
+          const user = await tx.users.findUnique({
+            where: { id: order.user_id },
+          });
+          if (user && user.email) {
+            emailService
+              .sendPaymentSuccessConfirmation(user.email, order)
+              .catch(console.error);
+          }
         }
       });
       console.log(
@@ -201,7 +270,7 @@ class PaymentService {
     return true;
   }
   // 4. THANH TOÁN CHUYỂN KHOẢN NGÂN HÀNG (VIETQR)
-  async createVietQRPayment(userId, { quotation_id, order_id }) {
+  async createVietQRPayment(userId, { quotation_id, order_id, is_deposit }) {
     let amount = 0;
     let title = "";
 
@@ -219,6 +288,10 @@ class PaymentService {
       if (!order) throw new Error("Không tìm thấy đơn hàng!");
       amount = Number(order.total_amount);
       title = order.order_code || order_id;
+      if (is_deposit && order.deposit_amount) {
+        amount = Number(order.deposit_amount);
+        title = `Coc 10% don hang ${title}`;
+      }
     } else {
       throw new Error("Vui lòng cung cấp quotation_id hoặc order_id");
     }
@@ -267,7 +340,10 @@ class PaymentService {
   }
 
   // 5. THANH TOÁN VNPAY
-  async createVnpayPayment(userId, { quotation_id, order_id, ipAddr }) {
+  async createVnpayPayment(
+    userId,
+    { quotation_id, order_id, ipAddr, is_deposit },
+  ) {
     let amount = 0;
     let title = "";
 
@@ -285,6 +361,10 @@ class PaymentService {
       if (!order) throw new Error("Không tìm thấy đơn hàng!");
       amount = Number(order.total_amount);
       title = order.order_code || order_id;
+      if (is_deposit && order.deposit_amount) {
+        amount = Number(order.deposit_amount);
+        title = `Coc 10% don hang ${title}`;
+      }
     } else {
       throw new Error("Vui lòng cung cấp quotation_id hoặc order_id");
     }
@@ -363,7 +443,9 @@ class PaymentService {
         return { RspCode: "01", Message: "Order not found" };
       }
       if (transaction.status !== "pending") {
-        console.log(`[VNPAY IPN] Thông báo: Giao dịch ${orderId} đã được xử lý`);
+        console.log(
+          `[VNPAY IPN] Thông báo: Giao dịch ${orderId} đã được xử lý`,
+        );
         return { RspCode: "02", Message: "Order already confirmed" };
       }
 
@@ -387,24 +469,54 @@ class PaymentService {
               where: { quotation_id: transaction.quotation_id },
             });
             if (order) {
-              // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
+              // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
+              const isDepositPayment = order.is_deposit_required === true;
               await tx.orders.update({
                 where: { id: order.id },
-                data: { production_status: "pending" },
+                data: {
+                  production_status: "pending",
+                  is_deposit_paid: true,
+                },
               });
-              await invoiceService.createInvoice(order.id, amount, tx);
+              await invoiceService.createInvoice(order.id, amount, tx, isDepositPayment);
+
+              // Gửi email xác nhận
+              const user = await tx.users.findUnique({
+                where: { id: order.user_id },
+              });
+              if (user && user.email) {
+                emailService
+                  .sendPaymentSuccessConfirmation(user.email, order)
+                  .catch(console.error);
+              }
             }
           } else if (transaction.order_id) {
-            // 👇 THÊM LỆNH CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG CỦA P Ở ĐÂY
-            await tx.orders.update({
+            // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
+            const orderObj = await tx.orders.findUnique({ where: { id: transaction.order_id }});
+            const isDepositPayment = orderObj?.is_deposit_required === true;
+            const order = await tx.orders.update({
               where: { id: transaction.order_id },
-              data: { production_status: "pending" },
+              data: {
+                production_status: "pending",
+                is_deposit_paid: true,
+              },
             });
             await invoiceService.createInvoice(
               transaction.order_id,
               amount,
               tx,
+              isDepositPayment
             );
+
+            // Gửi email xác nhận
+            const user = await tx.users.findUnique({
+              where: { id: order.user_id },
+            });
+            if (user && user.email) {
+              emailService
+                .sendPaymentSuccessConfirmation(user.email, order)
+                .catch(console.error);
+            }
           }
         });
         console.log(
@@ -417,11 +529,15 @@ class PaymentService {
           where: { id: transaction.id },
           data: { status: "failed" },
         });
-        console.log(`[VNPAY IPN] Thanh toán thất bại, cập nhật trạng thái failed cho ${orderId}`);
+        console.log(
+          `[VNPAY IPN] Thanh toán thất bại, cập nhật trạng thái failed cho ${orderId}`,
+        );
         return { RspCode: "00", Message: "Success" };
       }
     } else {
-      console.error(`[VNPAY IPN] Lỗi: Checksum không hợp lệ cho đơn ${orderId}`);
+      console.error(
+        `[VNPAY IPN] Lỗi: Checksum không hợp lệ cho đơn ${orderId}`,
+      );
       console.log(`- SecureHash nhận được:`, secureHash);
       console.log(`- Hash tự tính toán:`, signed);
       return { RspCode: "97", Message: "Invalid Checksum" };

@@ -6,11 +6,8 @@ const { Server } = require("socket.io");
 
 // Khởi chạy các tác vụ chạy ngầm (Cron Jobs)
 require("./cron/importCleanup.cron");
-// Import cái cronjob vừa viết
-const startSessionCleanupCron = require("./cron/sessionCleanup.cron");
-
-// Khởi động chạy ngầm
-startSessionCleanupCron();
+require("./cron/sessionCleanup.cron")();
+require("./cron/autoCompleteOrders.js");
 const app = express();
 
 const server = http.createServer(app);

@@ -10,11 +10,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   X,
   FileText,
   TrendingUp,
   Package,
   Truck,
+  Warehouse,
 } from "lucide-react";
 import Portal from "../../components/common/Portal";
 import Pagination from "../../components/common/Pagination";
@@ -62,22 +64,26 @@ export default function ManageOrders() {
             status: o.production_status || "pending",
             shipping_address: o.quotations?.address || "Liên hệ nhận hàng",
             notes: o.quotations?.notes || "",
-            items: o.order_items?.length > 0 
+            items: o.order_items?.length > 0
               ? o.order_items.map((i) => ({
-                  id: i.id,
-                  product_name: i.products?.product_name || "Sản phẩm",
-                  quantity: i.quantity,
-                  price: parseFloat(i.price) || 0,
-                  unit: "Cái",
-                })) 
+                id: i.id,
+                product_name: i.products?.product_name || "Sản phẩm",
+                quantity: i.quantity,
+                price: parseFloat(i.price) || 0,
+                unit: "Cái",
+              }))
               : o.quotations?.quotation_specs?.map((spec) => ({
-                  id: spec.id,
-                  product_name: spec.component_name || "Linh kiện",
-                  quantity: 1,
-                  price: parseFloat(spec.snapshot_price) || 0,
-                  unit: "Hệ",
-                })) || [],
+                id: spec.id,
+                product_name: spec.component_name || "Linh kiện",
+                quantity: 1,
+                price: parseFloat(spec.snapshot_price) || 0,
+                unit: "Hệ",
+              })) || [],
             total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
+            shipping_fee: parseFloat(o.shipping_fee) || 0,
+            installation_fee: parseFloat(o.installation_fee) || 0,
+            is_deposit_paid: o.is_deposit_paid,
+            deposit_amount: parseFloat(o.deposit_amount) || 0,
           }));
           setOrders(formattedOrders);
         }
@@ -176,10 +182,36 @@ export default function ManageOrders() {
             <Clock className="w-3 h-3" /> Chờ xử lý
           </span>
         );
+      case "WAITING_WAREHOUSE":
+      case "warehouse_received":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-cyan-50 text-cyan-700 border border-cyan-200">
+            <Warehouse className="w-3 h-3" /> Kho đang xử lý
+          </span>
+        );
+      case "out_of_stock":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertCircle className="w-3 h-3" /> Thiếu vật tư - Chờ duyệt nhập
+          </span>
+        );
+      case "import_approved":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-teal-50 text-teal-700 border border-teal-200">
+            <CheckCircle2 className="w-3 h-3" /> Đã duyệt nhập hàng
+          </span>
+        );
       case "production":
+      case "production_ready":
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-amber-50 text-amber-700 border border-amber-200">
             <Package className="w-3 h-3" /> Đang sản xuất
+          </span>
+        );
+      case "production_completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-purple-50 text-purple-700 border border-purple-200">
+            <Package className="w-3 h-3" /> Sản xuất xong
           </span>
         );
       case "delivering":
@@ -293,7 +325,10 @@ export default function ManageOrders() {
             { key: "ALL", label: "Tất cả đơn" },
             { key: "pending_payment", label: "Chờ thanh toán" },
             { key: "pending", label: "Chờ duyệt" },
-            { key: "production", label: "Đang sản xuất" },
+            { key: "WAITING_WAREHOUSE", label: "Chờ kho" },
+            { key: "out_of_stock", label: "Thiếu vật tư" },
+            { key: "production_ready", label: "Đang sản xuất" },
+            { key: "production_completed", label: "Sản xuất xong" },
             { key: "delivering", label: "Đang giao" },
             { key: "completed", label: "Đã hoàn thành" },
             { key: "cancelled", label: "Đã hủy" },
@@ -496,6 +531,28 @@ export default function ManageOrders() {
                             </td>
                           </tr>
                         ))}
+                        {/* Các loại phí */}
+                        {selectedOrder.shipping_fee > 0 && (
+                          <tr className="font-semibold">
+                            <td colSpan="3" className="p-3 text-right text-xs text-on-surface-variant">
+                              Phí vận chuyển:
+                            </td>
+                            <td className="p-3 text-right text-sm font-mono text-on-surface">
+                              {formatMoney.format(selectedOrder.shipping_fee)}
+                            </td>
+                          </tr>
+                        )}
+                        {selectedOrder.installation_fee > 0 && (
+                          <tr className="font-semibold">
+                            <td colSpan="3" className="p-3 text-right text-xs text-on-surface-variant">
+                              Phí hỗ trợ lắp đặt:
+                            </td>
+                            <td className="p-3 text-right text-sm font-mono text-on-surface">
+                              {formatMoney.format(selectedOrder.installation_fee)}
+                            </td>
+                          </tr>
+                        )}
+
                         {/* Dòng tổng số tiền */}
                         <tr className="bg-surface-container-low/30 font-black">
                           <td
@@ -508,6 +565,28 @@ export default function ManageOrders() {
                             {formatMoney.format(selectedOrder.total_amount)}
                           </td>
                         </tr>
+
+                        {/* Thông tin cọc */}
+                        {selectedOrder.is_deposit_paid && (
+                          <>
+                            <tr className="font-bold">
+                              <td colSpan="3" className="p-3 text-right text-xs uppercase text-emerald-600">
+                                Đã thanh toán (Cọc 10%):
+                              </td>
+                              <td className="p-3 text-right text-sm font-black font-mono text-emerald-600">
+                                {formatMoney.format(selectedOrder.deposit_amount)}
+                              </td>
+                            </tr>
+                            <tr className="bg-rose-50/50 font-black">
+                              <td colSpan="3" className="p-3 text-right text-sm uppercase text-rose-700">
+                                Số tiền còn lại phải thu (COD):
+                              </td>
+                              <td className="p-3 text-right text-base font-black text-rose-700 font-mono">
+                                {formatMoney.format(selectedOrder.total_amount - selectedOrder.deposit_amount)}
+                              </td>
+                            </tr>
+                          </>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -555,20 +634,6 @@ export default function ManageOrders() {
                         onClick={() =>
                           handleUpdateStatus(
                             selectedOrder.id,
-                            "production",
-                            "Đang sản xuất",
-                            "Đơn hàng đã được chuyển xuống xưởng sản xuất",
-                          )
-                        }
-                        className="h-9 px-3 bg-amber-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-amber-700 transition-all"
-                      >
-                        Bắt đầu sản xuất
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleUpdateStatus(
-                            selectedOrder.id,
                             "cancelled",
                             "Đã hủy đơn",
                             "Đơn hàng bị hủy",
@@ -581,7 +646,24 @@ export default function ManageOrders() {
                     </>
                   )}
 
-                  {selectedOrder.status === "production" && (
+                  {selectedOrder.status === "out_of_stock" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleUpdateStatus(
+                          selectedOrder.id,
+                          "import_approved",
+                          "Duyệt yêu cầu nhập hàng",
+                          "Admin đã duyệt yêu cầu nhập vật tư bổ sung cho đơn hàng.",
+                        )
+                      }
+                      className="h-9 px-3 bg-teal-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-teal-700 transition-all"
+                    >
+                      Duyệt yêu cầu nhập hàng
+                    </button>
+                  )}
+
+                  {(selectedOrder.status === "production" || selectedOrder.status === "production_completed" || selectedOrder.status === "production_ready") && (
                     <button
                       type="button"
                       onClick={() =>

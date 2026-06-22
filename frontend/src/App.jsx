@@ -28,6 +28,7 @@ import NotFound from "./pages/error/NotFound";
 import PaymentResult from "./pages/checkout/PaymentResult";
 import Specification from "./pages/legal/Specification";
 import SpecConfirmation from "./pages/legal/SpecConfirmation";
+import DepositPayment from "./pages/checkout/DepositPayment";
 import About from "./pages/about/About"
 import TechnicalTerms from "./pages/legal/TechnicalTerms";
 import FAQ from "./pages/info/FAQ";
@@ -135,6 +136,14 @@ const routeMap = [
     element: (
       <MainLayout>
         <Checkout />
+      </MainLayout>
+    ),
+  },
+  {
+    path: "/deposit-payment",
+    element: (
+      <MainLayout>
+        <DepositPayment />
       </MainLayout>
     ),
   },
