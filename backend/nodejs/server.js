@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const http = require("http");
 const { Server } = require("socket.io");
+const prisma = require("./models/prisma");
 
 // Khởi chạy các tác vụ chạy ngầm (Cron Jobs)
 require("./cron/importCleanup.cron");
@@ -19,13 +20,38 @@ const io = new Server(server, {
 });
 
 // Quản lý Socket
+// Hàm đánh thức / giữ kết nối Database (Có giới hạn 1 phút 1 lần để tránh nghẽn Pool)
+let lastPingTime = 0;
+const keepDatabaseAlive = async () => {
+  const now = Date.now();
+  if (now - lastPingTime < 1000 * 60) return;
+  lastPingTime = now;
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    console.log('⚡ DB connection verified/woken up.');
+  } catch (e) {
+    console.log('⚠️ Failed to ping DB (It might be waking up).', e.message);
+  }
+};
+
+// Giữ DB sống tự động mỗi 10 phút để tránh Supabase sleep
+setInterval(keepDatabaseAlive, 1000 * 60 * 10);
+
 io.on("connection", (socket) => {
   console.log("Client connected to Socket:", socket.id);
+
+  // Gọi DB dậy ngay khi có client (frontend) truy cập
+  keepDatabaseAlive();
 
   socket.on("join", (data) => {
     if (data?.role === "admin" || data?.role === "superadmin") {
       socket.join("room_admin");
       console.log(`Socket ${socket.id} joined room_admin`);
+    }
+    if (data?.role === "warehouse") {
+      socket.join("room_warehouse");
+      console.log(`Socket ${socket.id} joined room_warehouse`);
     }
     if (data?.user_id) {
       socket.join(`room_user_${data.user_id}`);
@@ -65,6 +91,7 @@ const userRoutes = require("./routes/user.routes.js");
 const componentTemplateRoutes = require("./routes/component_template.routes.js");
 const warehouseRoutes = require("./routes/warehouse.routes.js");
 const aiRoutes = require("./routes/ai.routes.js");
+const materialRequestRoutes = require("./routes/material_request.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -89,6 +116,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/component-templates", componentTemplateRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/material-requests", materialRequestRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

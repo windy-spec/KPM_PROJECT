@@ -34,6 +34,9 @@ const warehouseService = {
     completeImportAndReady(orderId) {
         return apiClient.post(`/warehouse/orders/${orderId}/import-ready`);
     },
+    startProduction(orderId) {
+        return apiClient.post(`/warehouse/orders/${orderId}/start-production`);
+    },
     completeProduction(orderId) {
         return apiClient.post(`/warehouse/orders/${orderId}/complete-production`);
     },
@@ -50,6 +53,14 @@ const warehouseService = {
      */
     getAllInventory() {
         return apiClient.get("/warehouse/inventory");
+    },
+
+    /**
+     * Lấy danh sách lịch sử phiếu xuất kho
+     * Backend route: GET /warehouse/inventory/export-history
+     */
+    getExportHistory() {
+        return apiClient.get("/warehouse/inventory/export-history");
     },
 
     /**

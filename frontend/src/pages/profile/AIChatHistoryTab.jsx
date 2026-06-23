@@ -12,6 +12,26 @@ const formatDate = (dateString) => {
   });
 };
 
+const formatSpec = (val) => {
+  if (!val) return "___";
+  let cleaned = String(val).replace(/^[:\s-]+/, "").trim();
+  if (!cleaned || cleaned.toLowerCase().includes("not") || cleaned.toLowerCase() === "null" || cleaned.toLowerCase() === "n/a") {
+    return "___";
+  }
+  const numMatch = cleaned.match(/^[\d.,]+$/);
+  if (numMatch) {
+    const num = parseFloat(cleaned.replace(/,/g, ''));
+    if (!isNaN(num)) {
+      if (num >= 1000) {
+        return `${(num / 1000).toLocaleString("vi-VN")} m`;
+      } else {
+        return `${num.toLocaleString("vi-VN")} mm`;
+      }
+    }
+  }
+  return cleaned;
+};
+
 const AIChatHistoryTab = () => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,9 +138,9 @@ const AIChatHistoryTab = () => {
                                 <h4 className="font-bold text-primary mb-2 text-center text-sm border-b border-outline-variant/50 pb-2">📋 Bản vẽ: <span className="text-secondary">{draw.drawing_name}</span></h4>
                                 {draw.image_url && <img src={draw.image_url} alt="Bản vẽ" className="w-full max-h-40 object-contain rounded-lg mb-2" />}
                                 <div className="text-xs space-y-1.5 mt-2 bg-white p-2 rounded border border-outline-variant/50">
-                                  <div className="flex justify-between"><b>Chiều dài:</b> <span>{draw.specifications?.length || '___'}</span></div>
-                                  <div className="flex justify-between"><b>Chiều rộng:</b> <span>{draw.specifications?.width || '___'}</span></div>
-                                  <div className="flex justify-between"><b>Chiều cao:</b> <span>{draw.specifications?.height || '___'}</span></div>
+                                  <div className="flex justify-between"><b>Chiều dài:</b> <span>{formatSpec(draw.specifications?.length)}</span></div>
+                                  <div className="flex justify-between"><b>Chiều rộng:</b> <span>{formatSpec(draw.specifications?.width)}</span></div>
+                                  <div className="flex justify-between"><b>Chiều cao:</b> <span>{formatSpec(draw.specifications?.height)}</span></div>
                                   <div className="flex justify-between"><b>Tỉ lệ:</b> <span className="text-primary font-bold">{draw.scale_ratio || 'N/A'}</span></div>
                                 </div>
                               </div>

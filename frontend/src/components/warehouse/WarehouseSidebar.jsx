@@ -23,32 +23,33 @@ const WarehouseSidebar = () => {
 
     const navGroups = [
         {
-            label: 'Nghiệp vụ kho',
+            label: 'Luồng Công Việc',
             items: [
-                { label: 'Tổng Quan Kho', icon: LayoutDashboard, panel: 'overview' },
+                { label: 'Tổng Quan Tồn Kho', icon: LayoutDashboard, panel: 'overview' },
                 { label: 'Yêu Cầu Xuất Vật Tư', icon: ClipboardList, panel: 'export_requests' },
-                { label: 'Lịch Sử Nhập/Xuất', icon: ClipboardCheck, panel: 'warehouse_logs' },
-                { label: 'Quản Lý Kho', icon: Box, panel: 'inventory' },
-                { label: 'Yêu cầu Nhập hàng', icon: ClipboardCheck, panel: 'request' },
+                { label: 'Lịch Sử Phiếu Xuất', icon: ClipboardList, panel: 'export_history' },
+                { label: 'Lập Phiếu Đề Xuất Nhập', icon: ClipboardCheck, panel: 'request' },
+                { label: 'Quản Lý Đề Xuất Nhập', icon: Layers, panel: 'material_requests' },
             ],
         },
         {
-            label: 'Danh mục vật tư',
+            label: 'Quản Trị Kho',
             items: [
+                { label: 'Quản Lý Tồn Kho Thực', icon: Box, panel: 'inventory' },
                 {
-                    label: 'Quản lý danh mục',
-                    icon: Boxes,
+                    label: 'Danh Mục Cấu Hình',
+                    icon: Ruler,
                     isDropdown: true,
                     isOpen: isConfigOpen,
                     onToggle: () => setIsConfigOpen(!isConfigOpen),
                     submenu: [
-                        { label: 'Quản Lý Vật Tư', icon: Boxes, panel: 'materials' },
-                        { label: 'Loại Vật Tư', icon: Layers, panel: 'material_types' },
-                        { label: 'Đơn Vị Tính', icon: Ruler, panel: 'material_units' },
+                        { label: 'Loại Vật Tư', panel: 'material_types' },
+                        { label: 'Đơn Vị Tính', panel: 'material_units' },
+                        { label: 'Danh Sách Vật Tư', panel: 'materials' },
                     ],
                 },
             ],
-        },
+        }
     ];
 
     return (

@@ -88,6 +88,20 @@ const ChatWindow = () => {
     ) {
       return "___";
     }
+
+    // Tự động định dạng đơn vị m hoặc mm
+    const numMatch = cleaned.match(/^[\d.,]+$/);
+    if (numMatch) {
+      const num = parseFloat(cleaned.replace(/,/g, ''));
+      if (!isNaN(num)) {
+        if (num >= 1000) {
+          return `${(num / 1000).toLocaleString("vi-VN")} m`;
+        } else {
+          return `${num.toLocaleString("vi-VN")} mm`;
+        }
+      }
+    }
+
     return cleaned;
   };
 
@@ -385,16 +399,21 @@ const ChatWindow = () => {
 
         {isTyping && (
           <div className="flex justify-start animate-in fade-in slide-in-from-bottom-2">
-            <div className="bg-white border border-outline-variant/60 text-on-surface rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm flex items-center gap-2">
-              <span className="w-2 h-2 bg-secondary/60 rounded-full animate-bounce"></span>
-              <span
-                className="w-2 h-2 bg-secondary/60 rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              ></span>
-              <span
-                className="w-2 h-2 bg-secondary/60 rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              ></span>
+            <div className="bg-white border border-outline-variant/60 text-on-surface rounded-2xl rounded-tl-sm px-5 py-3 shadow-sm flex items-center gap-3">
+              <span className="text-[13px] font-medium text-secondary/80 italic">
+                {isTyping === 'image' ? 'AI đang phân tích bản vẽ...' : 'AI đang suy nghĩ...'}
+              </span>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="w-1.5 h-1.5 bg-secondary/60 rounded-full animate-bounce"></span>
+                <span
+                  className="w-1.5 h-1.5 bg-secondary/60 rounded-full animate-bounce"
+                  style={{ animationDelay: "150ms" }}
+                ></span>
+                <span
+                  className="w-1.5 h-1.5 bg-secondary/60 rounded-full animate-bounce"
+                  style={{ animationDelay: "300ms" }}
+                ></span>
+              </div>
             </div>
           </div>
         )}

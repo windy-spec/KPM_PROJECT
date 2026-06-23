@@ -41,3 +41,46 @@ Bạn không cần làm luồng Kho tự đi "Nhập sản phẩm", mà Kho ch�
   - Nếu kho **Đủ Vật Tư**: Tự động mở Transaction trừ đi tồn kho của các vật tư tương ứng, ghi log vào bảng `inventory_logs` (Hành động `EXPORT`), và đổi trạng thái đơn hàng sang `MANUFACTURING` (Đang sản xuất).
 
 => **Giao diện FE cần làm cho Kho:** Chỉ cần một danh sách các đơn hàng có trạng thái `WAITING_WAREHOUSE`, bấm vào xem chi tiết đơn sẽ thấy nút **"Xác nhận xuất kho"** (Gọi API bước 2).
+
+---
+
+## 3. LUỒNG TRỢ LÝ AI (AI CHAT AGENT)
+
+Hệ thống AI được thiết kế theo dạng **Agent kết hợp Tool Registry**. AI không trực tiếp thao tác (sửa/xóa) trên Database để tránh rủi ro, mà đóng vai trò như một nhân viên Sale/Tư vấn am hiểu kỹ thuật.
+
+### Các "Công cụ" (Tools) AI đang có:
+Khi khách hàng nhắn tin, Backend sẽ tự động phân tích ngữ cảnh và cấp cho AI các "quyền" (Tools) để gọi hàm lấy dữ liệu:
+1. **`tra_cuu_san_pham_va_danh_muc` (searchProduct):** AI dùng để lấy các mẫu sản phẩm hiện có ở xưởng để tư vấn, báo giá sơ bộ.
+2. **`tra_cuu_vat_tu` (searchMaterial):** Lấy giá vật tư (sắt, inox...) hoặc sơn.
+3. **`tra_cuu_nhan_cong` (searchLabor):** Xem đơn giá nhân công hiện tại.
+4. **Trích xuất bản vẽ (Vision AI):** Khách gửi ảnh, AI phân tích bóc tách các thông số Dài, Rộng, Cao.
+5. **(Sắp tới) `checkOrderStatus`:** Kiểm tra trạng thái đơn hàng. 
+
+### Định hướng hiển thị FE:
+Để trải nghiệm chân thực nhất:
+- **Tương tác thông minh:** Khi AI đang xử lý (nhất là lúc đọc bản vẽ tốn nhiều thời gian), FE hiển thị hiệu ứng Loading kiểu typing (như dấu `...` kèm text "AI đang suy nghĩ/phân tích...") để người dùng không tưởng hệ thống bị lag.
+- **Xử lý số liệu linh hoạt:** Khi AI trả về thông số (ví dụ Dài 2000), FE sẽ tự động fomat số liệu thông minh. Ví dụ: Nếu số `> 1000`, FE tự chuyển về dạng mét (Ví dụ `2000` -> `2 m`). Nếu `<= 1000`, FE giữ nguyên đơn vị milimet (`500 mm`). Việc này giúp khách hàng dễ hình dung kích thước.
+- **Cá nhân hóa (Context User):** AI được cấp quyền đọc `user_profile` của khách đang đăng nhập (thông qua token/session). Nhờ đó AI biết tên khách, số điện thoại để tự xưng hô thân mật hoặc tự động lấy đúng số điện thoại để gọi hàm tra cứu đơn hàng mà không cần bắt khách phải nhập thủ công mã số.
+
+---
+
+## 4. LUỒNG QUẢN LÝ YÊU CẦU NHẬP VẬT TƯ (MATERIAL IMPORT REQUEST FLOW)
+
+Đây là luồng nghiệp vụ khi kho báo thiếu vật tư (Out of Stock) trong lúc chuẩn bị nguyên liệu cho đơn hàng, dẫn tới việc hệ thống sinh ra một **Yêu cầu nhập vật tư** gửi lên cho Admin.
+
+**Bước 1: Thủ kho (Warehouse) báo thiếu hàng**
+- Khi gọi API `/api/warehouse/orders/:orderId/out-of-stock`, backend tự động tính toán những vật tư bị thiếu và tạo các bản ghi vào bảng `material_import_requests` với trạng thái `PENDING`.
+- Nếu Thủ kho muốn đề xuất thêm (bù hao), họ cũng có thể gọi API `POST /api/material-requests` (FE có thể gọi qua `materialRequestService.createRequest()`).
+
+**Bước 2: Cả Kho và Admin theo dõi danh sách**
+- **API:** `GET /api/material-requests`
+- Trả về danh sách toàn bộ các yêu cầu nhập vật tư (bao gồm mã vật tư, tên vật tư, số lượng yêu cầu, ghi chú, mã đơn hàng).
+- API này không giới hạn Admin, nên tài khoản Kho (hoặc role khác) cũng gọi được để xem tiến độ. FE (`ManageMaterialRequests.jsx`) phân quyền nút Duyệt chỉ hiện ra khi role = `ADMIN`.
+
+**Bước 3: Admin duyệt Yêu cầu nhập vật tư**
+- **API:** `PUT /api/material-requests/:id/approve`
+- **Tác dụng:**
+  - Chuyển trạng thái yêu cầu sang `APPROVED`.
+  - Tự động cộng dồn số lượng được yêu cầu vào bảng tồn kho thực tế (`inventory`).
+  - Ghi lịch sử nhập kho (`inventory_logs`) với action `IMPORT`.
+- Việc này giúp tinh gọn thao tác cho Admin, không cần phải chạy ra ngoài tự chỉnh tồn kho bằng tay nữa.

@@ -107,7 +107,7 @@ class WarehouseService {
         },
       });
     });
-    return { message: "Đã tiếp nhận đơn hàng thành công!" };
+    return { message: "Đã tiếp nhận đơn hàng thành công!", order: order };
   }
 
   // 2. Đủ hàng -> Bắt đầu sản xuất (warehouse_received -> production_ready)
@@ -179,13 +179,34 @@ class WarehouseService {
       });
     });
 
-    return { message: "Xác nhận đủ vật tư, đơn hàng chuyển sang Sẵn sàng sản xuất!" };
+    return { message: "Xác nhận đủ vật tư, đơn hàng chuyển sang Sẵn sàng sản xuất!", order: order };
   }
 
-  // 3. Thiếu hàng -> Yêu cầu nhập (warehouse_received -> out_of_stock)
+  // 3. Thiếu hàng -> Báo cáo thiếu (chuyển sang out_of_stock)
   async reportOutOfStock(orderId) {
     const order = await prisma.orders.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
+
+    const requiredMaterials = order.material_requirements || {};
+    let isReallyMissing = false;
+
+    // Tính toán lượng thiếu cho từng loại vật tư để kiểm chứng
+    for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
+      const requiredQty = parseFloat(requiredQtyStr);
+      const inv = await prisma.inventory.findUnique({
+        where: { material_id: matId }
+      });
+      const currentStock = inv ? parseFloat(inv.quantity) : 0;
+      
+      if (currentStock < requiredQty) {
+        isReallyMissing = true;
+        break;
+      }
+    }
+
+    if (!isReallyMissing) {
+      throw new Error("Toàn bộ vật tư cho đơn hàng này đã đầy đủ, không thể báo thiếu!");
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.orders.update({
@@ -196,21 +217,12 @@ class WarehouseService {
         data: {
           order_id: orderId,
           stage_name: "out_of_stock",
-          stage_description: "Phát hiện thiếu vật tư, yêu cầu Admin duyệt nhập thêm kho.",
+          stage_description: "Phát hiện thiếu vật tư, chờ NV Kho lập phiếu yêu cầu nhập thêm.",
           tracked_at: new Date(),
         },
       });
-      
-      // Auto create import request? 
-      await tx.import_batches.create({
-        data: {
-          batch_type: "MATERIAL_REQUEST",
-          status: "PENDING",
-          file_name: `Yêu cầu bổ sung vật tư cho đơn hàng #${orderId}`,
-        },
-      });
     });
-    return { message: "Đã báo cáo thiếu vật tư và tạo yêu cầu nhập kho thành công!" };
+    return { message: "Đã báo cáo thiếu vật tư thành công!", order: order };
   }
 
   // 4. Đã nhập hàng & Cập nhật tồn kho (import_approved -> production_ready)
@@ -254,10 +266,33 @@ class WarehouseService {
       });
     });
 
-    return { message: "Cập nhật tồn kho và chuyển trạng thái sản xuất thành công!" };
+    return { message: "Cập nhật tồn kho và chuyển trạng thái sản xuất thành công!", order: order };
   }
 
-  // 5. Gia công xong (production_ready -> production_completed)
+  // 4.5. Bắt đầu sản xuất (production_ready -> producing)
+  async startProduction(orderId) {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Không tìm thấy đơn hàng!");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.orders.update({
+        where: { id: orderId },
+        data: { production_status: "producing" },
+      });
+      await tx.order_tracking.create({
+        data: {
+          order_id: orderId,
+          stage_name: "producing",
+          stage_description: "Đơn hàng đang được tiến hành sản xuất.",
+          tracked_at: new Date(),
+        },
+      });
+    });
+
+    return { message: "Đã đưa đơn hàng vào trạng thái đang sản xuất!", order: order };
+  }
+
+  // 5. Gia công xong (producing -> production_completed)
   async completeProduction(orderId) {
     const order = await prisma.orders.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
@@ -277,7 +312,7 @@ class WarehouseService {
       });
     });
 
-    return { message: "Gia công hoàn tất, đã gửi báo cáo nghiệm thu!" };
+    return { message: "Gia công hoàn tất, đã gửi báo cáo nghiệm thu!", order: order };
   }
 
   // Lấy tất cả thông tin tồn kho
@@ -293,6 +328,31 @@ class WarehouseService {
         },
       },
       orderBy: { updated_at: "desc" },
+    });
+  }
+
+  // Lấy danh sách lịch sử phiếu xuất kho
+  async getExportHistory() {
+    return await prisma.inventory_logs.findMany({
+      where: {
+        action_type: "EXPORT",
+      },
+      include: {
+        materials: {
+          select: {
+            material_code: true,
+            material_name: true,
+            material_units: {
+              select: {
+                unit_name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        created_at: "desc",
+      },
     });
   }
 
@@ -381,14 +441,23 @@ class WarehouseService {
       return updated;
     });
   }
-  // Tạo yêu cầu nhập hàng mới
+  // Tạo yêu cầu nhập hàng mới thủ công từ form Kho
   async requestImportMaterials(payload) {
-    return await prisma.import_batches.create({
-      data: {
-        batch_type: "MATERIAL_REQUEST",
-        status: "PENDING",
-        file_name: payload.note || "Yêu cầu cấp vật tư từ kho",
-      },
+    const { items, note } = payload;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        throw new Error("Vui lòng chọn ít nhất 1 vật tư để yêu cầu!");
+    }
+
+    const dataToInsert = items.map(item => ({
+      order_id: item.order_id || null,
+      material_id: item.material_id,
+      requested_quantity: parseFloat(item.requested_quantity),
+      note: note || "Yêu cầu cấp vật tư bổ sung từ kho",
+      status: "PENDING",
+    }));
+
+    return await prisma.material_import_requests.createMany({
+      data: dataToInsert
     });
   }
   // Xoá tồn kho (Sử dụng Transaction & Ghi Log)

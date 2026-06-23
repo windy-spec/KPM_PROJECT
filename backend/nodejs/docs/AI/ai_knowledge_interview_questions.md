@@ -148,4 +148,11 @@
 100. Tầm nhìn kinh doanh: Trong vòng 5-10 năm tới, khi các loại máy móc tự động hóa, cắt laser CNC ngày càng rẻ đi, thì xưởng cơ khí hàn uốn thủ công truyền thống cần thay đổi mô hình nào để không bị đào thải? Lợi thế cạnh tranh nào nên giữ lại?
 
 ---
-*Bằng cách phân loại rõ ràng theo 7 nhóm Intent này, sau khi chuyên gia điền xong đáp án, chúng ta có thể nạp thẳng trực tiếp vào Schema Database (nhóm nào vào bảng `materials`, nhóm nào vào `ai_knowledge_patterns`) rất trơn tru.*
+
+## INTENT 8: TÍNH TOÁN BÁO GIÁ SƠ BỘ THEO KÍCH THƯỚC (GIA CÔNG THEO YÊU CẦU)
+*(Tác động: Bảng `ai_knowledge_base` và Kịch bản RAG khi khách cung cấp Chiều Ngang / Chiều Cao)*
+
+101. Khi khách hàng hỏi về một mặt hàng gia công (như hàng rào, mái che, lan can) và cung cấp cụ thể kích thước (ví dụ: "nhà 3m ngang và 2m dài"), quy trình tính toán Diện Tích (m2) và kết hợp Đơn giá Vật tư + Đơn giá Nhân công để đưa ra Khoảng giá dự toán tham khảo sẽ diễn ra như thế nào để khách không bị hụt hẫng vì "không tìm thấy sản phẩm đóng gói sẵn"? 
+
+---
+*Bằng cách phân loại rõ ràng theo 8 nhóm Intent này, sau khi chuyên gia điền xong đáp án, chúng ta có thể nạp thẳng trực tiếp vào Schema Database (nhóm nào vào bảng `materials`, nhóm nào vào `ai_knowledge_patterns`) rất trơn tru.*

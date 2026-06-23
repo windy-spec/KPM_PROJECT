@@ -204,7 +204,13 @@ export default function ManageOrders() {
       case "production":
       case "production_ready":
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-purple-50 text-purple-700 border border-purple-200">
+            <Package className="w-3 h-3" /> Sẵn sàng sản xuất
+          </span>
+        );
+      case "producing":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-teal-50 text-teal-700 border border-teal-200 animate-pulse shadow-sm shadow-teal-500/20">
             <Package className="w-3 h-3" /> Đang sản xuất
           </span>
         );
@@ -327,7 +333,8 @@ export default function ManageOrders() {
             { key: "pending", label: "Chờ duyệt" },
             { key: "WAITING_WAREHOUSE", label: "Chờ kho" },
             { key: "out_of_stock", label: "Thiếu vật tư" },
-            { key: "production_ready", label: "Đang sản xuất" },
+            { key: "production_ready", label: "Sẵn sàng SX" },
+            { key: "producing", label: "Đang sản xuất" },
             { key: "production_completed", label: "Sản xuất xong" },
             { key: "delivering", label: "Đang giao" },
             { key: "completed", label: "Đã hoàn thành" },

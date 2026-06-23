@@ -77,10 +77,10 @@ class AIService {
 
       QUY TẮC CỐT LÕI:
       [CẤM BỊA ĐẶT]: TUYỆT ĐỐI KHÔNG tự bịa giá. Chỉ dùng giá từ DỮ LIỆU TĨNH hoặc TỪ CÁC HÀM (TOOLS).
-      [TRỌNG TÂM THỰC TẾ]: Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Khi khách hỏi công dụng vật tư, BẮT BUỘC phải liên hệ tới các sản phẩm mà Xưởng KPM hay thi công (Ví dụ: Inox 304 bóng BA bên em hay dùng làm lan can, cổng vì nó sáng bóng và chống gỉ tốt). TUYỆT ĐỐI KHÔNG kể lể lan man sang ngành y tế, hàng không, thực phẩm.
-      [NGOÀI PHẠM VI]: Nếu khách hỏi lạc đề, hãy khéo léo đáp: "Dạ, vấn đề này em chưa rõ, để em nhờ thợ kỹ thuật tư vấn thêm cho mình nhé ạ."
+      [TRỌNG TÂM THỰC TẾ]: Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Nếu khách hỏi "có sản phẩm tương tự không", hãy kiểm tra kỹ lịch sử chat để biết "tương tự" là tương tự cái gì, sau đó gọi hàm tìm kiếm tương ứng. 
+      [NGOÀI PHẠM VI]: Nếu khách hỏi lạc đề hoàn toàn khỏi lĩnh vực cơ khí, hãy khéo léo đáp: "Dạ, vấn đề này em chưa rõ, để em nhờ thợ kỹ thuật tư vấn thêm cho mình nhé ạ."
       [TRÌNH BÀY]: Dùng gạch đầu dòng (-). **In đậm** các con số, giá tiền, tên vật tư.
-      [CHỐT SALE KHÉO LÉO]: Đặt MỘT câu hỏi mở tự nhiên ở cuối để dẫn dắt khách làm sản phẩm. KHÔNG hỏi máy móc. (Ví dụ chuẩn: "Dạ nhà mình dự định làm cổng hay lan can để em tư vấn độ dày phù hợp ạ?").
+      [CHỐT SALE KHÉO LÉO]: Chỉ đặt câu hỏi dẫn dắt (Ví dụ: "Dạ nhà mình dự định làm cổng hay lan can để em tư vấn thêm ạ?") nếu khách đang có ý định đặt hàng. NẾU KHÁCH CHỈ HỎI XÃ GIAO thì tuyệt đối KHÔNG đính kèm câu hỏi chốt sale này.
 
       DỮ LIỆU TĨNH CỦA XƯỞNG:
       ${contextText}
@@ -354,6 +354,16 @@ class AIService {
           image_url: imageUrl,
           specifications: extractedSpecs.dimensions || {},
           scale_ratio: extractedSpecs.scale_ratio,
+        },
+      });
+
+      // Lưu câu trả lời của hệ thống (AI) vào DB để giữ logic ngữ cảnh cho các câu hỏi sau
+      const specsString = `Dài: ${extractedSpecs.dimensions?.length || 'N/A'}, Rộng: ${extractedSpecs.dimensions?.width || 'N/A'}, Cao: ${extractedSpecs.dimensions?.height || 'N/A'}`;
+      await prisma.ai_chat_messages.create({
+        data: {
+          session_id: currentSessionId,
+          sender_type: "ai",
+          message_text: `[Hệ thống]: Đã bóc tách bản vẽ "${extractedSpecs.drawing_name}". Thông số: ${specsString}. Hãy tư vấn dựa trên thông số này nếu khách hỏi thêm.`,
         },
       });
 

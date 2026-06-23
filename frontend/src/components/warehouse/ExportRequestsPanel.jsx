@@ -1,33 +1,55 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, Loader2, Boxes, Calendar, User, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { ClipboardList, Loader2, Boxes, Calendar, User, CheckCircle2, AlertCircle, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import orderService from '../../services/order.service';
+import warehouseService from '../../services/warehouse.service';
 
 const ExportRequestsPanel = ({
     onReceiveOrder,
     onConfirmSufficientStock,
     onReportOutOfStock,
     onCompleteImportAndReady,
+    onStartProduction,
     onCompleteProduction,
     isWarehouseActionLoading
 }) => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [inventoryMap, setInventoryMap] = useState({});
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
 
     const fetchOrders = async () => {
         setLoading(true);
         setError("");
         try {
-            const response = await orderService.getAllOrders();
-            const allOrders = response?.data?.orders || response?.orders || response?.data || [];
+            const [ordersRes, invRes] = await Promise.all([
+                orderService.getAllOrders(),
+                warehouseService.getAllInventory()
+            ]);
+            
+            const allOrders = ordersRes?.data?.orders || ordersRes?.orders || ordersRes?.data || [];
 
             if (Array.isArray(allOrders)) {
-                const validStatuses = ['WAITING_WAREHOUSE', 'admin_approved', 'warehouse_received', 'out_of_stock', 'import_approved', 'production_ready'];
+                // Theo yêu cầu: hiển thị danh sách đơn hàng đang chờ kiểm kho và đang sản xuất
+                const validStatuses = ['WAITING_WAREHOUSE', 'warehouse_received', 'production_ready', 'producing'];
                 setOrders(allOrders.filter(o => validStatuses.includes(o.production_status)));
             }
+
+            const invData = invRes?.data?.data || invRes?.data || invRes || [];
+            const map = {};
+            if (Array.isArray(invData)) {
+                invData.forEach(item => {
+                    map[item.material_id] = {
+                        name: item.materials?.material_name || 'Vật tư chưa xác định',
+                        stock: parseFloat(item.quantity || 0)
+                    };
+                });
+            }
+            setInventoryMap(map);
+
         } catch (err) {
-            console.error("Lỗi lấy danh sách đơn hàng:", err);
-            setError("Không thể tải danh sách đơn hàng từ máy chủ.");
+            console.error("Lỗi lấy dữ liệu:", err);
+            setError("Không thể tải dữ liệu từ máy chủ.");
         } finally {
             setLoading(false);
         }
@@ -47,69 +69,17 @@ const ExportRequestsPanel = ({
     };
 
     const renderActionButtons = (order) => {
-        switch (order.production_status) {
-            case 'WAITING_WAREHOUSE':
-            case 'admin_approved':
-                return (
-                    <button
-                        onClick={() => onReceiveOrder(order.id, fetchOrders)}
-                        disabled={isWarehouseActionLoading}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all disabled:opacity-50"
-                    >
-                        Tiếp nhận đơn
-                        <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                );
-            case 'warehouse_received':
-                return (
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                            onClick={() => onConfirmSufficientStock(order.id, fetchOrders)}
-                            disabled={isWarehouseActionLoading}
-                            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all disabled:opacity-50"
-                        >
-                            Đủ hàng -&gt; Sản xuất
-                        </button>
-                        <button
-                            onClick={() => onReportOutOfStock(order.id, fetchOrders)}
-                            disabled={isWarehouseActionLoading}
-                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all disabled:opacity-50"
-                        >
-                            Thiếu hàng -&gt; Yêu cầu nhập
-                        </button>
-                    </div>
-                );
-            case 'import_approved':
-                return (
-                    <button
-                        onClick={() => onCompleteImportAndReady(order.id, fetchOrders)}
-                        disabled={isWarehouseActionLoading}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all disabled:opacity-50"
-                    >
-                        Đã nhập hàng & Cập nhật tồn kho
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                    </button>
-                );
-            case 'production_ready':
-                return (
-                    <button
-                        onClick={() => onCompleteProduction(order.id, fetchOrders)}
-                        disabled={isWarehouseActionLoading}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all disabled:opacity-50"
-                    >
-                        Gia công xong (Báo cáo Admin)
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                    </button>
-                );
-            case 'out_of_stock':
-                return (
-                    <span className="text-rose-600 font-bold text-xs uppercase flex items-center gap-1 bg-rose-50 px-3 py-2 rounded-xl border border-rose-200">
-                        <AlertCircle className="w-4 h-4" /> Đang chờ duyệt nhập hàng
-                    </span>
-                );
-            default:
-                return null;
-        }
+        // Chúng ta sẽ render nút trong phần dropdown checklist, nên ở đây chỉ trả về nút toggle dropdown nếu cần
+        const isExpanded = expandedOrderId === order.id;
+        return (
+            <button
+                onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-1.5 active:scale-[0.97] transition-all"
+            >
+                {isExpanded ? "Đóng chi tiết" : "Xem vật tư & Thao tác"}
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+        );
     };
 
     const getStatusBadge = (status) => {
@@ -119,7 +89,8 @@ const ExportRequestsPanel = ({
             'warehouse_received': <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Đang kiểm kho</span>,
             'out_of_stock': <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Thiếu vật tư</span>,
             'import_approved': <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Chờ nhập bù kho</span>,
-            'production_ready': <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Đang sản xuất</span>,
+            'production_ready': <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">Sẵn sàng sản xuất</span>,
+            'producing': <span className="bg-teal-50 text-teal-700 border border-teal-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase animate-pulse">Đang sản xuất</span>,
         };
         return badges[status] || <span className="bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">{status}</span>;
     };
@@ -145,10 +116,10 @@ const ExportRequestsPanel = ({
                         <div>
                             <h3 className="text-base font-black text-on-surface uppercase tracking-wider flex items-center gap-2">
                                 <ClipboardList className="w-5 h-5 text-teal-600" />
-                                Bảng Điều Khiển Sản Xuất
+                                Đơn Hàng Đang Chờ Kiểm Kho
                             </h3>
                             <p className="text-xs text-on-surface-variant font-medium mt-1">
-                                Danh sách đơn hàng đang trong quy trình xử lý tại kho.
+                                Danh sách các đơn hàng cần xác nhận xuất vật tư để đưa vào sản xuất.
                             </p>
                         </div>
                         <span className="bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
@@ -166,26 +137,139 @@ const ExportRequestsPanel = ({
                             {orders.map((order) => {
                                 const totalMaterialTypes = order.material_requirements ? Object.keys(order.material_requirements).length : 0;
                                 return (
-                                    <div key={order.id} className="border border-outline-variant/80 hover:border-teal-300 hover:shadow-md rounded-xl p-5 bg-white transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <div className="space-y-2">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-sm font-black text-slate-800">Mã đơn hàng: <span className="text-teal-700">#{order.id}</span></span>
-                                                {getStatusBadge(order.production_status)}
+                                    <div key={order.id} className="border border-outline-variant/80 hover:border-teal-300 rounded-xl bg-white transition-all overflow-hidden">
+                                        <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer" onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}>
+                                            <div className="space-y-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm font-black text-slate-800">Mã đơn hàng: <span className="text-teal-700">#{order.id}</span></span>
+                                                    {getStatusBadge(order.production_status)}
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-on-surface-variant font-medium">
+                                                    <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(order.createdAt || order.created_at)}</p>
+                                                    <p className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> {order.user_id || order.userId || "Khách vãng lai"}</p>
+                                                    <p className="flex items-center gap-1.5 sm:col-span-2 mt-1 font-semibold text-slate-700">
+                                                        <Boxes className="w-3.5 h-3.5 text-teal-600" />
+                                                        <span className="text-teal-700 font-bold px-1.5 bg-teal-50 rounded border border-teal-100">
+                                                            {totalMaterialTypes} mã vật tư yêu cầu
+                                                        </span>
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-on-surface-variant font-medium">
-                                                <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(order.createdAt || order.created_at)}</p>
-                                                <p className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> {order.user_id || order.userId || "Khách vãng lai"}</p>
-                                                <p className="flex items-center gap-1.5 sm:col-span-2 mt-1 font-semibold text-slate-700">
-                                                    <Boxes className="w-3.5 h-3.5 text-teal-600" />
-                                                    <span className="text-teal-700 font-bold px-1.5 bg-teal-50 rounded border border-teal-100">
-                                                        {totalMaterialTypes} mã vật tư yêu cầu
-                                                    </span>
-                                                </p>
+                                            <div className="flex flex-row md:flex-col items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-outline-variant/40">
+                                                {renderActionButtons(order)}
                                             </div>
                                         </div>
-                                        <div className="flex flex-row md:flex-col items-end justify-between md:justify-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-outline-variant/40">
-                                            {renderActionButtons(order)}
-                                        </div>
+
+                                        {/* Bảng Dropdown Checklist Vật Tư */}
+                                        {expandedOrderId === order.id && (
+                                            <div className="border-t border-outline-variant/50 bg-slate-50/50 p-5">
+                                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                    <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                                                    Danh sách vật tư cần dùng
+                                                </h4>
+                                                <div className="overflow-x-auto border border-outline-variant/60 rounded-xl bg-white shadow-sm">
+                                                    <table className="w-full text-left text-xs border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-slate-100 text-slate-600 uppercase tracking-wider font-black border-b border-outline-variant/60 text-[10px]">
+                                                                <th className="p-3 pl-4">Tên vật tư</th>
+                                                                <th className="p-3 text-center">Cần dùng</th>
+                                                                <th className="p-3 text-center">Tồn kho hiện tại</th>
+                                                                <th className="p-3 text-center">Trạng thái</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-outline-variant/40 font-medium">
+                                                            {Object.entries(order.material_requirements || {}).map(([matId, qty]) => {
+                                                                const requiredQty = parseFloat(qty);
+                                                                const invData = inventoryMap[matId] || { name: 'Vật tư chưa xác định', stock: 0 };
+                                                                const isEnough = invData.stock >= requiredQty;
+                                                                return (
+                                                                    <tr key={matId} className="hover:bg-slate-50/50 transition-colors">
+                                                                        <td className="p-3 pl-4 font-bold text-slate-700">{invData.name}</td>
+                                                                        <td className="p-3 text-center font-semibold text-slate-800">{requiredQty}</td>
+                                                                        <td className="p-3 text-center text-slate-600">{invData.stock}</td>
+                                                                        <td className="p-3 text-center">
+                                                                            {isEnough ? (
+                                                                                <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-bold text-[10px] uppercase">Đủ hàng</span>
+                                                                            ) : (
+                                                                                <span className="text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 font-bold text-[10px] uppercase">Thiếu hàng</span>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                            {totalMaterialTypes === 0 && (
+                                                                <tr>
+                                                                    <td colSpan="4" className="p-4 text-center text-slate-500 font-semibold italic">Không có vật tư nào được yêu cầu cho đơn hàng này.</td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                {/* Các nút hành động */}
+                                                <div className="mt-4 flex flex-col sm:flex-row gap-3 justify-end">
+                                                    {(() => {
+                                                        const reqs = Object.entries(order.material_requirements || {});
+                                                        let hasEnoughStock = true;
+                                                        if (reqs.length > 0) {
+                                                            hasEnoughStock = reqs.every(([matId, qty]) => {
+                                                                const reqQty = parseFloat(qty);
+                                                                const stock = inventoryMap[matId]?.stock || 0;
+                                                                return stock >= reqQty;
+                                                            });
+                                                        }
+
+                                                        if (['WAITING_WAREHOUSE', 'warehouse_received'].includes(order.production_status)) {
+                                                            return (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => onReportOutOfStock(order.id, fetchOrders)}
+                                                                        disabled={isWarehouseActionLoading}
+                                                                        className="px-5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
+                                                                    >
+                                                                        <AlertCircle className="w-4 h-4" /> Thiếu hàng - Yêu cầu nhập
+                                                                    </button>
+                                                                    
+                                                                    <button
+                                                                        onClick={() => onConfirmSufficientStock(order.id, fetchOrders)}
+                                                                        disabled={isWarehouseActionLoading || !hasEnoughStock || totalMaterialTypes === 0}
+                                                                        className={`px-5 py-2 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all ${hasEnoughStock && totalMaterialTypes > 0 ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-600/20' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                                                                    >
+                                                                        <CheckCircle2 className="w-4 h-4" /> Đủ hàng - Đưa vào sản xuất
+                                                                    </button>
+                                                                </>
+                                                            );
+                                                        }
+
+                                                        if (order.production_status === 'production_ready') {
+                                                            return (
+                                                                <button
+                                                                    onClick={() => onStartProduction(order.id, fetchOrders)}
+                                                                    disabled={isWarehouseActionLoading}
+                                                                    className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
+                                                                >
+                                                                    <ArrowRight className="w-4 h-4" /> Bắt đầu sản xuất
+                                                                </button>
+                                                            );
+                                                        }
+
+                                                        if (order.production_status === 'producing') {
+                                                            return (
+                                                                <button
+                                                                    onClick={() => onCompleteProduction(order.id, fetchOrders)}
+                                                                    disabled={isWarehouseActionLoading}
+                                                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle2 className="w-4 h-4" /> Hoàn tất sản xuất (Gửi báo cáo)
+                                                                </button>
+                                                            );
+                                                        }
+
+                                                        return null;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

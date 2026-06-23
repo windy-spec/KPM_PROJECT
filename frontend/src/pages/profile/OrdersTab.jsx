@@ -43,6 +43,7 @@ const OrdersTab = () => {
         return 1;
       case "warehouse_received":
       case "production_ready":
+      case "producing":
       case "MANUFACTURING":
         return 2;
       case "production_completed":
@@ -155,7 +156,7 @@ const OrdersTab = () => {
     const processingStatuses = [
       "pending", "production", "admin_approved", "WAITING_WAREHOUSE",
       "warehouse_received", "out_of_stock", "import_approved",
-      "production_ready", "production_completed",
+      "production_ready", "producing", "production_completed",
     ];
     if (processingStatuses.includes(status)) {
       return (

@@ -106,7 +106,7 @@ export const AIChatProvider = ({ children }) => {
 
     const userMessage = { role: 'user', content: text, type: 'text' };
     setMessages((prev) => [...prev, userMessage]);
-    setIsTyping(true);
+    setIsTyping('text');
 
     try {
       const res = await aiService.chat(text, sessionId, mode);
@@ -139,7 +139,7 @@ export const AIChatProvider = ({ children }) => {
         id: uploadingMsgId, role: 'user', content: 'Đang gửi bản vẽ...', 
         type: 'image_uploading', previewUrl: previewUrl
     }]);
-    setIsTyping(true);
+    setIsTyping('image');
 
     try {
       const uploadRes = await aiService.uploadDrawing(file);
@@ -205,7 +205,7 @@ export const AIChatProvider = ({ children }) => {
         id: uploadingMsgId, role: 'user', content: 'Đang tải bản vẽ từ link mạng...', 
         type: 'image_uploading', previewUrl: imageUrl
     }]);
-    setIsTyping(true);
+    setIsTyping('image');
 
     try {
       setMessages((prev) => prev.map(msg => 

@@ -38,6 +38,7 @@ import ManageOrders from "./ManageOrders";
 import ManageUsers from "./ManageUsers";
 import ManageComponentTemplates from "./ManageComponentTemplates";
 import ManageProductionRequests from "./ManageProductionRequests";
+import ManageMaterialRequests from "../../components/admin/ManageMaterialRequests";
 import adminService from "../../services/admin.service";
 
 
@@ -419,6 +420,12 @@ const Dashboard = () => {
             {activePanel === "production_requests" && (
               <section>
                 <ManageProductionRequests />
+              </section>
+            )}
+
+            {activePanel === "material_requests" && (
+              <section className="h-full">
+                <ManageMaterialRequests />
               </section>
             )}
 

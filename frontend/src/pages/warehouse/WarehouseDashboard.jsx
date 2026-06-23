@@ -8,6 +8,8 @@ import ManageMaterialUnits from "../../components/admin/ManageMaterialUnits";
 import ExportRequestsPanel from "../../components/warehouse/ExportRequestsPanel";
 import WarehouseInventory from "./WarehouseInventory";
 import WarehouseRequest from "./WarehouseRequest";
+import WarehouseExportHistory from "./WarehouseExportHistory";
+import ManageMaterialRequests from "../../components/admin/ManageMaterialRequests";
 import { authService } from "../../services/auth.service";
 import warehouseService from "../../services/warehouse.service";
 import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react";
@@ -132,7 +134,25 @@ const WarehouseDashboard = () => {
         }
     };
 
-    // Nút 5: Gia công xong (Gửi báo cáo Admin) (production_ready -> production_completed)
+    // Nút 4.5: Bắt đầu sản xuất (production_ready -> producing)
+    const handleStartProduction = async (orderId, callBackSuccess) => {
+        setWarehouseLoading(true);
+        handleClearAlert();
+        setProcessingOrderId(orderId);
+        try {
+            const response = await warehouseService.startProduction(orderId);
+            if (response.data?.success) {
+                setWarehouseSuccess(response.data.message || "Đã chuyển đơn hàng vào quá trình sản xuất!");
+                if (callBackSuccess) callBackSuccess();
+            }
+        } catch (e) {
+            setWarehouseError(e.response?.data?.message || "Lỗi khi bắt đầu sản xuất.");
+        } finally {
+            setWarehouseLoading(false);
+        }
+    };
+
+    // Nút 5: Gia công xong (Gửi báo cáo Admin) (producing -> production_completed)
     const handleCompleteProduction = async (orderId, callBackSuccess) => {
         setWarehouseLoading(true);
         handleClearAlert();
@@ -162,7 +182,11 @@ const WarehouseDashboard = () => {
                     title={
                         activePanel === 'overview' ? 'Tổng Quan Tồn Kho' :
                             activePanel === 'export_requests' ? 'Yêu Cầu Xuất Kho' :
-                                activePanel === 'materials' ? "Quản lý mã vật tư" : "Danh mục phân loại"
+                                activePanel === 'export_history' ? 'Lịch Sử Phiếu Xuất' :
+                                    activePanel === 'request' ? 'Lập Phiếu Đề Xuất Nhập' :
+                                    activePanel === 'material_requests' ? 'Quản Lý Đề Xuất Nhập' :
+                                        activePanel === 'materials' ? "Quản lý mã vật tư" :
+                                            activePanel === 'inventory' ? "Quản lý Tồn Kho Thực" : "Danh mục phân loại"
                     }
                     subTitle="Phân hệ Thủ Kho KPM"
                 />
@@ -274,15 +298,28 @@ const WarehouseDashboard = () => {
                                 onConfirmSufficientStock={handleConfirmSufficientStock}
                                 onReportOutOfStock={handleReportOutOfStock}
                                 onCompleteImportAndReady={handleCompleteImportAndReady}
+                                onStartProduction={handleStartProduction}
                                 onCompleteProduction={handleCompleteProduction}
                                 isWarehouseActionLoading={warehouseLoading}
                             />
                         </section>
                     )}
 
+                    {activePanel === "export_history" && (
+                        <section>
+                            <WarehouseExportHistory />
+                        </section>
+                    )}
+
                     {activePanel === "request" && (
                         <section>
                             <WarehouseRequest />
+                        </section>
+                    )}
+
+                    {activePanel === "material_requests" && (
+                        <section className="h-[calc(100vh-100px)]">
+                            <ManageMaterialRequests />
                         </section>
                     )}
 

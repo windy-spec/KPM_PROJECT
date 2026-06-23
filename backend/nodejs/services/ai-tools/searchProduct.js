@@ -8,10 +8,18 @@ module.exports = {
       parameters: {
         type: "object",
         properties: {
-          search_keyword: {
+          product_type: {
             type: "string",
             description:
-              "Từ khóa chính (VD: 'Lan can', 'Cửa cuốn', 'Sắt mỹ thuật')",
+              "Tên cốt lõi của hạng mục sản phẩm. BẮT BUỘC chỉ là một danh từ ngắn gọn (Ví dụ: 'Cầu thang', 'Cổng', 'Lan can', 'Mái che'). KHÔNG bao gồm kích thước hay vật liệu ở đây.",
+          },
+          dimensions: {
+            type: "string",
+            description: "Kích thước khách hàng yêu cầu (nếu có). (Ví dụ: 'Dài 4m, ngang 5m', 'Cao 2m'). Để trống nếu khách không nhắc đến."
+          },
+          material: {
+            type: "string",
+            description: "Vật liệu khách yêu cầu (nếu có). (Ví dụ: 'Sắt', 'Inox 304', 'Kính cường lực'). Để trống nếu khách không nhắc."
           },
           search_intent: {
             type: "string",
@@ -20,7 +28,7 @@ module.exports = {
               "Phân tích câu hỏi: Chọn 'category' nếu khách hỏi chung chung (VD: 'Có mẫu lan can nào?'). Chọn 'specific_product' nếu hỏi chi tiết (VD: 'Lan can kính cường lực tay vịn gỗ giá bao nhiêu?')",
           },
         },
-        required: ["search_keyword", "search_intent"],
+        required: ["product_type", "search_intent"],
       },
     },
   },
@@ -32,7 +40,7 @@ module.exports = {
         const categories = await prisma.product_categories.findMany({
           where: {
             category_name: {
-              contains: args.search_keyword,
+              contains: args.product_type,
               mode: "insensitive",
             },
           },
@@ -53,7 +61,12 @@ module.exports = {
                     `- ${p.product_name}: ${p.base_price ? p.base_price.toLocaleString("vi-VN") + "đ" : "Chưa có giá"}`,
                 )
                 .join("\n");
-              return `[Thông tin nội bộ cho AI]: Xưởng CÓ làm danh mục "${cat.category_name}".\nMột số mẫu tiêu biểu để AI giới thiệu cho khách:\n${sampleProducts || "Đang cập nhật mẫu mới."}\nHãy dựa vào đây để gợi ý khách chọn mẫu hoặc hỏi thêm yêu cầu.`;
+              return `[Thông tin nội bộ cho AI]: Xưởng CÓ làm danh mục "${cat.category_name}".
+Một số mẫu tiêu biểu để AI giới thiệu cho khách:
+${sampleProducts || "Đang cập nhật mẫu mới."}
+
+LƯU Ý NGỮ CẢNH: Khách đang yêu cầu kích thước [${args.dimensions || 'chưa rõ'}] và vật liệu [${args.material || 'chưa rõ'}]. 
+Hãy tư vấn cụ thể dựa trên các mẫu có sẵn và khen ngợi sự lựa chọn kích thước/vật liệu của khách. Hãy nhấn mạnh xưởng chuyên gia công đo đạc thực tế theo đúng kích thước khách cần.`;
             })
             .join("\n\n");
         }
@@ -65,13 +78,13 @@ module.exports = {
           OR: [
             {
               product_name: {
-                contains: args.search_keyword,
+                contains: args.product_type,
                 mode: "insensitive",
               },
             },
             {
               product_code: {
-                contains: args.search_keyword,
+                contains: args.product_type,
                 mode: "insensitive",
               },
             },
@@ -94,10 +107,19 @@ module.exports = {
             : "Giá liên hệ";
           return `- Mẫu: ${p.product_name} (Mã: ${p.product_code})\n  Giá: ${priceDisplay}\n  Đặc điểm: ${p.description || "Không có"}`;
         });
-        return `[Thông tin nội bộ cho AI]: Tìm thấy các sản phẩm sau:\n${formattedList.join("\n\n")}\nHãy báo giá và tóm tắt đặc điểm cho khách một cách tự nhiên.`;
+        return `[Thông tin nội bộ cho AI]: Tìm thấy các sản phẩm sau:
+${formattedList.join("\n\n")}
+
+LƯU Ý NGỮ CẢNH: Khách đang yêu cầu kích thước [${args.dimensions || 'chưa rõ'}] và vật liệu [${args.material || 'chưa rõ'}]. 
+Hãy báo giá, tóm tắt đặc điểm và khẳng định xưởng hoàn toàn có thể làm theo đúng kích thước/vật liệu khách yêu cầu.`;
       }
 
-      return `[Thông tin nội bộ cho AI]: Xưởng KHÔNG có danh mục hoặc sản phẩm nào khớp với từ khóa "${args.search_keyword}". Hãy báo khách gửi bản vẽ hoặc ý tưởng để xưởng thiết kế riêng.`;
+      // Xử lý khi KHÔNG TÌM THẤY sản phẩm/danh mục
+      const allCategories = await prisma.product_categories.findMany({ take: 5 });
+      const listCat = allCategories.map(c => c.category_name).join(", ");
+      return `[Chỉ đạo AI]: Khách đang tìm "${args.product_type}" nhưng trong kho chưa có sẵn mẫu chuẩn khớp từ khóa. 
+TUY NHIÊN, hãy báo khách là xưởng CHUYÊN GIA CÔNG THEO YÊU CẦU riêng cho mọi kích thước (Khách đang cần: ${args.dimensions || 'chưa cung cấp'}). 
+Đồng thời có thể gợi ý khách tham khảo các mảng xưởng đang làm mạnh như: ${listCat}.`;
     } catch (error) {
       console.error("Lỗi DB trong searchProduct:", error);
       return "Lỗi truy xuất cơ sở dữ liệu.";

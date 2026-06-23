@@ -312,11 +312,11 @@ const WarehouseInventory = () => {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block font-bold text-slate-700 mb-1">Số lượng tồn thực tế</label>
-                                        <input type="number" step="any" min="0" required value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} className="w-full p-2.5 border rounded-lg focus:outline-teal-600 font-semibold" placeholder="0" />
+                                        <input type="number" step="1" min="0" required value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })} className="w-full p-2.5 border rounded-lg focus:outline-teal-600 font-semibold" placeholder="0" />
                                     </div>
                                     <div>
                                         <label className="block font-bold text-slate-700 mb-1">Hàng vụn dư thừa</label>
-                                        <input type="number" step="any" min="0" value={formData.leftover_amount} onChange={(e) => setFormData({ ...formData, leftover_amount: e.target.value })} className="w-full p-2.5 border rounded-lg focus:outline-teal-600 font-semibold" placeholder="0" />
+                                        <input type="number" step="1" min="0" value={formData.leftover_amount} onChange={(e) => setFormData({ ...formData, leftover_amount: parseInt(e.target.value) || 0 })} className="w-full p-2.5 border rounded-lg focus:outline-teal-600 font-semibold" placeholder="0" />
                                     </div>
                                 </div>
 

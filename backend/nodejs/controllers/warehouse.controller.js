@@ -54,6 +54,10 @@ class WarehouseController {
   async receiveOrder(req, res) {
     try {
       const result = await warehouseService.receiveOrder(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
+      }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -63,6 +67,10 @@ class WarehouseController {
   async confirmSufficientStock(req, res) {
     try {
       const result = await warehouseService.confirmSufficientStock(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+      }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       if (error.isMissingMaterialError) {
@@ -75,6 +83,11 @@ class WarehouseController {
   async reportOutOfStock(req, res) {
     try {
       const result = await warehouseService.reportOutOfStock(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
+        global.io.to("room_admin").emit("new_import_request", { orderId: req.params.orderId }); // Notify admin to check import
+      }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -84,6 +97,23 @@ class WarehouseController {
   async completeImportAndReady(req, res) {
     try {
       const result = await warehouseService.completeImportAndReady(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+      }
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async startProduction(req, res) {
+    try {
+      const result = await warehouseService.startProduction(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
+      }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -93,6 +123,10 @@ class WarehouseController {
   async completeProduction(req, res) {
     try {
       const result = await warehouseService.completeProduction(req.params.orderId);
+      if (global.io && result.order?.user_id) {
+        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
+        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
+      }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
@@ -103,6 +137,15 @@ class WarehouseController {
   async getAllInventory(req, res) {
     try {
       const data = await warehouseService.getAllInventory();
+      res.status(200).json({ success: true, data });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async getExportHistory(req, res) {
+    try {
+      const data = await warehouseService.getExportHistory();
       res.status(200).json({ success: true, data });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
