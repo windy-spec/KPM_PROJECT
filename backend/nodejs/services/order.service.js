@@ -161,7 +161,7 @@ class OrderService {
   async getOrderTracking(orderID) {
     return await prisma.order_tracking.findMany({
       where: { order_id: orderID },
-      orderBy: { created_at: "desc" },
+      orderBy: { tracked_at: "desc" },
     });
   }
 

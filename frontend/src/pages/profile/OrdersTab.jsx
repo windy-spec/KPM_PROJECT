@@ -115,7 +115,7 @@ const OrdersTab = () => {
           return [{
             stage_name: data.stage_name,
             stage_description: data.stage_description,
-            created_at: new Date().toISOString()
+            tracked_at: new Date().toISOString()
           }, ...prev];
         }
         return prev;
@@ -230,6 +230,55 @@ const OrdersTab = () => {
     } finally {
       setTrackingLoading(false);
     }
+  };
+
+  const getActorName = (track) => {
+    if (track.update_by_role)
+      return track.update_by_role;
+    if (track.created_at)
+      return track.created_at;
+
+    // 2. Phân tích tự động dựa trên từ khóa cốt lõi của Stage Name hoặc nội dung mô tả
+    const stageName = (track.stage_name || "").toLowerCase();
+    const stageDesc = (track.stage_description || "").toLowerCase();
+
+    if (stageName.includes("admin") || stageName.includes("ban giám đốc") || stageDesc.includes("admin")) {
+      return "Admin";
+    }
+    if (stageName.includes("kho") || stageDesc.includes("kho tiếp nhận") || stageDesc.includes("vật tư")) {
+      return "Bộ phận Kho";
+    }
+    if (stageName.includes("xưởng") || stageName.includes("sản xuất") || stageName.includes("gia công")) {
+      return "Phân xưởng sản xuất";
+    }
+    if (stageName.includes("khách hàng") || stageDesc.includes("khách nhận hàng")) {
+      return "Khách hàng";
+    }
+
+    return "Hệ thống";
+  };
+
+  // Bản đồ ánh xạ: Chỉ giữ lại các trạng thái bạn yêu cầu và đổi tên hiển thị
+  const TRACKING_MAP = {
+    "pending": "Đã nhận đc đơn",
+    "admin_approved": "Đã nhận đc đơn",
+
+    "pending_payment": "Đang xử lý",
+    "pending_deposit": "Đang xử lý",
+
+    "WAITING_WAREHOUSE": "Đã chuyển kho",
+    "EXPORTING_WAREHOUSE": "Đã chuyển kho",
+    "out_of_stock": "Đã chuyển kho",
+
+    "production_ready": "Kho bắt đầu sản xuất",
+    "producing": "Kho bắt đầu sản xuất",
+    "MANUFACTURING": "Kho bắt đầu sản xuất",
+
+    "production_completed": "Kho sản xuất xong",
+
+    "delivering": "Đang vận chuyển",
+    "Đang giao hàng": "Đang vận chuyển",
+    "đang vận chuyển": "Đang vận chuyển"
   };
 
   if (loading)
@@ -425,12 +474,12 @@ const OrdersTab = () => {
                     <div className="relative flex justify-between items-start w-full">
                       {/* Thanh nối Progress */}
                       <div className="absolute top-4 left-[10%] right-[10%] h-1 bg-surface-container-high rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary transition-all duration-700 ease-in-out" 
+                        <div
+                          className="h-full bg-primary transition-all duration-700 ease-in-out"
                           style={{ width: `${(getCurrentStepIndex(selectedTrackingOrder.status) / (TRACKING_STEPS.length - 1)) * 100}%` }}
                         />
                       </div>
-                      
+
                       {/* Các điểm neo Stepper */}
                       {TRACKING_STEPS.map((step, index) => {
                         const currentIndex = getCurrentStepIndex(selectedTrackingOrder.status);
@@ -440,12 +489,11 @@ const OrdersTab = () => {
 
                         return (
                           <div key={index} className="relative z-10 flex flex-col items-center flex-1">
-                            <div 
-                              className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 ${
-                                isCompleted ? "bg-primary text-white" : 
-                                isActive ? "bg-primary text-white shadow-[0_0_0_4px_rgba(var(--color-primary-rgb),0.15)] ring-2 ring-primary ring-offset-2 ring-offset-surface scale-110" : 
-                                "bg-surface-container-high text-on-surface-variant"
-                              }`}
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs transition-all duration-300 ${isCompleted ? "bg-primary text-white" :
+                                isActive ? "bg-primary text-white shadow-[0_0_0_4px_rgba(var(--color-primary-rgb),0.15)] ring-2 ring-primary ring-offset-2 ring-offset-surface scale-110" :
+                                  "bg-surface-container-high text-on-surface-variant"
+                                }`}
                             >
                               {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : index + 1}
                             </div>
@@ -476,26 +524,54 @@ const OrdersTab = () => {
                       Chưa có thông tin tiến độ nào được ghi nhận.
                     </div>
                   ) : (
-                    <div className="relative pl-4 border-l-2 border-outline-variant/40 space-y-6">
-                      {trackingData.map((track, idx) => (
-                        <div key={idx} className="relative group">
-                          <div className="absolute -left-[21px] mt-1.5 h-3 w-3 rounded-full border-2 border-surface bg-primary shadow-sm group-hover:scale-125 transition-transform" />
-                          <div className="bg-surface p-4 rounded-2xl border border-outline-variant/40 shadow-sm hover:border-primary/30 transition-colors">
-                            <p className="text-[11px] font-bold text-primary uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                              <Clock className="w-3.5 h-3.5" />
-                              {new Date(track.tracked_at || track.created_at).toLocaleString("vi-VN")}
-                            </p>
-                            <h4 className="text-sm font-black text-on-surface">
-                              {track.stage_name}
-                            </h4>
-                            {track.stage_description && (
-                              <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed font-medium">
-                                {track.stage_description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="relative pl-4 border-l-2 border-l-primary/30 space-y-6">
+                      {trackingData
+                        // BƯỚC 1: LỌC - Chỉ lấy những stage_name tồn tại trong danh sách yêu cầu
+                        .filter(track => TRACKING_MAP[track.stage_name] !== undefined)
+                        // BƯỚC 2: RENDER dữ liệu đã lọc
+                        .map((track, idx) => {
+                          const displayName = TRACKING_MAP[track.stage_name];
+
+                          return (
+                            <div key={idx} className="relative group">
+                              {/* Điểm neo chấm tròn Timeline */}
+                              <div className="absolute -left-[21px] mt-1.5 h-3 w-3 rounded-full border-2 border-surface bg-primary shadow-sm group-hover:scale-125 transition-transform" />
+
+                              <div className="bg-surface p-4 rounded-2xl border border-outline-variant/40 shadow-sm hover:border-primary/30 transition-colors">
+
+                                {/* Hiển thị thời gian cập nhật */}
+                                <p className="text-[11px] font-medium text-on-surface-variant/80 mb-2 flex flex-wrap items-center gap-1.5">
+                                  <span className="font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md text-[10px] tracking-wider uppercase">
+                                    {getActorName(track)}
+                                  </span>
+                                  <span>đã cập nhật vào lúc</span>
+                                  <span className="font-bold text-on-surface flex items-center gap-1">
+                                    <Clock className="w-3 h-3 text-primary" />
+                                    {new Date(track.tracked_at).toLocaleString("vi-VN", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "numeric"
+                                    })}
+                                  </span>
+                                </p>
+
+                                {/* Tên tiêu đề tiến độ hành động - THAY BẰNG TÊN TIẾNG VIỆT ĐÃ LỌC */}
+                                <h4 className="text-sm font-black text-on-surface text-primary">
+                                  {displayName}
+                                </h4>
+
+                                {/* Nội dung diễn giải chi tiết từ hệ thống */}
+                                {track.stage_description && (
+                                  <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed font-medium">
+                                    {track.stage_description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                     </div>
                   )}
                 </div>
