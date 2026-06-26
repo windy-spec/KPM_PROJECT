@@ -23,7 +23,7 @@ const HeroStats = () => {
         },
         {
             icon: Layers,
-            value: "5000+",
+            value: "50+",
             label: "Cấu kiện mẫu mã",
             color: "text-blue-600 bg-blue-50",
         },

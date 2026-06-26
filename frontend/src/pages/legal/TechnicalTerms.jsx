@@ -92,11 +92,6 @@ const TechnicalTerms = () => {
             definition: "Công nghệ mài hoặc cắt bỏ cạnh sắc vuông góc của chi tiết phôi để tạo thành một bề mặt nghiêng (thường là góc 45 độ), đảm bảo an toàn và dễ lắp ráp.",
             category: "Thuật ngữ gia công"
         },
-        {
-            term: "Tình yêu (Love)",
-            definition: "Toi yeu ong, Phong a.",
-            category: "Yeu ong"
-        }
     ];
 
     // TỰ ĐỘNG TẠO DANH SÁCH BẢNG CHỮ CÁI DỰA TRÊN CÁC TỪ HIỆN CÓ

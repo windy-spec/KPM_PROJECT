@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Trash2,
@@ -20,6 +20,8 @@ const Cart = () => {
   const { fetchCartCount } = useCart();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+
+  const debounceTimers = useRef({});
 
   const loadCart = async () => {
     try {
@@ -64,22 +66,65 @@ const Cart = () => {
   const handleUpdateQuantity = async (id, delta) => {
     const item = cartItems.find((i) => i.id === id);
     if (!item) return;
+
     const newQty = item.quantity + delta;
     if (newQty <= 0) return;
 
-    // Optimistic UI update
+    // BƯỚC 1: OPTIMISTIC UI - Cập nhật lập tức số lượng lên màn hình (Không xoay loading)
     setCartItems((prevItems) =>
-      prevItems.map((i) => (i.id === id ? { ...i, quantity: newQty } : i)),
+      prevItems.map((i) => (i.id === id ? { ...i, quantity: newQty } : i))
     );
 
-    try {
-      await cartService.updateQuantity(id, newQty);
-      fetchCartCount(); // Cập nhật lại số lượng trên header
-    } catch (e) {
-      console.error(e);
-      loadCart(); // Rollback on error
+    // Xác định ID chuẩn của bản ghi Database
+    const correctCartItemId = item.rawItem?._id || item.rawItem?.id || item.id;
+
+    // BƯỚC 2: DEBOUNCE - Xóa bộ hẹn giờ cũ nếu người dùng vẫn đang bấm liên tục
+    if (debounceTimers.current[id]) {
+      clearTimeout(debounceTimers.current[id]);
     }
+
+    // Thiết lập hẹn giờ: Sau 300ms kể từ cú click cuối cùng mới gửi API
+    debounceTimers.current[id] = setTimeout(async () => {
+      try {
+        // Gửi số lượng cuối cùng lên Backend
+        await cartService.updateQuantity(correctCartItemId, newQty);
+
+        // Cập nhật lại badge số lượng trên thanh Header
+        fetchCartCount();
+      } catch (e) {
+        console.error("Lỗi đồng bộ số lượng lên Server:", e);
+        notify.error("Không thể cập nhật số lượng, đang khôi phục...");
+
+        // Nếu API lỗi (mạng sập, hết hàng...), lúc này mới âm thầm rollback lại dữ liệu chuẩn
+        const res = await cartService.getCart();
+        if (res.success && res.data && res.data.cart_items) {
+          // Khôi phục lại trạng thái cũ từ DB
+          const formattedItems = res.data.cart_items.map((item) => ({
+            id: item.id,
+            product_id: item.product_id,
+            quotation_id: item.quotation_id,
+            product_name: item.products?.product_name || "Sản phẩm may đo",
+            image: item.products?.image_url || "/placeholder-product.jpg",
+            price: parseFloat(item.price) || 0,
+            quantity: item.quantity,
+            specifications: item.quotations?.quotation_specs || [],
+            rawItem: item,
+          }));
+          setCartItems(formattedItems);
+        }
+      } finally {
+        // Xóa timer sau khi đã xử lý xong
+        delete debounceTimers.current[id];
+      }
+    }, 300); // 300ms là khoảng thời gian lý tưởng cho thao tác click chuột
   };
+
+  // Đảm bảo xóa sạch các bộ hẹn giờ nếu người dùng chuyển trang đột ngột
+  useEffect(() => {
+    return () => {
+      Object.values(debounceTimers.current).forEach(clearTimeout);
+    };
+  }, []);
 
   // 3.1. Lưu sản phẩm cần xóa
   const handleOpenDeleteModal = (item) => {

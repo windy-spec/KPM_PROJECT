@@ -23,6 +23,20 @@ const ProductCard = ({ product }) => {
   const { fetchCartCount } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 
+  const isHighValue = base_price > 40000000;
+
+  // LOGIC XỬ LÝ KHI NHẤN NÚT YÊU CẦU BÁO GIÁ ĐỐI VỚI SẢN PHẨM > 40 TRIỆU
+  const handleQuoteClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Bắn thông báo hướng dẫn cho khách hàng bằng toast.info hoặc toast.warning
+    toast.info(
+      `Sản phẩm này có giá trị lớn. Vui lòng liên hệ Hotline hoặc trang Yêu Cầu Báo Giá để nhận cấu hình báo giá may đo chi tiết!`,
+      { autoClose: 5000 } // Hiển thị trong 5 giây để khách hàng kịp đọc
+    );
+  };
+
   // LOGIC THÊM VÀO GIỎ HÀNG NHANH VỚI THÔNG SỐ MẶC ĐỊNH
   const handleAddToCartQuick = async (e) => {
     e.preventDefault();
@@ -119,34 +133,53 @@ const ProductCard = ({ product }) => {
         </div>
 
         {/* Khối Hiển thị giá và Nút hành động */}
-        <div className="mt-4 pt-4 border-t border-outline-variant/40 flex flex-col gap-3">
+        <div className="mt-3 pt-3 border-t border-outline-variant/40 flex flex-col gap-2">
           <div className="text-sm font-black text-primary">
             {base_price ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(base_price) : 'Liên hệ'}
           </div>
 
-          <div className="flex gap-2 w-full">
+          {/* ĐỐI LƯU CHUẨN: Luôn nằm trên 1 hàng ngang (flex-row), khoảng cách gap-1.5 nhỏ gọn hơn */}
+          <div className="flex flex-row gap-1.5 w-full items-center">
+
             {/* NÚT TỚI TRANG TÙY CHỈNH KÍCH THƯỚC */}
             <Link
               to={`/product/${id}`}
-              className="flex-1 py-2.5 bg-surface-container border border-outline-variant/80 text-on-surface-variant text-[11px] font-black uppercase tracking-wider rounded-xl \
-                               hover:bg-on-surface hover:text-white transition-all flex items-center justify-center text-center"
+              /* Giảm padding dọc xuống py-2, cỡ chữ text-[10px] để nút thanh thoát hơn */
+              className="flex-1 py-2 bg-surface-container border border-outline-variant/60 text-on-surface-variant text-[10px] font-black uppercase tracking-wider rounded-lg 
+                 hover:bg-on-surface hover:text-white transition-all flex items-center justify-center text-center min-h-[36px] whitespace-nowrap"
             >
-              Xem cấu hình chi tiết
+              Xem Chi Tiết
             </Link>
 
-            {/* NÚT THÊM NHANH VẬT TƯ MẶC ĐỊNH VÀO GIỎ HÀNG */}
-            <button
-              onClick={handleAddToCartQuick}
-              disabled={isAdding}
-              title="Thêm nhanh vào giỏ hàng với thông số mặc định"
-              className="px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center disabled:bg-surface-container disabled:text-on-surface-variant/40 active:scale-95"
-            >
-              {isAdding ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ShoppingCart className="w-4 h-4" />
-              )}
-            </button>
+            {/* THAY THẾ HIỂN THỊ VÀ LOGIC DỰA TRÊN ĐIỀU KIỆN GIÁ (> 40 TRIỆU) */}
+            {isHighValue ? (
+              <button
+                onClick={handleQuoteClick}
+                title="Sản phẩm giá trị lớn - Yêu cầu báo giá riêng"
+                /* Thay vì chiếm flex-1 làm nút quá to, ta cho nút báo giá chiếm tỉ lệ flex-[1.2] rộng hơn nút cấu hình một chút để không vỡ chữ */
+                className="flex-[1.2] py-2 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg 
+                   hover:bg-primary/90 transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer 
+                   shadow-sm shadow-secondary/10 whitespace-nowrap min-h-[36px]"
+              >
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span>Báo giá</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleAddToCartQuick}
+                disabled={isAdding}
+                title="Thêm nhanh vào giỏ hàng"
+                /* Cố định chiều rộng nút giỏ hàng là w-9 (bằng chiều cao min-h-36) để tạo thành khối vuông tròn cực kỳ gọn */
+                className="w-9 h-9 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center 
+                   disabled:bg-surface-container disabled:text-on-surface-variant/40 active:scale-95 cursor-pointer min-h-[36px] shrink-0"
+              >
+                {isAdding ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
           </div>
         </div>
 
