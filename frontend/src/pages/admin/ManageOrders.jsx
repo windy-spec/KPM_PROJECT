@@ -22,6 +22,7 @@ import Portal from "../../components/common/Portal";
 import Pagination from "../../components/common/Pagination";
 import { showSuccess } from "../../utils/notify";
 import orderService from "../../services/order.service";
+import { useSocket } from "../../context/SocketContext";
 
 // Hàm helper format hiển thị tiền tệ VNĐ
 const formatMoney = new Intl.NumberFormat("vi-VN", {
@@ -42,15 +43,15 @@ const formatDate = (dateString) => {
 };
 
 export default function ManageOrders() {
+  const socket = useSocket();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
         const res = await orderService.getAllOrders();
         if (res.success && res.data) {
           const formattedOrders = res.data.map((o) => ({
@@ -93,8 +94,21 @@ export default function ManageOrders() {
         setLoading(false);
       }
     };
+
+  useEffect(() => {
     fetchOrders();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleOrderStatusUpdated = () => {
+      fetchOrders();
+    };
+    socket.on("orderStatusUpdated", handleOrderStatusUpdated);
+    return () => {
+      socket.off("orderStatusUpdated", handleOrderStatusUpdated);
+    };
+  }, [socket]);
 
   // Quản lý phân trang client
   const [page, setPage] = useState(1);

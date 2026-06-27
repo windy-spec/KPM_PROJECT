@@ -11,8 +11,11 @@ import {
     Eye,
     ListFilter
 } from "lucide-react";
+import { useSocket } from "../../context/SocketContext";
+import { showSuccess } from "../../utils/notify";
 
 const ManageProductionRequests = () => {
+    const socket = useSocket();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submittingId, setSubmittingId] = useState(null);
@@ -41,6 +44,38 @@ const ManageProductionRequests = () => {
     useEffect(() => {
         fetchOrders();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleNewProductionRequest = (data) => {
+            showSuccess(data.message || "Có yêu cầu sản xuất mới vừa được cập nhật!");
+            fetchOrders();
+        };
+        const handleOrderStatusUpdated = (data) => {
+            // Khi kho thay đổi trạng thái sản xuất của đơn hàng
+            fetchOrders();
+        };
+        const handleNewImportRequest = (data) => {
+            showSuccess("Có báo cáo thiếu vật tư mới từ bộ phận Kho!");
+            fetchOrders();
+        };
+        const handleImportRequestReceived = (data) => {
+            showSuccess("Bộ phận Kho đã nhận đủ vật tư nhập!");
+            fetchOrders();
+        };
+
+        socket.on("new_production_request", handleNewProductionRequest);
+        socket.on("orderStatusUpdated", handleOrderStatusUpdated);
+        socket.on("new_import_request", handleNewImportRequest);
+        socket.on("import_request_received", handleImportRequestReceived);
+
+        return () => {
+            socket.off("new_production_request", handleNewProductionRequest);
+            socket.off("orderStatusUpdated", handleOrderStatusUpdated);
+            socket.off("new_import_request", handleNewImportRequest);
+            socket.off("import_request_received", handleImportRequestReceived);
+        };
+    }, [socket]);
 
     // Logic lọc dữ liệu phía client dựa trên Tab đang active
     const filteredOrders = useMemo(() => {
@@ -202,11 +237,21 @@ const ManageProductionRequests = () => {
                                     {/* Thành phần cấu tạo của sản phẩm */}
                                     <td className="p-4 max-w-xs">
                                         <div className="space-y-1">
-                                            {order.order_items?.map((item, idx) => (
-                                                <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate">
-                                                    {item.products?.product_name || "Sản phẩm kỹ thuật"} (x{item.quantity})
-                                                </div>
-                                            ))}
+                                            {order.order_items && order.order_items.length > 0 ? (
+                                                order.order_items.map((item, idx) => (
+                                                    <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">
+                                                        {item.products?.product_name || "Sản phẩm kỹ thuật"} (x{item.quantity})
+                                                    </div>
+                                                ))
+                                            ) : order.quotations?.quotation_specs ? (
+                                                order.quotations.quotation_specs.map((spec, idx) => (
+                                                    <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">
+                                                        {spec.component_name || "Linh kiện tùy chỉnh"} (Tùy chỉnh)
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-slate-400 italic text-[11px]">Không có thông tin linh kiện</div>
+                                            )}
                                         </div>
                                     </td>
 

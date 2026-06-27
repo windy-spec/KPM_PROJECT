@@ -13,8 +13,11 @@ import ManageMaterialRequests from "../../components/admin/ManageMaterialRequest
 import { authService } from "../../services/auth.service";
 import warehouseService from "../../services/warehouse.service";
 import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react";
+import { useSocket } from "../../context/SocketContext";
+import { showSuccess, showInfo } from "../../utils/notify";
 
 const WarehouseDashboard = () => {
+    const socket = useSocket();
     const location = useLocation();
     const [currentUser, setCurrentUser] = useState(null);
 
@@ -40,6 +43,27 @@ const WarehouseDashboard = () => {
     useEffect(() => {
         handleClearAlert();
     }, [activePanel]);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleImportApproved = (data) => {
+            showSuccess("Admin đã duyệt mua vật tư, chuẩn bị nhập kho!");
+            // Kích hoạt re-render để các component con fetch lại dữ liệu nếu cần
+            window.dispatchEvent(new Event('warehouse-refresh'));
+        };
+        const handleNewWarehouseRequest = (data) => {
+            showInfo("Có yêu cầu xuất/nhập kho mới được chuyển xuống!");
+            window.dispatchEvent(new Event('warehouse-refresh'));
+        };
+
+        socket.on("import_request_approved", handleImportApproved);
+        socket.on("new_warehouse_request", handleNewWarehouseRequest);
+
+        return () => {
+            socket.off("import_request_approved", handleImportApproved);
+            socket.off("new_warehouse_request", handleNewWarehouseRequest);
+        };
+    }, [socket]);
 
     // Hàm xóa nhanh thông báo trạng thái kiểm kho
     const handleClearAlert = () => {

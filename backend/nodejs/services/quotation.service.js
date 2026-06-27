@@ -71,13 +71,19 @@ class QuotationService {
       include: { users: true },
     });
 
-    if (global.io && updatedQuotation.user_id) {
-      global.io
-        .to(`room_user_${updatedQuotation.user_id}`)
-        .emit("quote_status_changed", {
-          message: `Báo giá của bạn đã chuyển sang trạng thái: ${status}`,
-          data: updatedQuotation,
-        });
+    if (global.io) {
+      if (updatedQuotation.user_id) {
+        global.io
+          .to(`room_user_${updatedQuotation.user_id}`)
+          .emit("quote_status_changed", {
+            message: `Báo giá của bạn đã chuyển sang trạng thái: ${status}`,
+            data: updatedQuotation,
+          });
+      }
+      global.io.to("room_admin").emit("quote_status_changed", {
+        message: `Báo giá #${id.slice(0, 8)} đã chuyển sang trạng thái: ${status}`,
+        data: updatedQuotation,
+      });
     }
 
     // Nếu Admin xác nhận lên đơn hàng -> Sinh ra Order và gửi email cho Khách hàng
@@ -139,8 +145,9 @@ class QuotationService {
 
     // Tạo mảng specs dựa theo từng component
     const specsData = components.map((comp, idx) => {
-      const area =
-        (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
+      const l = parseFloat(comp.length || comp.height || 0);
+      const w = parseFloat(comp.width || 0);
+      const area = (l / 1000) * (w / 1000);
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
@@ -149,9 +156,12 @@ class QuotationService {
         paint_id: comp.paint_id || null,
         dimensions: {
           product_id,
-          width: parseFloat(comp.width),
-          height: parseFloat(comp.height),
+          length: l,
+          width: w,
+          height: parseFloat(comp.height || 0),
           area: area,
+          waste_configs: comp.waste_configs || null,
+          waste_rate: comp.waste_rate || null,
         },
         snapshot_price: detail ? detail.material_cost + detail.paint_cost : 0,
         note,
@@ -629,8 +639,9 @@ class QuotationService {
 
     // Tạo mảng specs dựa theo từng component
     const specsData = components.map((comp, idx) => {
-      const area =
-        (parseFloat(comp.width) / 1000) * (parseFloat(comp.height) / 1000);
+      const l = parseFloat(comp.length || comp.height || 0);
+      const w = parseFloat(comp.width || 0);
+      const area = (l / 1000) * (w / 1000);
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
@@ -639,9 +650,12 @@ class QuotationService {
         paint_id: comp.paint_id || null,
         dimensions: {
           product_id,
-          width: parseFloat(comp.width),
-          height: parseFloat(comp.height),
+          length: l,
+          width: w,
+          height: parseFloat(comp.height || 0),
           area: area,
+          waste_configs: comp.waste_configs || null,
+          waste_rate: comp.waste_rate || null,
         },
         snapshot_price: detail ? detail.material_cost + detail.paint_cost : 0,
         note,

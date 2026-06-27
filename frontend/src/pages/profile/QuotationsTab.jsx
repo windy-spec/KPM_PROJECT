@@ -28,9 +28,7 @@ const QuotationsTab = () => {
     if (!socket) return;
 
     const handleQuoteUpdated = (payload) => {
-      setQuotations((prev) =>
-        prev.map((q) => (q.id === payload.data.id ? payload.data : q)),
-      );
+      fetchQuotations();
       showSuccess(
         payload.message || "Yêu cầu báo giá của bạn đã được cập nhật!",
       );

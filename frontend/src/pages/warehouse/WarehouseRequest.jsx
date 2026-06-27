@@ -2,8 +2,11 @@ import React, { useState, useEffect } from "react";
 import warehouseService from "../../services/warehouse.service";
 import orderService from "../../services/order.service";
 import { Send, ClipboardList, Loader2, CheckCircle, AlertCircle, PackageSearch } from "lucide-react";
+import { useSocket } from "../../context/SocketContext";
+import { showSuccess } from "../../utils/notify";
 
 const WarehouseRequest = () => {
+    const socket = useSocket();
     const [orders, setOrders] = useState([]);
     const [inventoryMap, setInventoryMap] = useState([]);
     const [selectedOrderId, setSelectedOrderId] = useState("");
@@ -19,6 +22,18 @@ const WarehouseRequest = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleNewWarehouseRequest = (data) => {
+            showSuccess(data.message || "Có lệnh sản xuất mới chuyển sang Kho!");
+            fetchData();
+        };
+        socket.on("new_warehouse_request", handleNewWarehouseRequest);
+        return () => {
+            socket.off("new_warehouse_request", handleNewWarehouseRequest);
+        };
+    }, [socket]);
 
     const fetchData = async () => {
         setErrorMsg(""); // Clear previous errors when fetching
@@ -240,12 +255,12 @@ const WarehouseRequest = () => {
                         {loading ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Đang xử lý...
+                                <span>Đang xử lý...</span>
                             </>
                         ) : (
                             <>
                                 <Send className="w-4 h-4" />
-                                Gửi Phiếu Yêu Cầu Nhập Hàng
+                                <span>Gửi Phiếu Yêu Cầu Nhập Hàng</span>
                             </>
                         )}
                     </button>

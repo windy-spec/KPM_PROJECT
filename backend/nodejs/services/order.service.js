@@ -176,6 +176,9 @@ class OrderService {
       include: {
         order_items: {
           include: { products: true }
+        },
+        quotations: {
+          include: { quotation_specs: true }
         }
       }
     });
@@ -184,7 +187,7 @@ class OrderService {
 
     const requiredMaterials = {};
 
-    // TÍNH TOÁN (CHỈ LÀM DUY NHẤT Ở ĐÂY)
+    // TÍNH TOÁN CHO ĐƠN HÀNG TRỰC TIẾP (CÓ ORDER_ITEMS)
     for (const item of order.order_items) {
       // products.components là mảng JSON
       const components = item.products?.components || [];
@@ -193,7 +196,7 @@ class OrderService {
       for (const comp of components) {
         const matId = comp.material_id;
 
-        // Sửa lỗi: Lấy định mức tuyệt đối (ưu tiên lấy từ waste_configs, nếu không có thì lấy default_waste hoặc waste_rate)
+        // Lấy định mức tuyệt đối
         let waste = 0;
         if (matId && comp.waste_configs && comp.waste_configs[matId] && comp.waste_configs[matId].rate !== undefined) {
           waste = parseFloat(comp.waste_configs[matId].rate);
@@ -210,14 +213,51 @@ class OrderService {
       }
     }
 
+    // TÍNH TOÁN CHO ĐƠN HÀNG BÁO GIÁ TÙY CHỈNH (CÓ QUOTATION_SPECS)
+    if (order.quotations && order.quotations.quotation_specs) {
+      for (const spec of order.quotations.quotation_specs) {
+        const matId = spec.material_id;
+        if (!matId) continue;
+
+        let consumedQty = 0;
+        if (spec.dimensions) {
+          const area = parseFloat(spec.dimensions.area) || 0;
+          const qty = parseFloat(spec.dimensions.quantity) || 1;
+          
+          if (matId && spec.dimensions.waste_configs && spec.dimensions.waste_configs[matId] && spec.dimensions.waste_configs[matId].rate !== undefined) {
+            const waste = parseFloat(spec.dimensions.waste_configs[matId].rate);
+            consumedQty = waste * qty;
+          } else if (spec.dimensions.waste_rate) {
+            const waste = parseFloat(spec.dimensions.waste_rate);
+            consumedQty = waste * qty;
+          } else {
+            // Mặc định hao hụt 5% (1.05) giống như tính toán báo giá cũ
+            consumedQty = area * qty * 1.05; 
+          }
+        }
+
+        if (consumedQty > 0) {
+          if (!requiredMaterials[matId]) requiredMaterials[matId] = 0;
+          requiredMaterials[matId] += consumedQty;
+        }
+      }
+    }
+
     // Đổi trạng thái và LƯU SNAPSHOT (Lưu vĩnh viễn bảng vật tư cần dùng vào cột material_requirements)
-    await prisma.orders.update({
+    const updatedOrder = await prisma.orders.update({
       where: { id: orderId },
       data: {
         production_status: "WAITING_WAREHOUSE",
         material_requirements: requiredMaterials
       }
     });
+
+    if (global.io) {
+      global.io.to("room_warehouse").emit("new_warehouse_request", {
+        message: `Có lệnh sản xuất mới #${orderId.slice(0, 8)} cần chuẩn bị vật tư!`,
+        orderId: orderId,
+      });
+    }
 
     return requiredMaterials;
   }

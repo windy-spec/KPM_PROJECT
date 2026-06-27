@@ -125,6 +125,7 @@ class PaymentService {
       });
       if (!isDepositRequired) {
         await invoiceService.createInvoice(order_id, amount);
+        if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
       }
     } else if (quotation_id) {
       const order = await prisma.orders.findUnique({
@@ -143,6 +144,7 @@ class PaymentService {
         });
         if (!isDepositRequired) {
           await invoiceService.createInvoice(order.id, amount);
+          if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
         }
       }
     }
@@ -256,6 +258,7 @@ class PaymentService {
           }
         }
       });
+      if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới đã thanh toán MoMo!" });
       console.log(
         "✅ [MOMO WEBHOOK] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
       );
@@ -519,6 +522,7 @@ class PaymentService {
             }
           }
         });
+        if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới đã thanh toán VNPAY!" });
         console.log(
           "✅ [VNPAY IPN] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
         );

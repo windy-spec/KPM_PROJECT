@@ -654,10 +654,10 @@ export default function CustomQuoteForm() {
           }`}
         >
           {loading ? (
-            "Đang gửi yêu cầu..."
+            <span>Đang gửi yêu cầu...</span>
           ) : (
             <>
-              <Send className="h-4 w-4" /> Gửi Yêu Cầu Báo Giá Với Admin
+              <Send className="h-4 w-4" /> <span>Gửi Yêu Cầu Báo Giá Với Admin</span>
             </>
           )}
         </button>

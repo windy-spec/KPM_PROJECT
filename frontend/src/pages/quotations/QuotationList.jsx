@@ -75,12 +75,19 @@ export default function QuotationList({ onOpen }) {
       load();
     };
 
+    const handleQuoteStatusChanged = (payload) => {
+      showSuccess(payload?.message || "Trạng thái của một báo giá vừa được cập nhật!");
+      load();
+    };
+
     socket.on("new_quotation", handleNewQuote);
     socket.on("quote_negotiated", handleQuoteNegotiated);
+    socket.on("quote_status_changed", handleQuoteStatusChanged);
 
     return () => {
       socket.off("new_quotation", handleNewQuote);
       socket.off("quote_negotiated", handleQuoteNegotiated);
+      socket.off("quote_status_changed", handleQuoteStatusChanged);
     };
   }, [socket]);
 

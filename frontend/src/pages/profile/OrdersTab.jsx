@@ -92,6 +92,7 @@ const OrdersTab = () => {
                 })) || [],
             raw_items: o.order_items, // Giữ lại nguyên gốc để truyền qua Checkout
             raw_quotation_specs: o.quotations?.quotation_specs, // Giữ thêm specs báo giá
+            quotations: o.quotations, // Truyền sang để lấy title
           }));
           setOrders(formattedOrders);
         }
@@ -108,10 +109,8 @@ const OrdersTab = () => {
     if (!socket) return;
 
     const handleOrderStatusUpdated = (data) => {
-      setOrders((prev) =>
-        prev.map(o => o.id === data.orderId ? { ...o, status: data.status } : o)
-      );
-      showSuccess(`Đơn hàng ${data.orderId.split('-').pop()} vừa được cập nhật: ${data.stage_name}`);
+      fetchOrders();
+      showSuccess(`Đơn hàng ${data.orderId.split('-').pop()} vừa được cập nhật: ${data.stage_name || data.status}`);
 
       // Nếu đang mở modal theo dõi chính đơn hàng này, cập nhật thêm tracking log luôn
       setTrackingData(prev => {
@@ -371,16 +370,18 @@ const OrdersTab = () => {
                       let formattedCheckoutItems = [];
 
                       if (isFromQuote) {
-                        formattedCheckoutItems = order.raw_quotation_specs.map((s) => ({
-                           id: s.id,
-                           product_id: s.dimensions?.product_id || null,
-                           product_name: s.component_name || "Linh kiện tùy chỉnh",
-                           product_code: "KPM-CUSTOM",
-                           image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
-                           material_name: s.note || "Báo giá tùy chỉnh",
-                           quantity: s.dimensions?.quantity || 1,
-                           price: parseFloat(s.snapshot_price) || 0,
-                        }));
+                        formattedCheckoutItems = [
+                          {
+                             id: order.id,
+                             product_id: null,
+                             product_name: order.quotations?.nick_name || order.quotations?.title || "Sản phẩm gia công theo yêu cầu",
+                             product_code: order.order_code || "KPM-CUSTOM",
+                             image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                             material_name: "Báo giá tùy chỉnh (Đã chốt)",
+                             quantity: 1,
+                             price: order.total_amount - (order.shipping_fee || 0) - (order.installation_fee || 0),
+                          }
+                        ];
                       } else {
                         formattedCheckoutItems = (order.raw_items || []).map(
                           (i) => ({
