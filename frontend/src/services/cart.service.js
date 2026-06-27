@@ -12,12 +12,12 @@ const cartService = {
   },
 
   updateQuantity: async (itemId, quantity) => {
-    const response = await apiClient.put(`/cart/${itemId}`, { quantity });
+    const response = await apiClient.put(`/cart/items/${itemId}`, { quantity });
     return response.data;
   },
 
   removeItem: async (itemId) => {
-    const response = await apiClient.delete(`/cart/items/${itemId}`); // Thêm /items cho đúng với Route Backend
+    const response = await apiClient.delete(`/cart/items/${itemId}`);
     return response.data;
   },
 

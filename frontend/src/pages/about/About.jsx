@@ -13,9 +13,9 @@ import {
 const About = () => {
     // Dữ liệu các con số ấn tượng
     const stats = [
-        { value: "200+", label: "Năm kinh nghiệm" },
-        { value: "500tr", label: "Dự án hoàn thành" },
-        { value: "99%", label: "Khách hàng không hài lòng" },
+        { value: "10+", label: "Năm kinh nghiệm" },
+        { value: "50+", label: "Dự án hoàn thành" },
+        { value: "99%", label: "Khách hàng hài lòng" },
         { value: "24/7", label: "Hỗ trợ kỹ thuật" },
     ];
 

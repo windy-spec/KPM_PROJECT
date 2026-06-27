@@ -8,18 +8,24 @@ import {
 } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { ToastContainer } from "react-toastify";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+import RoleGuard from "./components/auth/RoleGuard";
+import PublicGuard from "./components/auth/PublicGuard";
+import UserGuard from "./components/auth/UserGuard";
+
+import { CartProvider } from "./context/CartContext";
+import { AIChatProvider } from "./context/AIChatContext";
+
 import MainLayout from "./components/layout/MainLayout";
 import Home from "./pages/client/Home";
 import Login from "./pages/auth/Login";
-import { GoogleOAuthProvider } from "@react-oauth/google";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Profile from "./pages/profile/Profile";
 import ProductList from "./pages/product/ProductList";
 import ProductDetail from "./pages/product/ProductDetail";
 import AdminDashboard from "./pages/admin/Dashboard";
-import RoleGuard from "./components/auth/RoleGuard";
-import PublicGuard from "./components/auth/PublicGuard";
 import Checkout from "./pages/checkout/Checkout";
 import Cart from "./pages/cart/Cart";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -35,10 +41,7 @@ import FAQ from "./pages/info/FAQ";
 import WarrantyPolicy from "./pages/legal/WarrantyPolicy";
 import CustomQuoteForm from './components/quotation/CustomQuoteForm';
 import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
-
 import ScrollToTop from "./components/common/ScrollToTop";
-import { CartProvider } from "./context/CartContext";
-import { AIChatProvider } from "./context/AIChatContext";
 import ChatWindow from "./components/chat/ChatWindow";
 
 
@@ -46,43 +49,55 @@ const routeMap = [
   {
     path: "/",
     element: (
-      <MainLayout>
-        <Home />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <Home />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/terms-of-service",
     element: (
-      <MainLayout>
-        <TermsOfService />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <TermsOfService />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/privacy-policy",
     element: (
-      <MainLayout>
-        <PrivacyPolicy />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <PrivacyPolicy />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/specification",
     element: (
-      <MainLayout>
-        <Specification />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <Specification />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/spec-confirmation",
     element: (
-      <MainLayout>
-        <SpecConfirmation />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <SpecConfirmation />
+        </MainLayout>
+      </UserGuard>
     ),
   },
+
+  /* --- PHÂN HỆ AUTH (GIỮ NGUYÊN PUBLIC GUARD) --- */
   {
     path: "/login",
     element: (
@@ -107,54 +122,130 @@ const routeMap = [
       </PublicGuard>
     ),
   },
+
+  /* --- TIẾP TỤC BỌC USER GUARD CHO CÁC TRANG CLIENT --- */
   {
     path: "/profile",
     element: (
-      <MainLayout>
-        <Profile />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <Profile />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/products",
     element: (
-      <MainLayout>
-        <ProductList />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <ProductList />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/product/:id",
     element: (
-      <MainLayout>
-        <ProductDetail />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <ProductDetail />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/checkout",
     element: (
-      <MainLayout>
-        <Checkout />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <Checkout />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/deposit-payment",
     element: (
-      <MainLayout>
-        <DepositPayment />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <DepositPayment />
+        </MainLayout>
+      </UserGuard>
     ),
   },
   {
     path: "/cart",
     element: (
-      <MainLayout>
-        <Cart />
-      </MainLayout>
+      <UserGuard>
+        <MainLayout>
+          <Cart />
+        </MainLayout>
+      </UserGuard>
     ),
   },
+  {
+    path: "/payment-result",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <PaymentResult />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/about",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <About />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/faq",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <FAQ />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/technical-terms",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <TechnicalTerms />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/warranty",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <WarrantyPolicy />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/request-a-quote",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <CustomQuoteForm />
+        </MainLayout>
+      </UserGuard>
+    )
+  },
+
+  /* --- HỆ THỐNG ĐIỀU HƯỚNG BÁO LỖI --- */
   {
     path: "/error",
     element: <NotFound />,
@@ -163,54 +254,8 @@ const routeMap = [
     path: "*",
     element: <Navigate to="/error" replace />,
   },
-  {
-    path: "/payment-result",
-    element: (
-      <MainLayout>
-        <PaymentResult />
-      </MainLayout>
-    ),
-  },
-  {
-    path: "/about",
-    element: (
-      <MainLayout>
-        <About />
-      </MainLayout>
-    ),
-  },
-  {
-    path: "/faq",
-    element: (
-      <MainLayout>
-        <FAQ />
-      </MainLayout>
-    ),
-  },
-  {
-    path: "/technical-terms",
-    element: (
-      <MainLayout>
-        <TechnicalTerms />
-      </MainLayout>
-    ),
-  },
-  {
-    path: "/warranty",
-    element: (
-      <MainLayout>
-        <WarrantyPolicy />
-      </MainLayout>
-    ),
-  },
-  {
-    path: "/request-a-quote",
-    element: (
-      <MainLayout>
-        <CustomQuoteForm />
-      </MainLayout>
-    )
-  },
+
+  /* --- PHÂN HỆ QUẢN TRỊ ADMIN / KHO (GIỮ NGUYÊN ROLE GUARD) --- */
   {
     path: "/admin",
     element: (
