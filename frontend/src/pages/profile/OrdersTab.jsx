@@ -81,12 +81,17 @@ const OrdersTab = () => {
             is_deposit_paid: o.is_deposit_paid,
             deposit_amount: parseFloat(o.deposit_amount) || 0,
             status: o.production_status,
-            items:
-              o.order_items?.map((i) => ({
-                name: i.products?.product_name || "Sản phẩm",
-                specs: i.products?.materials?.material_name || "",
-              })) || [],
+            items: o.quotation_id && o.quotations?.quotation_specs
+              ? o.quotations.quotation_specs.map((s) => ({
+                  name: s.component_name || "Linh kiện",
+                  specs: s.note || "",
+                }))
+              : o.order_items?.map((i) => ({
+                  name: i.products?.product_name || "Sản phẩm",
+                  specs: i.products?.materials?.material_name || "",
+                })) || [],
             raw_items: o.order_items, // Giữ lại nguyên gốc để truyền qua Checkout
+            raw_quotation_specs: o.quotations?.quotation_specs, // Giữ thêm specs báo giá
           }));
           setOrders(formattedOrders);
         }
@@ -362,21 +367,37 @@ const OrdersTab = () => {
                   <button
                     onClick={() => {
                       // Bắt buộc phải format lại cục data này trước khi truyền đi
-                      const formattedCheckoutItems = order.raw_items.map(
-                        (i) => ({
-                          id: i.id,
-                          product_id: i.product_id,
-                          product_name: i.products?.product_name || "Sản phẩm",
-                          product_code: i.products?.product_code || "KPM",
-                          image:
-                            i.products?.product_images?.[0]?.image_url ||
-                            "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
-                          material_name:
-                            i.products?.materials?.material_name || "Linh kiện",
-                          quantity: i.quantity,
-                          price: parseFloat(i.price) || 0,
-                        }),
-                      );
+                      const isFromQuote = order.raw_quotation_specs && order.raw_quotation_specs.length > 0;
+                      let formattedCheckoutItems = [];
+
+                      if (isFromQuote) {
+                        formattedCheckoutItems = order.raw_quotation_specs.map((s) => ({
+                           id: s.id,
+                           product_id: s.dimensions?.product_id || null,
+                           product_name: s.component_name || "Linh kiện tùy chỉnh",
+                           product_code: "KPM-CUSTOM",
+                           image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                           material_name: s.note || "Báo giá tùy chỉnh",
+                           quantity: s.dimensions?.quantity || 1,
+                           price: parseFloat(s.snapshot_price) || 0,
+                        }));
+                      } else {
+                        formattedCheckoutItems = (order.raw_items || []).map(
+                          (i) => ({
+                            id: i.id,
+                            product_id: i.product_id,
+                            product_name: i.products?.product_name || "Sản phẩm",
+                            product_code: i.products?.product_code || "KPM",
+                            image:
+                              i.products?.product_images?.[0]?.image_url ||
+                              "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                            material_name:
+                              i.products?.materials?.material_name || "Linh kiện",
+                            quantity: i.quantity,
+                            price: parseFloat(i.price) || 0,
+                          }),
+                        );
+                      }
 
                       navigate("/checkout", {
                         state: {

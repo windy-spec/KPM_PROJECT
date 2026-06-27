@@ -55,7 +55,11 @@ class OrderService {
       orderBy: { created_at: "desc" },
       include: {
         users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
-        quotations: true,
+        quotations: {
+          include: {
+            quotation_specs: true,
+          },
+        },
         order_items: {
           include: {
             products: true,
