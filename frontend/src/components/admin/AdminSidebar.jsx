@@ -59,6 +59,7 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
         { label: 'Quản Lý Sản Phẩm', icon: Package, panel: 'products' },
         { label: 'Danh Sách Báo Giá', icon: FileText, panel: 'quotations' },
         { label: 'Quản Lý Danh Mục', icon: Package, panel: 'categories' },
+        { label: 'Quản Lý Bản Vẽ', icon: Package, panel: 'drawings' },
         { label: 'Quản Lý Lô', icon: Package, panel: 'invalid_batches' },
         { label: 'Quản Lý Đơn Hàng', icon: ShoppingCart, panel: 'orders' },
         { label: 'Quản Lý User', icon: User, panel: 'users' },

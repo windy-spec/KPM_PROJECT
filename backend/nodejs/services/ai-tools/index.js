@@ -1,47 +1,27 @@
-const fs = require("fs");
-const path = require("path");
+const searchProduct = require("./searchProduct");
+const searchMaterial = require("./searchMaterial");
+const searchLabor = require("./searchLabor");
+const trackOrder = require("./trackOrder");
+const getPastOrder = require("./getPastOrder");
 
-const allTools = [];
+const tools = [searchProduct, searchMaterial, searchLabor, trackOrder, getPastOrder];
 
-// 1. Ma thuật Auto-Discovery: Tự động quét tất cả các file .js trong thư mục này
-const files = fs.readdirSync(__dirname);
+const toolsDefinition = tools.map((t) => t.definition);
 
-files.forEach((file) => {
-  // Bỏ qua chính file index.js này và các file không phải .js
-  if (file === "index.js" || !file.endsWith(".js")) return;
-
-  // Import file tool
-  const tool = require(path.join(__dirname, file));
-
-  // Kiểm tra xem file tool đó có viết đúng chuẩn không (có definition và execute)
-  if (tool.definition && tool.execute) {
-    allTools.push(tool);
-    console.log(
-      `[Tool Registry] Đã nạp thành công tool: ${tool.definition.function.name}`,
-    );
-  }
-});
-
-// 2. Xuất ra cái Vali đồ nghề cho Groq
-const toolsDefinition = allTools.map((tool) => tool.definition);
-
-// 3. Cỗ máy điều phối
-const executeTool = async (functionName, args, prisma) => {
-  const tool = allTools.find(
-    (t) => t.definition.function.name === functionName,
-  );
-
-  if (!tool) {
-    console.warn(`[Tool Registry] AI gọi hàm không tồn tại: ${functionName}`);
-    return "Lỗi: Hàm không tồn tại.";
-  }
-
-  try {
+const executeTool = async (functionName, args, prisma, userId = null) => {
+  const tool = tools.find((t) => t.definition.function.name === functionName);
+  if (tool) {
+    // Ép cứng user_id thật vào args để tránh AI hallucinate UUID. 
+    // Nếu chưa đăng nhập thì ép bằng null, đè lên chuỗi vớ vẩn AI tự bịa.
+    if (tool.definition.function.parameters.properties.user_id) {
+      args.user_id = userId;
+    }
     return await tool.execute(args, prisma);
-  } catch (error) {
-    console.error(`[Tool Registry] Lỗi khi chạy tool ${functionName}:`, error);
-    return "Hệ thống đang bận, không lấy được dữ liệu lúc này.";
   }
+  throw new Error(`Tool ${functionName} not found`);
 };
 
-module.exports = { toolsDefinition, executeTool };
+module.exports = {
+  toolsDefinition,
+  executeTool,
+};

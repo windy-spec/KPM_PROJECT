@@ -92,6 +92,7 @@ const componentTemplateRoutes = require("./routes/component_template.routes.js")
 const warehouseRoutes = require("./routes/warehouse.routes.js");
 const aiRoutes = require("./routes/ai.routes.js");
 const materialRequestRoutes = require("./routes/material_request.routes.js");
+const drawingRoutes = require("./routes/drawing.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -117,6 +118,7 @@ app.use("/api/component-templates", componentTemplateRoutes);
 app.use("/api/warehouse", warehouseRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
+app.use("/api/drawings", drawingRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

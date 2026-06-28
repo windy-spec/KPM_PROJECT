@@ -3,18 +3,18 @@ const aiService = require("../services/ai.service");
 class AIController {
   async chat(req, res) {
     try {
-      // Nhận thêm biến mode ('fast', 'slow' hoặc bỏ trống thì tự động)
-      const { sessionId, message, mode } = req.body;
+      // Nhận thêm biến mode ('fast', 'slow' hoặc bỏ trống thì tự động) và imageUrl (nếu có)
+      const { sessionId, message, mode, imageUrl } = req.body;
       const userId = req.user ? req.user.id : null;
 
-      if (!message) {
+      if (!message && !imageUrl) {
         return res
           .status(400)
-          .json({ success: false, message: "Vui lòng nhập tin nhắn!" });
+          .json({ success: false, message: "Vui lòng nhập tin nhắn hoặc gửi ảnh!" });
       }
 
-      // Đẩy thêm mode xuống Service
-      const result = await aiService.chatWithAI(message, sessionId, mode, userId);
+      // Đẩy thêm mode và imageUrl xuống Service
+      const result = await aiService.chatWithAI(message, sessionId, mode, userId, imageUrl);
 
       res.status(200).json({
         success: true,
@@ -72,7 +72,8 @@ class AIController {
           drawingName: analysisResult.drawing_name,
           scaleRatio: analysisResult.scale_ratio,
           dimensions: analysisResult.specifications,
-          sessionId: analysisResult.sessionId // Frontend cần cái này để cập nhật
+          sessionId: analysisResult.sessionId, // Frontend cần cái này để cập nhật
+          reply: analysisResult.replyMessage
         },
       });
     } catch (error) {

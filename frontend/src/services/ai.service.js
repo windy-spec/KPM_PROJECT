@@ -1,11 +1,11 @@
 import apiClient from "./apiClient";
 
 const aiService = {
-  chat: async (message, sessionId, mode) => {
+  chat: async (message, sessionId, mode, imageUrl = null) => {
     // Để X-No-Loading để không block UI chính khi đang chat
     const response = await apiClient.post(
       "/ai/chat",
-      { message, sessionId, mode },
+      { message, sessionId, mode, imageUrl },
       { headers: { "X-No-Loading": true } }
     );
     return response.data;

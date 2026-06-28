@@ -435,26 +435,9 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   <DollarSign className="w-3.5 h-3.5" />
                   <span>Giá xưởng đề xuất: {formatVND(data.admin_proposed_price || data.total_quoted_price)}</span>
                 </div>
-                <div className="space-y-1">
-                  <input
-                    type="number"
-                    value={negotiatePrice}
-                    onChange={(e) => setNegotiatePrice(e.target.value)}
-                    placeholder="Nhập giá muốn mặc cả..."
-                    className="w-full px-3 py-2 border border-sky-300 rounded-lg text-sm font-black text-on-surface focus:outline-none focus:border-sky-500 bg-white shadow-2xs"
-                  />
-                  {negotiatePrice && (
-                    <div className="text-[11px] text-sky-700 font-bold pl-1">
-                      Xem trước: {formatVND(negotiatePrice)}
-                    </div>
-                  )}
+                <div className="text-[13px] font-medium text-sky-700 italic">
+                  Đang chờ khách hàng xem xét và phản hồi...
                 </div>
-                <button
-                  onClick={handleNegotiate}
-                  className="w-full rounded-xl bg-sky-600 hover:bg-sky-700 px-4 h-10 text-white font-bold text-xs uppercase shadow-md transition-all active:scale-95"
-                >
-                  Gửi đề xuất mặc cả
-                </button>
               </div>
             )}
 

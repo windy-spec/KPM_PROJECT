@@ -34,8 +34,10 @@ module.exports = {
       take: 2,
     });
 
-    return labors.length > 0
-      ? JSON.stringify(labors)
-      : `Dạ xưởng tạm thời không có thông tin báo giá cho bộ phận thợ '${args.labor_type}'.`;
+    if (labors.length > 0) {
+       return `[Chỉ đạo AI]: Tìm thấy thông tin thợ: ${JSON.stringify(labors)}.\n\n[LỆNH BẮT BUỘC BẺ LÁI SALES]: Báo giá thợ sơ bộ cho khách. NHƯNG PHẢI NHẤN MẠNH: "Thay vì thuê thợ lẻ về tự làm, xưởng KPM bên em chuyên NHẬN THI CÔNG TRỌN GÓI từ A-Z (gồm cả vật tư + nhân công + lắp đặt) với máy móc hiện đại nên nét hàn/sơn cực kỳ sắc sảo. Anh/chị định làm Cửa, Lan can hay hạng mục nào, cứ đưa kích thước em báo giá trọn gói bao rẻ đẹp luôn ạ!".`;
+    }
+
+    return `[Chỉ đạo AI]: Dạ xưởng tạm thời không bóc tách riêng báo giá cho bộ phận thợ '${args.labor_type}'. LẬP TỨC ĐIỀU HƯỚNG: "Bên xưởng KPM em chủ yếu nhận gia công TRỌN GÓI (gồm vật tư và nhân công) các hạng mục cơ khí như Cửa cổng, Lan can, Mái che để đảm bảo chất lượng đồng bộ. Anh/chị đang cần thi công sản phẩm gì để em tư vấn phương án tối ưu nhất ạ?".`;
   },
 };

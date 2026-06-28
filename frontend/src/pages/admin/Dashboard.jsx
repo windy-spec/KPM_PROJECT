@@ -27,6 +27,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import AdminTopbar from "../../components/admin/AdminTopbar";
 import AdminProductPanel from "../../components/admin/AdminProductPanel";
 import ManageCategories from "./ManageCategories";
+import ManageDrawings from "./ManageDrawings";
 import ManageMaterials from "./ManageMaterials";
 import ManageSettings from "./ManageSettings";
 import QuotationList from "../quotations/QuotationList";
@@ -390,6 +391,12 @@ const Dashboard = () => {
             {activePanel === "categories" && (
               <section>
                 <ManageCategories />
+              </section>
+            )}
+
+            {activePanel === "drawings" && (
+              <section>
+                <ManageDrawings />
               </section>
             )}
 

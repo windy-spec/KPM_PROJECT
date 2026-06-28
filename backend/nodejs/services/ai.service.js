@@ -23,7 +23,7 @@ class AIService {
   }
 
   // --- BƯỚC 2: LUỒNG CHAT CHÍNH (RAG) ---
-  async chatWithAI(userMessage, sessionID, mode, userId = null) {
+  async chatWithAI(userMessage, sessionID, mode, userId = null, imageUrl = null) {
     // 1. Quản lý Phiên Chat (Session)
     let currentSessionId = sessionID;
     if (!currentSessionId) {
@@ -42,7 +42,7 @@ class AIService {
       data: {
         session_id: currentSessionId,
         sender_type: "user",
-        message_text: userMessage,
+        message_text: userMessage || "[Hình ảnh đính kèm]",
       },
     });
 
@@ -70,18 +70,48 @@ class AIService {
 
     // 4. Tạo Prompt và gọi LLM (Groq)
     const systemPrompt = `
-      Bạn là Trợ lý Tư vấn Kỹ thuật & Bán hàng chuyên nghiệp của xưởng cơ khí KPM.
-      Khách hàng hiện tại của bạn tên là: "${userName}". Hãy xưng hô lịch sự, thân thiện (luôn xưng "em", gọi khách là "anh/chị ${userName}" hoặc tên của họ, dùng từ "Dạ", "ạ").
+      Bạn là AI Trợ lý của Xưởng Cơ Khí KPM. Khách hàng: "${userName}".
+      
+      [QUY TẮC ĐIỀU HƯỚNG TỐI THƯỢNG - CHỈ ĐƯỢC CHỌN 1 TRONG 4 LUỒNG SAU]:
+      
+      1. NẾU KHÁCH HỎI VỀ SẢN PHẨM: 
+         - Nếu khách hàng chỉ gõ tên danh mục hoặc sản phẩm (VD: 'Cửa', 'Cổng', 'Lan can', 'Mái che'...), BẮT BUỘC phải hiểu đó là TÌM SẢN PHẨM và PHẢI gọi hàm tra cứu.
+         - BẮT BUỘC gọi hàm tra cứu.
+         - Nếu có sản phẩm: Tư vấn ngắn gọn và chèn tag PRODUCT_WIDGET đúng format.
+         - Nếu không có: Tuyệt đối KHÔNG BỊA sản phẩm. Hãy nói xưởng không có mẫu đó và gợi ý các danh mục Cửa cổng, Lan can, Mái che.
 
-      [THÔNG TIN XƯỞNG KPM]: Chuyên gia công các sản phẩm cơ khí dân dụng như: Cửa cổng (Sắt/Inox), Cầu thang, Lan can, Hàng rào, Mái che, Khung bảo vệ...
+      2. NẾU KHÁCH HỎI KIẾN THỨC KỸ THUẬT / VẬT LIỆU CƠ KHÍ:
+         - Ưu tiên dùng "DỮ LIỆU TĨNH CỦA XƯỞNG" bên dưới.
+         - Nếu là câu hỏi kiến thức cơ bản về VẬT LIỆU CƠ KHÍ (sắt, inox, nhôm, mạ kẽm, sơn tĩnh điện...), được phép dùng kiến thức chung để trả lời ngắn gọn, chính xác.
+         - Sau khi giải đáp, BẮT BUỘC bẻ lái nhẹ nhàng: "Anh/chị đang cần làm gì từ vật liệu này, em hỗ trợ tư vấn thêm nhé!"
+         - Nếu câu hỏi hoàn toàn không liên quan đến cơ khí/vật liệu, BẮT BUỘC trả lời: "Dạ vấn đề này nằm ngoài chuyên môn cơ khí của em. Anh/chị cần tư vấn làm Cửa, Cổng hay Lan can thì em hỗ trợ ngay ạ."
 
-      QUY TẮC CỐT LÕI:
-      [CẤM BỊA ĐẶT]: TUYỆT ĐỐI KHÔNG tự bịa giá. Chỉ dùng giá từ DỮ LIỆU TĨNH hoặc TỪ CÁC HÀM (TOOLS).
-      [TRỌNG TÂM THỰC TẾ]: Trả lời NGẮN GỌN, đi thẳng vào vấn đề. Nếu khách hỏi "có sản phẩm tương tự không", hãy kiểm tra kỹ lịch sử chat để biết "tương tự" là tương tự cái gì, sau đó gọi hàm tìm kiếm tương ứng. 
-      [NGOÀI PHẠM VI]: Nếu khách hỏi lạc đề hoàn toàn khỏi lĩnh vực cơ khí, hãy khéo léo đáp: "Dạ, vấn đề này em chưa rõ, để em nhờ thợ kỹ thuật tư vấn thêm cho mình nhé ạ."
-      [TRÌNH BÀY]: Dùng gạch đầu dòng (-). **In đậm** các con số, giá tiền, tên vật tư.
-      [CHỐT SALE KHÉO LÉO]: Chỉ đặt câu hỏi dẫn dắt (Ví dụ: "Dạ nhà mình dự định làm cổng hay lan can để em tư vấn thêm ạ?") nếu khách đang có ý định đặt hàng. NẾU KHÁCH CHỈ HỎI XÃ GIAO thì tuyệt đối KHÔNG đính kèm câu hỏi chốt sale này.
+      3. NẾU KHÁCH HỎI VỀ ĐƠN HÀNG:
+         - BẮT BUỘC gọi hàm kiểm tra đơn hàng.
+         - Nếu không có: Báo chưa có, không chèn tag OPTIONS.
+         - Nếu có nhiều đơn: Chèn OPTIONS đúng format ARRAY các mã đơn hàng.
 
+      4. NẾU LÀ ẢNH BẢN VẼ: 
+         - Nếu đúng bản vẽ: Chèn [DRAWING_SPECS: {...}] vào cuối.
+         - Nếu ảnh mờ/lỗi: Báo khách chụp lại.
+         - Nếu ảnh rác (chó mèo): Báo đây không phải bản vẽ.
+
+      QUY TẮC TAG (CỰC KỲ NGHIÊM NGẶT - KHÔNG ĐƯỢC VI PHẠM):
+      1. Cấm giải thích lệnh nội bộ ra cho khách.
+      2. Các dấu chấm câu (.) phải dính liền với chữ cuối cùng.
+      3. Tag PHẢI NẰM Ở DÒNG CUỐI CÙNG của câu trả lời.
+      4. KHÔNG TỰ BỊA MÃ SẢN PHẨM HOẶC KIẾN THỨC.
+      5. FORMAT TAG BẮT BUỘC - PHẢI TUÂN THỦ CHÍNH XÁC:
+         - Widget sản phẩm: [PRODUCT_WIDGET: [{"id": "MA-SP", "reason": "Lý do"}]]
+           ✅ ĐÚNG: [PRODUCT_WIDGET: [{"id": "CG-01", "reason": "Đúng yêu cầu"}]]
+           ❌ SAI: [PRODUCT_WIDGET: {"name": "Cửa sắt"}]
+         - Danh sách lựa chọn: [OPTIONS: ["Lựa chọn 1", "Lựa chọn 2"]]
+           ✅ ĐÚNG: [OPTIONS: ["DH-001", "DH-002"]]
+           ❌ SAI: [OPTIONS: {"status": "chưa có"}]
+         - Thông số bản vẽ: [DRAWING_SPECS: {"name": "Tên bản vẽ", "scale": "1:100", "length": 1000, "width": 500, "height": 200}]
+           * Trích xuất các thông số Chiều dài (length), Chiều rộng (width), Chiều cao (height) từ ảnh bản vẽ. Điền null nếu không có.
+      6. Nếu không có gì để hiển thị trong tag, TUYỆT ĐỐI KHÔNG CHÈN TAG VÀO (bỏ hoàn toàn).
+      
       DỮ LIỆU TĨNH CỦA XƯỞNG:
       ${contextText}
     `;
@@ -89,7 +119,10 @@ class AIService {
     // 5. CƠ CHẾ CHỌN MODEL (KẾT HỢP USER LỰA CHỌN & SMART ROUTING)
     let selectedModel = "llama-3.1-8b-instant"; // Khởi tạo biến
 
-    if (mode === "fast") {
+    if (imageUrl) {
+      selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+      console.log(`👁️ Có hình ảnh -> Chọn model Vision (Llama-4-Scout)`);
+    } else if (mode === "fast") {
       selectedModel = "llama-3.1-8b-instant";
       console.log(`⚡ Khách hàng yêu cầu trả lời NHANH -> Chọn model 8B`);
     } else if (mode === "slow") {
@@ -115,10 +148,22 @@ class AIService {
     });
     chatHistory = chatHistory.reverse();
 
-    const conversationMessages = chatHistory.map((msg) => ({
-      role: msg.sender_type === "ai" ? "assistant" : "user",
-      content: msg.message_text,
-    }));
+    const conversationMessages = chatHistory.map((msg, index) => {
+      // Nếu là tin nhắn cuối cùng (hiện tại) và có imageUrl
+      if (index === chatHistory.length - 1 && imageUrl && msg.sender_type === "user") {
+        return {
+          role: "user",
+          content: [
+            { type: "text", text: msg.message_text },
+            { type: "image_url", image_url: { url: imageUrl } }
+          ]
+        };
+      }
+      return {
+        role: msg.sender_type === "ai" ? "assistant" : "user",
+        content: msg.message_text,
+      };
+    });
 
     // 6. GỌI API & CƠ CHẾ FALLBACK
     try {
@@ -128,14 +173,20 @@ class AIService {
         ...conversationMessages,
       ];
 
-      let chatCompletion = await groq.chat.completions.create({
+      let requestPayload = {
         messages: messagesForGroq,
         model: selectedModel,
         temperature: 0.2,
         max_tokens: 1024,
-        tools: toolsDefinition, // <--- CẮM USB ĐỒ NGHỀ VÀO ĐÂY
-        tool_choice: "auto",
-      });
+      };
+
+      // Tạm tắt Tool Calling cho model Llama 4 Vision để tránh lỗi Groq parser nhầm tag JSON thành Tool call
+      if (selectedModel !== "meta-llama/llama-4-scout-17b-16e-instruct") {
+        requestPayload.tools = toolsDefinition;
+        requestPayload.tool_choice = "auto";
+      }
+
+      let chatCompletion = await groq.chat.completions.create(requestPayload);
 
       let responseMessage = chatCompletion.choices[0].message;
 
@@ -156,6 +207,7 @@ class AIService {
             functionName,
             functionArgs,
             prisma,
+            userId
           );
 
           // Nhồi kết quả DB gửi lại cho AI
@@ -167,13 +219,22 @@ class AIService {
           });
         }
 
-        // Nhịp 3: AI đọc kết quả DB và trả lời khách
-        const secondResponse = await groq.chat.completions.create({
-          messages: messagesForGroq,
-          model: selectedModel,
-        });
+        // Kiểm tra nếu Tool trả về câu trả lời hoàn chỉnh (DIRECT_REPLY) -> bỏ qua AI lần 2
+        const directReplyResult = messagesForGroq
+          .filter(m => m.role === "tool")
+          .find(m => typeof m.content === "string" && m.content.startsWith("[DIRECT_REPLY]"));
 
-        aiReply = secondResponse.choices[0].message.content;
+        if (directReplyResult) {
+          console.log("⚡ Tool trả về DIRECT_REPLY, bỏ qua AI lần 2 để tránh hallucinate.");
+          aiReply = directReplyResult.content.replace("[DIRECT_REPLY]", "").trim();
+        } else {
+          // Nhịp 3: AI đọc kết quả DB và trả lời khách
+          const secondResponse = await groq.chat.completions.create({
+            messages: messagesForGroq,
+            model: selectedModel,
+          });
+          aiReply = secondResponse.choices[0].message.content;
+        }
       } else {
         // Nếu câu hỏi giao tiếp bình thường, không cần tool
         aiReply = responseMessage.content;
@@ -199,6 +260,12 @@ class AIService {
         aiReply =
           "Dạ hệ thống AI đang bảo trì đột xuất, anh/chị vui lòng chờ trong giây lát rồi nhắn lại nhé ạ.";
       }
+    }
+
+    // 6.5 Dọn dẹp lỗi hallucination của Model (Nếu nó vô tình nhả raw function tag ra màn hình)
+    if (aiReply) {
+      aiReply = aiReply.replace(/<function=[\s\S]*?<\/function>/g, '').trim();
+      aiReply = aiReply.replace(/<function=[\s\S]*?>/g, '').trim(); 
     }
 
     // 7. Lưu câu trả lời của AI vào DB
@@ -357,18 +424,53 @@ class AIService {
         },
       });
 
-      // Lưu câu trả lời của hệ thống (AI) vào DB để giữ logic ngữ cảnh cho các câu hỏi sau
-      const specsString = `Dài: ${extractedSpecs.dimensions?.length || 'N/A'}, Rộng: ${extractedSpecs.dimensions?.width || 'N/A'}, Cao: ${extractedSpecs.dimensions?.height || 'N/A'}`;
+      // KIỂM TRA SẢN PHẨM TƯƠNG ĐƯƠNG TRONG DB
+      const similarProducts = await prisma.products.findMany({
+        where: {
+          OR: [
+            { product_name: { contains: extractedSpecs.drawing_name, mode: "insensitive" } },
+            { product_code: { contains: extractedSpecs.drawing_name, mode: "insensitive" } }
+          ]
+        },
+        include: { product_images: { where: { is_primary: true } } },
+        take: 1
+      });
+
+      let aiSystemReply = "";
+      let foundProductData = null;
+
+      if (similarProducts.length > 0) {
+        const p = similarProducts[0];
+        const priceDisplay = p.base_price ? Number(p.base_price).toLocaleString("vi-VN") + "đ" : "Giá liên hệ";
+        
+        // Tạo thẻ PRODUCT_WIDGET
+        const widgetTag = `[PRODUCT_WIDGET: [{"id": "${p.product_code}", "reason": "Mẫu tương đương"}]]`;
+        
+        aiSystemReply = `Bản vẽ của anh/chị là "${extractedSpecs.drawing_name}". Hệ thống tìm thấy mẫu tương tự đang có tại xưởng:\n- Mẫu: ${p.product_name} (Mã: ${p.product_code})\n- Giá tham khảo: ${priceDisplay}\n- Mô tả: ${p.description || "Đang cập nhật"}\n\nAnh/chị có thể chuyển sang trang báo giá để xem chi tiết vật tư và nhận báo giá trọn gói nhé!\n${widgetTag}`;
+        
+        foundProductData = {
+          product_code: p.product_code,
+          product_name: p.product_name,
+          base_price: p.base_price,
+          description: p.description
+        };
+      } else {
+        aiSystemReply = `Bản vẽ của anh/chị là "${extractedSpecs.drawing_name}". Rất tiếc, xưởng KPM hiện tại chỉ nhận gia công các sản phẩm tiêu chuẩn có sẵn trên hệ thống để đảm bảo chất lượng tốt nhất. Nếu anh/chị cần gia công mẫu thiết kế riêng này, vui lòng để lại Số điện thoại hoặc liên hệ trực tiếp cho Admin qua số **0385891214** để được kỹ thuật viên hỗ trợ báo giá nhé.`;
+      }
+
       await prisma.ai_chat_messages.create({
         data: {
           session_id: currentSessionId,
           sender_type: "ai",
-          message_text: `[Hệ thống]: Đã bóc tách bản vẽ "${extractedSpecs.drawing_name}". Thông số: ${specsString}. Hãy tư vấn dựa trên thông số này nếu khách hỏi thêm.`,
+          message_text: aiSystemReply,
         },
       });
 
       // Gắn thêm sessionId vào response để trả về cho Client
       drawingAnalysis.sessionId = currentSessionId;
+      drawingAnalysis.similarProduct = foundProductData; // Gửi kèm cho Client nếu cần
+      drawingAnalysis.replyMessage = aiSystemReply; // Trả về nội dung chat để Controller xuất ra
+      
       return drawingAnalysis;
     } catch (error) {
       console.error("❌ Lỗi khi AI Vision phân tích bản vẽ:", error.message);
