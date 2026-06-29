@@ -29,7 +29,6 @@ model ai_chat_sessions {
   started_at         DateTime?            @default(now()) @db.Timestamptz(6)
   ai_chat_messages   ai_chat_messages[]
   users              users?               @relation(fields: [user_id], references: [id], onUpdate: NoAction)
-  ai_memory_contexts ai_memory_contexts[]
   quotations         quotations[]
 }
 
@@ -39,8 +38,6 @@ model ai_knowledge_base {
   rule_content          String
   embedding_vector      Unsupported("vector(384)")?
   created_at            DateTime?              @default(now()) @db.Timestamptz(6)
-  pattern_id            String?                @db.Uuid
-  ai_knowledge_patterns ai_knowledge_patterns? @relation(fields: [pattern_id], references: [id], onUpdate: NoAction)
 }
 
 model labor_categories {
@@ -382,25 +379,7 @@ model ai_drawing_analyses {
   ai_chat_messages ai_chat_messages? @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model ai_memory_contexts {
-  id                         String            @id @default(uuid()) @db.Uuid
-  session_id                 String?           @db.Uuid
-  summary_text               String
-  last_message_id_summarized String?           @db.Uuid
-  token_count                Int?
-  created_at                 DateTime?         @default(now()) @db.Timestamptz(6)
-  ai_chat_sessions           ai_chat_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
 
-model ai_knowledge_patterns {
-  id                 String              @id @default(uuid()) @db.Uuid
-  pattern_name       String              @unique @db.VarChar(100)
-  trigger_keywords   Json
-  response_structure String
-  is_active          Boolean?            @default(true)
-  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
-  ai_knowledge_base  ai_knowledge_base[]
-}
 model inventory {
   id              String    @id @default(uuid()) @db.Uuid
   material_id     String    @unique @db.Uuid // Unique vì mỗi vật tư chỉ có 1 dòng tổng tồn kho

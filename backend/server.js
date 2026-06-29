@@ -29,9 +29,7 @@ const keepDatabaseAlive = async () => {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-    console.log('⚡ DB connection verified/woken up.');
   } catch (e) {
-    console.log('⚠️ Failed to ping DB (It might be waking up).', e.message);
   }
 };
 
@@ -39,28 +37,22 @@ const keepDatabaseAlive = async () => {
 setInterval(keepDatabaseAlive, 1000 * 60 * 10);
 
 io.on("connection", (socket) => {
-  console.log("Client connected to Socket:", socket.id);
-
   // Gọi DB dậy ngay khi có client (frontend) truy cập
   keepDatabaseAlive();
 
   socket.on("join", (data) => {
     if (data?.role === "admin" || data?.role === "superadmin") {
       socket.join("room_admin");
-      console.log(`Socket ${socket.id} joined room_admin`);
     }
     if (data?.role === "warehouse") {
       socket.join("room_warehouse");
-      console.log(`Socket ${socket.id} joined room_warehouse`);
     }
     if (data?.user_id) {
       socket.join(`room_user_${data.user_id}`);
-      console.log(`Socket ${socket.id} joined room_user_${data.user_id}`);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
   });
 });
 

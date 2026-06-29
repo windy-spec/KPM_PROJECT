@@ -7,14 +7,12 @@ class EmbedderService {
 
   async init() {
     if (!this.extractor) {
-      console.log("Initializing embedder model...");
       this.extractor = await pipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
         { quantized: true },
       );
     }
-    console.log("Đã tải mô hình AI thành công!");
   }
 
   async getVector(text) {

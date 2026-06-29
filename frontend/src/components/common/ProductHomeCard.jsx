@@ -7,7 +7,7 @@ const ProductHomeCard = ({ product }) => {
       {/* Image Area */}
       <div className="h-48 bg-surface-container-variant relative overflow-hidden">
         <img 
-          src={product.image} 
+          src={product.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"} 
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

@@ -254,17 +254,11 @@ export default function ProductDetail() {
         {/* Left: Visual */}
         <div className="space-y-4">
           <div className="rounded-2xl overflow-hidden bg-surface-container aspect-[4/3] shadow-sm border border-outline-variant/30 flex items-center justify-center relative group">
-            {mainImage ? (
               <img
-                src={mainImage}
+                src={mainImage || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
                 alt={product.product_name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
-            ) : (
-              <div className="text-on-surface-variant/50 font-medium">
-                Chưa có hình ảnh
-              </div>
-            )}
           </div>
 
           {/* Dàn ảnh Thumbnails */}
