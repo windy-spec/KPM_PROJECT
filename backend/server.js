@@ -85,6 +85,7 @@ const warehouseRoutes = require("./routes/warehouse.routes.js");
 const aiRoutes = require("./routes/ai.routes.js");
 const materialRequestRoutes = require("./routes/material_request.routes.js");
 const drawingRoutes = require("./routes/drawing.routes.js");
+const favoriteRoutes = require("./routes/favorite.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -108,6 +109,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/component-templates", componentTemplateRoutes);
 app.use("/api/warehouse", warehouseRoutes);
+app.use("/api/favorites", favoriteRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
 app.use("/api/drawings", drawingRoutes);

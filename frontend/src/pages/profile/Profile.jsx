@@ -175,7 +175,7 @@ const ProfileDashboard = () => {
                     : "bg-surface-container text-on-surface-variant hover:bg-white/50"
                 }`}
               >
-                <Heart className="w-4 h-4" /> Cấu Hình Yêu Thích
+                <Heart className="w-4 h-4" /> Sản Phẩm Yêu Thích
               </button>
 
               <button
