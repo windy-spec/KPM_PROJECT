@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
     ShieldCheck,
     Cpu,
@@ -152,7 +153,7 @@ const About = () => {
                             Xem sản phẩm mẫu <ChevronRight className="w-4 h-4" />
                         </Link>
                         <button
-                            onClick={() => alert("Chức năng gửi yêu cầu báo giá đang được tích hợp!")}
+                            onClick={() => toast.info("Chức năng gửi yêu cầu báo giá đang được tích hợp!")}
                             className="w-full sm:w-auto border border-outline-variant/80 hover:bg-surface-container text-on-surface py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
                         >
                             Yêu cầu báo giá ngay

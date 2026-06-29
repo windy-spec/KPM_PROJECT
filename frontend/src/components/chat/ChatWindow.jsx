@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useAIChat } from "../../context/AIChatContext";
+import { toast } from "react-toastify";
 import {
   Send,
   X,
@@ -192,17 +193,16 @@ const ChatWindow = () => {
           >
             <MessageSquareCode size={18} /> Chat mới ngay
           </button>
-          
+
           {sessions && sessions.length > 0 ? (
             sessions.map((session) => (
               <button
                 key={session.id}
                 onClick={() => loadSession(session.id)}
-                className={`w-full text-left p-3 rounded-xl transition-all border ${
-                  sessionId === session.id
+                className={`w-full text-left p-3 rounded-xl transition-all border ${sessionId === session.id
                     ? "bg-primary/10 border-primary shadow-sm"
                     : "bg-surface hover:bg-surface-variant border-outline-variant/50"
-                }`}
+                  }`}
               >
                 <div className="font-bold text-[13px] text-on-surface truncate">
                   {session.session_title || "Phiên tư vấn mới"}
@@ -373,13 +373,12 @@ const ChatWindow = () => {
               className={`flex ${isUser ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm ${
-                  isUser
+                className={`max-w-[88%] rounded-2xl px-4 py-3 shadow-sm ${isUser
                     ? "bg-primary text-white rounded-tr-sm shadow-primary/20"
                     : msg.isError
                       ? "bg-error/10 text-error rounded-tl-sm border border-error/20"
                       : "bg-white text-on-surface border border-outline-variant/60 rounded-tl-sm"
-                }`}
+                  }`}
               >
                 {msg.imageUrl && isUser && (
                   <img
@@ -494,7 +493,7 @@ const ChatWindow = () => {
                                 ...drawingData,
                                 ...editableSpecs,
                               });
-                              alert(
+                              toast.info(
                                 "Đã gom dữ liệu, chuẩn bị chuyển sang màn hình Báo Giá!",
                               );
                             }}

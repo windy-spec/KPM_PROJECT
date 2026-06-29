@@ -15,6 +15,7 @@ import warehouseService from "../../services/warehouse.service";
 import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import { showSuccess, showInfo } from "../../utils/notify";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const WarehouseDashboard = () => {
     const socket = useSocket();
@@ -32,6 +33,7 @@ const WarehouseDashboard = () => {
     const [warehouseError, setWarehouseError] = useState("");
     const [missingMaterials, setMissingMaterials] = useState([]);
     const [processingOrderId, setProcessingOrderId] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, orderId: null, callback: null });
 
     useEffect(() => {
         authService.getMe().then(res => {
@@ -120,9 +122,14 @@ const WarehouseDashboard = () => {
     };
 
     // Nút 3: Thiếu hàng -> Yêu cầu nhập (warehouse_received -> out_of_stock)
-    const handleReportOutOfStock = async (orderId, callBackSuccess) => {
-        const confirmReport = window.confirm("Xác nhận báo thiếu hàng và gửi yêu cầu nhập vật tư bổ sung lên hệ thống?");
-        if (!confirmReport) return;
+    const handleReportOutOfStock = (orderId, callBackSuccess) => {
+        setConfirmModal({ isOpen: true, orderId, callback: callBackSuccess });
+    };
+
+    const executeReportOutOfStock = async () => {
+        const { orderId, callback } = confirmModal;
+        setConfirmModal({ isOpen: false, orderId: null, callback: null });
+        if (!orderId) return;
 
         setWarehouseLoading(true);
         handleClearAlert();
@@ -131,7 +138,7 @@ const WarehouseDashboard = () => {
             const response = await warehouseService.reportOutOfStock(orderId);
             if (response.data?.success) {
                 setWarehouseSuccess(response.data.message || "Đã ghi nhận trạng thái thiếu hàng! Hệ thống đã tạo yêu cầu nhập kho chờ duyệt.");
-                if (callBackSuccess) callBackSuccess();
+                if (callback) callback();
             }
         } catch (e) {
             setWarehouseError(e.response?.data?.message || "Lỗi khi gửi báo cáo thiếu hàng.");
@@ -360,6 +367,14 @@ const WarehouseDashboard = () => {
                     {activePanel === "material_units" && <ManageMaterialUnits />}
                 </main>
             </div>
+            
+            <ConfirmModal
+                open={confirmModal.isOpen}
+                title="Báo cáo thiếu hàng"
+                message="Xác nhận báo thiếu hàng và gửi yêu cầu nhập vật tư bổ sung lên hệ thống?"
+                onConfirm={executeReportOutOfStock}
+                onCancel={() => setConfirmModal({ isOpen: false, orderId: null, callback: null })}
+            />
         </div>
     );
 };

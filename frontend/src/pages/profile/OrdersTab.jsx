@@ -14,6 +14,7 @@ import {
 import { showError } from "../../utils/notify";
 import orderService from "../../services/order.service";
 import Portal from "../../components/common/Portal";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import { useSocket } from "../../context/SocketContext";
 import { showSuccess } from "../../utils/notify";
 
@@ -21,6 +22,7 @@ const OrdersTab = () => {
   const socket = useSocket();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, orderId: null });
 
   // Constants for Order Tracking Stepper
   const TRACKING_STEPS = [
@@ -199,8 +201,16 @@ const OrdersTab = () => {
 
   // Hàm xác nhận đã nhận hàng (delivering -> completed)
   const [confirmingOrderId, setConfirmingOrderId] = useState(null);
-  const handleConfirmReceived = async (orderId) => {
-    if (!window.confirm("Xác nhận bạn đã nhận được hàng? Đơn hàng sẽ được đánh dấu hoàn thành.")) return;
+  
+  const handleConfirmReceived = (orderId) => {
+    setConfirmModal({ isOpen: true, orderId });
+  };
+
+  const executeConfirmReceived = async () => {
+    const orderId = confirmModal.orderId;
+    setConfirmModal({ isOpen: false, orderId: null });
+    if (!orderId) return;
+
     setConfirmingOrderId(orderId);
     try {
       const res = await orderService.updateOrderStatus(orderId, {
@@ -614,6 +624,13 @@ const OrdersTab = () => {
         </Portal>
       )}
 
+      <ConfirmModal
+        open={confirmModal.isOpen}
+        title="Xác nhận nhận hàng"
+        message="Xác nhận bạn đã nhận được hàng? Đơn hàng sẽ được đánh dấu hoàn thành."
+        onConfirm={executeConfirmReceived}
+        onCancel={() => setConfirmModal({ isOpen: false, orderId: null })}
+      />
     </div>
   );
 };

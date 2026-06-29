@@ -4,6 +4,8 @@ import { materialService } from "../../services/material.service";
 import { Boxes, Plus, Edit3, History, FileText, Loader2, Trash2, X } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
 import Portal from "../../components/common/Portal";
+import ConfirmModal from "../../components/common/ConfirmModal";
+import { toast } from "react-toastify";
 
 const WarehouseInventory = () => {
     const [inventoryList, setInventoryList] = useState([]);
@@ -12,6 +14,7 @@ const WarehouseInventory = () => {
     const [selectedItem, setSelectedItem] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState("CREATE");
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, code: null });
 
     const [page, setPage] = useState(1);
     const [pageSize] = useState(6);
@@ -67,15 +70,15 @@ const WarehouseInventory = () => {
                     quantity: parseFloat(formData.quantity),
                     leftover_amount: parseFloat(formData.leftover_amount)
                 });
-                alert("Khởi tạo mã tồn kho thành công!");
+                toast.success("Khởi tạo mã tồn kho thành công!");
             } else {
-                if (!formData.note.trim()) return alert("Bắt buộc phải nhập lý do kiểm kê/điều chỉnh thủ công!");
+                if (!formData.note.trim()) return toast.warning("Bắt buộc phải nhập lý do kiểm kê/điều chỉnh thủ công!");
                 await warehouseService.updateInventoryManual(formData.id, {
                     quantity: parseFloat(formData.quantity),
                     leftover_amount: parseFloat(formData.leftover_amount),
                     note: formData.note
                 });
-                alert("Cập nhật số liệu tồn kho thành công!");
+                toast.success("Cập nhật số liệu tồn kho thành công!");
             }
             setShowModal(false);
             fetchInventory();
@@ -84,7 +87,7 @@ const WarehouseInventory = () => {
                 viewDetailHistory(formData.id);
             }
         } catch (err) {
-            alert(err.response?.data?.message || "Thao tác thất bại.");
+            toast.error(err.response?.data?.message || "Thao tác thất bại.");
         }
     };
 
@@ -105,24 +108,28 @@ const WarehouseInventory = () => {
             const res = await warehouseService.getInventoryById(id);
             setSelectedItem(res?.data?.data || res?.data || res || null);
         } catch (err) {
-            alert("Không thể tải thẻ kho lịch sử vật tư.");
+            toast.error("Không thể tải thẻ kho lịch sử vật tư.");
         }
     };
 
-    const handleDeleteInventory = async (id, materialCode) => {
-        const confirmDelete = window.confirm(
-            `Bạn có chắc chắn muốn xóa hoàn toàn mã tồn kho của vật tư [${materialCode || "N/A"}] khỏi hệ thống không?\nHành động này sẽ ghi log xóa và không thể hoàn tác!`
-        );
-        if (!confirmDelete) return;
+    const handleDeleteInventory = (id, materialCode) => {
+        setConfirmModal({ isOpen: true, id, code: materialCode });
+    };
+
+    const executeDeleteInventory = async () => {
+        const { id, code } = confirmModal;
+        setConfirmModal({ isOpen: false, id: null, code: null });
+        if (!id) return;
+        
         try {
             await warehouseService.deleteInventory(id);
-            alert("Xóa mã tồn kho thành công!");
+            toast.success("Xóa mã tồn kho thành công!");
             fetchInventory();
             if (selectedItem?.id === id) {
                 setSelectedItem(null);
             }
         } catch (e) {
-            alert(e.response?.data?.message || "Xóa kho thất bại.");
+            toast.error(e.response?.data?.message || "Xóa kho thất bại.");
         }
     };
 
@@ -336,6 +343,14 @@ const WarehouseInventory = () => {
                     </div>
                 </Portal>
             )}
+            
+            <ConfirmModal
+                open={confirmModal.isOpen}
+                title="Xác nhận xóa"
+                message={`Bạn có chắc chắn muốn xóa hoàn toàn mã tồn kho của vật tư [${confirmModal.code || "N/A"}] khỏi hệ thống không? Hành động này sẽ ghi log xóa và không thể hoàn tác!`}
+                onConfirm={executeDeleteInventory}
+                onCancel={() => setConfirmModal({ isOpen: false, id: null, code: null })}
+            />
         </div>
     );
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import orderService from "../../services/order.service";
 import Pagination from "../../components/common/Pagination";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import {
     CheckCircle,
     Loader2,
@@ -20,6 +21,7 @@ const ManageProductionRequests = () => {
     const [loading, setLoading] = useState(false);
     const [submittingId, setSubmittingId] = useState(null);
     const [alert, setAlert] = useState({ type: "", msg: "" });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, orderId: null });
 
     // Tab hiện tại: "PENDING" (Chờ bóc tách định mức) hoặc "ALL" (Tất cả yêu cầu/đơn hàng)
     const [activeTab, setActiveTab] = useState("PENDING");
@@ -102,11 +104,16 @@ const ManageProductionRequests = () => {
         setPage(1);
     }, [activeTab]);
 
+    // Mở modal xác nhận
+    const handleApproveAndProcessSnapshot = (orderId) => {
+        setConfirmModal({ isOpen: true, orderId });
+    };
+
     // Xử lý phê duyệt lệnh và bóc tách định mức kỹ thuật chuyển giao sang kho
-    const handleApproveAndProcessSnapshot = async (orderId) => {
-        if (!window.confirm(`Xác nhận phê duyệt yêu cầu #${orderId}? Hệ thống sẽ bóc tách cấu trúc thành phần (components) thành mật độ vật tư kỹ thuật và chuyển giao trạng thái sang bộ phận Kho.`)) {
-            return;
-        }
+    const executeApproveAndProcessSnapshot = async () => {
+        const orderId = confirmModal.orderId;
+        setConfirmModal({ isOpen: false, orderId: null });
+        if (!orderId) return;
 
         setSubmittingId(orderId);
         setAlert({ type: "", msg: "" });
@@ -312,6 +319,16 @@ const ManageProductionRequests = () => {
                     onPageChange={(p) => setPage(p)}
                 />
             </div>
+            
+            <ConfirmModal 
+                open={confirmModal.isOpen}
+                title="Xác nhận phê duyệt"
+                message={`Xác nhận phê duyệt yêu cầu #${confirmModal.orderId}? Hệ thống sẽ bóc tách cấu trúc thành phần (components) thành mật độ vật tư kỹ thuật và chuyển giao trạng thái sang bộ phận Kho.`}
+                confirmText="Xác nhận & Bóc tách"
+                cancelText="Quay lại"
+                onConfirm={executeApproveAndProcessSnapshot}
+                onCancel={() => setConfirmModal({ isOpen: false, orderId: null })}
+            />
         </div>
     );
 };

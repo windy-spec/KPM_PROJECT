@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import adminService from '../../services/admin.service';
 import { Pencil, Trash, Plus } from 'lucide-react';
 import ProductForm from '../../components/admin/ProductForm';
+import { toast } from 'react-toastify';
 
 const ManageProducts = () => {
   const [items, setItems] = useState([]);
@@ -40,7 +41,7 @@ const ManageProducts = () => {
       await adminService.deleteProduct(id);
       await load();
     } catch (e) {
-      alert('Xoá thất bại: ' + (e?.response?.data?.message || e.message || e));
+      toast.error('Xoá thất bại: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
@@ -54,7 +55,7 @@ const ManageProducts = () => {
       setShowForm(false);
       await load();
     } catch (e) {
-      alert('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
+      toast.error('Lưu thất bại: ' + (e?.response?.data?.message || e.message || e));
     }
   };
 
@@ -64,7 +65,7 @@ const ManageProducts = () => {
         <h3 className="font-black">Quản lý sản phẩm</h3>
         <div className="flex items-center gap-2">
           <button onClick={handleCreate} className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded">
-            <Plus className="w-4 h-4"/> Thêm sản phẩm
+            <Plus className="w-4 h-4" /> Thêm sản phẩm
           </button>
         </div>
       </div>
@@ -80,8 +81,8 @@ const ManageProducts = () => {
                 <td className="p-3">{it.price ? `${it.price}đ` : '-'}</td>
                 <td className="p-3">{it.status || '-'}</td>
                 <td className="p-3 text-center">
-                  <button onClick={() => handleEdit(it)} className="px-2 py-1 mr-2 rounded bg-amber-50 hover:bg-amber-100"> <Pencil className="w-4 h-4"/> </button>
-                  <button onClick={() => handleDelete(it.id)} className="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100"> <Trash className="w-4 h-4"/> </button>
+                  <button onClick={() => handleEdit(it)} className="px-2 py-1 mr-2 rounded bg-amber-50 hover:bg-amber-100"> <Pencil className="w-4 h-4" /> </button>
+                  <button onClick={() => handleDelete(it.id)} className="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100"> <Trash className="w-4 h-4" /> </button>
                 </td>
               </tr>
             ))}

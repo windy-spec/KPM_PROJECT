@@ -93,7 +93,7 @@ const Cart = () => {
         fetchCartCount();
       } catch (e) {
         console.error("Lỗi đồng bộ số lượng lên Server:", e);
-        notify.error("Không thể cập nhật số lượng, đang khôi phục...");
+        notify.showError("Không thể cập nhật số lượng, đang khôi phục...");
 
         // Nếu API lỗi (mạng sập, hết hàng...), lúc này mới âm thầm rollback lại dữ liệu chuẩn
         const res = await cartService.getCart();
@@ -183,11 +183,11 @@ const Cart = () => {
           state: { checkoutItems: cartItems, order_id: res.data.order_id },
         });
       } else {
-        alert(res.message || "Gửi yêu cầu thành công!");
+        notify.showSuccess(res.message || "Gửi yêu cầu thành công!");
         navigate("/profile"); // Chuyển về profile xem báo giá
       }
     } catch (e) {
-      alert(e.response?.data?.message || "Lỗi khi xử lý giỏ hàng");
+      notify.showError(e.response?.data?.message || "Lỗi khi xử lý giỏ hàng");
     }
   };
 

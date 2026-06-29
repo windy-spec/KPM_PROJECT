@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Trash, Image as ImageIcon, Save, X } from "lucide-react";
 import adminService from "../../services/admin.service";
 import apiClient from "../../services/apiClient";
+import { toast } from "react-toastify";
 
 const ManageDrawings = () => {
   const [products, setProducts] = useState([]);
@@ -105,7 +106,7 @@ const ManageDrawings = () => {
       });
       setUrlCallback(res.data?.data?.imageUrl);
     } catch (error) {
-      alert("Upload ảnh thất bại");
+      toast.error("Upload ảnh thất bại");
     }
   };
 
@@ -130,9 +131,9 @@ const ManageDrawings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedProduct) return alert("Vui lòng chọn sản phẩm trước");
+    if (!selectedProduct) return toast.warning("Vui lòng chọn sản phẩm trước");
     if (!drawingName || !mainImageUrl)
-      return alert("Vui lòng nhập tên bản vẽ và ảnh tổng");
+      return toast.warning("Vui lòng nhập tên bản vẽ và ảnh tổng");
 
     try {
       const payload = {
@@ -144,12 +145,12 @@ const ManageDrawings = () => {
       };
 
       await adminService.createDrawing(payload);
-      alert("Tạo bản vẽ thành công!");
+      toast.success("Tạo bản vẽ thành công!");
       setShowForm(false);
       resetForm();
       loadDrawings(selectedProduct);
     } catch (error) {
-      alert("Lỗi tạo bản vẽ: " + error.message);
+      toast.error("Lỗi tạo bản vẽ: " + error.message);
     }
   };
 

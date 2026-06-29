@@ -26,7 +26,7 @@ const ExportRequestsPanel = ({
                 orderService.getAllOrders(),
                 warehouseService.getAllInventory()
             ]);
-            
+
             const allOrders = ordersRes?.data?.orders || ordersRes?.orders || ordersRes?.data || [];
 
             if (Array.isArray(allOrders)) {
@@ -229,7 +229,7 @@ const ExportRequestsPanel = ({
                                                                     >
                                                                         <AlertCircle className="w-4 h-4" /> Thiếu hàng - Yêu cầu nhập
                                                                     </button>
-                                                                    
+
                                                                     <button
                                                                         onClick={() => onConfirmSufficientStock(order.id, fetchOrders)}
                                                                         disabled={isWarehouseActionLoading || !hasEnoughStock || totalMaterialTypes === 0}

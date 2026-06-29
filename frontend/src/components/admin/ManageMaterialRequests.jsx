@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import materialRequestService from "../../services/material_request.service";
 import { authService } from "../../services/auth.service";
 import { Loader2, CheckCircle2, XCircle, Clock, AlertCircle, Boxes, Check, RefreshCcw, Truck, PackagePlus, X } from "lucide-react";
+import { toast } from "react-toastify";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const ManageMaterialRequests = () => {
     const [requests, setRequests] = useState([]);
@@ -9,6 +11,7 @@ const ManageMaterialRequests = () => {
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [error, setError] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
 
     // Modal state for receiving items
     const [receiveModal, setReceiveModal] = useState({
@@ -40,15 +43,21 @@ const ManageMaterialRequests = () => {
         }
     };
 
-    const handleApprove = async (id) => {
-        if (!window.confirm("Xác nhận đã mua hàng cho yêu cầu này? Trạng thái sẽ chuyển thành 'Đang giao'.")) return;
-        
+    const handleApprove = (id) => {
+        setConfirmModal({ isOpen: true, id });
+    };
+
+    const executeApprove = async () => {
+        const id = confirmModal.id;
+        setConfirmModal({ isOpen: false, id: null });
+        if (!id) return;
+
         setActionLoadingId(id);
         try {
             await materialRequestService.approveRequest(id);
             fetchRequests(); // Reload data
         } catch (err) {
-            alert(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu.");
+            toast.error(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu.");
         } finally {
             setActionLoadingId(null);
         }
@@ -71,10 +80,10 @@ const ManageMaterialRequests = () => {
 
     const submitReceive = async (e) => {
         e.preventDefault();
-        
+
         const actualQuantity = parseFloat(receiveModal.actualQty);
         if (isNaN(actualQuantity) || actualQuantity <= 0) {
-            alert("Vui lòng nhập số lượng hợp lệ lớn hơn 0!");
+            toast.warning("Vui lòng nhập số lượng hợp lệ lớn hơn 0!");
             return;
         }
 
@@ -84,10 +93,10 @@ const ManageMaterialRequests = () => {
 
         try {
             const res = await materialRequestService.receiveImport(reqId, actualQuantity);
-            alert(res.data?.message || "Nhập kho thành công!");
+            toast.success(res.data?.message || "Nhập kho thành công!");
             fetchRequests(); // Reload data
         } catch (err) {
-            alert(err.response?.data?.message || "Có lỗi xảy ra khi nhập kho.");
+            toast.error(err.response?.data?.message || "Có lỗi xảy ra khi nhập kho.");
         } finally {
             setActionLoadingId(null);
         }
@@ -158,7 +167,7 @@ const ManageMaterialRequests = () => {
                                         <td className="p-4 max-w-xs">
                                             {req.orders ? (
                                                 <div className="inline-block px-2 py-0.5 bg-primary/10 text-primary font-bold rounded text-[10px] mb-1">
-                                                    ĐH: {req.orders.order_code || req.orders.id.substring(0,8)}
+                                                    ĐH: {req.orders.order_code || req.orders.id.substring(0, 8)}
                                                 </div>
                                             ) : null}
                                             <div className="line-clamp-2 text-[11px] leading-relaxed" title={req.note}>
@@ -235,20 +244,20 @@ const ManageMaterialRequests = () => {
                                 <PackagePlus className="w-5 h-5 text-primary" />
                                 Xác nhận Nhập Kho
                             </h3>
-                            <button 
+                            <button
                                 onClick={closeReceiveModal}
                                 className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        
+
                         <form onSubmit={submitReceive} className="p-5 space-y-5">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Thông tin vật tư</div>
                                 <div className="font-black text-slate-800 text-sm">{receiveModal.materialCode}</div>
                                 <div className="text-xs text-slate-600 mt-0.5">{receiveModal.materialName}</div>
-                                
+
                                 <div className="mt-3 flex items-center justify-between text-xs font-bold border-t border-slate-200 pt-3">
                                     <span className="text-slate-500">Số lượng ban đầu yêu cầu:</span>
                                     <span className="text-primary text-sm">{receiveModal.requestedQty}</span>
@@ -266,7 +275,7 @@ const ManageMaterialRequests = () => {
                                     required
                                     autoFocus
                                     value={receiveModal.actualQty}
-                                    onChange={(e) => setReceiveModal({...receiveModal, actualQty: e.target.value})}
+                                    onChange={(e) => setReceiveModal({ ...receiveModal, actualQty: e.target.value })}
                                     className="w-full p-3.5 border border-slate-300 rounded-xl font-black text-slate-800 focus:outline-primary focus:ring-2 focus:ring-primary/20 text-center text-lg"
                                     placeholder="Ví dụ: 100"
                                 />
@@ -294,6 +303,14 @@ const ManageMaterialRequests = () => {
                     </div>
                 </div>
             )}
+            
+            <ConfirmModal
+                open={confirmModal.isOpen}
+                title="Xác nhận mua hàng"
+                message="Xác nhận đã mua hàng cho yêu cầu này? Trạng thái sẽ chuyển thành 'Đang giao'."
+                onConfirm={executeApprove}
+                onCancel={() => setConfirmModal({ isOpen: false, id: null })}
+            />
         </div>
     );
 };

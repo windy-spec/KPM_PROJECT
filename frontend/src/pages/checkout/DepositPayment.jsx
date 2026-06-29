@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { CreditCard, AlertCircle, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import apiClient from "../../services/apiClient";
 import notify from "../../utils/notify";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 const DepositPayment = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,7 @@ const DepositPayment = () => {
   const [paymentMethod, setPaymentMethod] = useState("vietqr");
   const [qrData, setQrData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -78,8 +80,12 @@ const DepositPayment = () => {
     }
   };
 
+  const handleCancelDepositClick = () => {
+    setConfirmModal(true);
+  };
+
   const handleCancelDeposit = async () => {
-    if (!window.confirm("Bạn có chắc muốn hủy thanh toán cọc bằng COD? Đơn hàng sẽ được chuyển sang trạng thái chờ Thanh toán toàn bộ bằng cổng Online.")) return;
+    setConfirmModal(false);
     setIsSubmitting(true);
     try {
       await apiClient.post("/payments/cancel-deposit", { order_id: orderId });
@@ -177,7 +183,7 @@ const DepositPayment = () => {
           </button>
           <div className="mt-4 text-center">
             <button
-              onClick={handleCancelDeposit}
+              onClick={handleCancelDepositClick}
               disabled={isSubmitting}
               className="text-sm font-bold text-on-surface-variant hover:text-error transition-colors underline underline-offset-2"
             >
@@ -231,6 +237,14 @@ const DepositPayment = () => {
           </div>
         </div>
       )}
+      
+      <ConfirmModal
+        open={confirmModal}
+        title="Xác nhận hủy thanh toán cọc"
+        message="Bạn có chắc muốn hủy thanh toán cọc bằng COD? Đơn hàng sẽ được chuyển sang trạng thái chờ Thanh toán toàn bộ bằng cổng Online."
+        onConfirm={handleCancelDeposit}
+        onCancel={() => setConfirmModal(false)}
+      />
     </div>
   );
 };
