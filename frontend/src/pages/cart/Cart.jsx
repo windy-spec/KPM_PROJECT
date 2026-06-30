@@ -12,6 +12,7 @@ import cartService from "../../services/cart.service";
 import { useCart } from "../../context/CartContext";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import notify from "../../utils/notify";
+import defaultProductImg from "../../assets/img/avt_chung.jpg";
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -246,7 +247,7 @@ const Cart = () => {
                     {/* Cột thông tin ảnh + tên */}
                     <div className="col-span-1 sm:col-span-6 flex gap-4 items-center">
                       <img
-                        src={item.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
+                        src={item.image || defaultProductImg}
                         alt={item.product_name}
                         className="w-20 h-20 object-cover rounded-xl border border-outline-variant/40 bg-surface-container/30 shrink-0"
                       />

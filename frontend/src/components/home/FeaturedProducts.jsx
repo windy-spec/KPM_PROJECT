@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, Drill, ArrowUpRight, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { productService } from '../../services/product.service';
+import defaultProductImg from '../../assets/img/avt_chung.jpg';
 
 const FeaturedProducts = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -100,7 +101,7 @@ const FeaturedProducts = () => {
             // Lấy ảnh chính primary hoặc ảnh đầu tiên trong mảng hình ảnh từ DB thật
             const primaryImage = product.product_images?.find(img => img.is_primary)?.image_url
               || product.product_images?.[0]?.image_url
-              || "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?q=80&w=400"; // Ảnh dự phòng
+              || defaultProductImg; // Ảnh dự phòng
 
             const categoryName = product.product_categories?.category_name || "Cấu kiện";
 

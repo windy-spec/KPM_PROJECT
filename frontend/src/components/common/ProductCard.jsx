@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import cartService from '../../services/cart.service';
 import { toast } from 'react-toastify';
+import defaultProductImg from '../../assets/img/avt_chung.jpg';
 
 const ProductCard = ({ product }) => {
   // Destructure dữ liệu thật từ DB
@@ -98,7 +99,7 @@ const ProductCard = ({ product }) => {
 
       {/* Khung ảnh sản phẩm */}
       <Link to={`/product/${id}`} className="block w-full h-44 bg-surface-container/30 flex items-center justify-center border-b border-outline-variant/40 group-hover:bg-primary/[0.02] transition-colors relative overflow-hidden">
-        <img src={imageUrl || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"} alt={product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <img src={imageUrl || defaultProductImg} alt={product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       </Link>
 
       {/* Nội dung chữ */}

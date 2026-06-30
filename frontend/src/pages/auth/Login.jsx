@@ -15,6 +15,7 @@ import { authService } from "../../services/auth.service";
 // 1. IMPORT THÊM THƯ VIỆN GOOGLE VÀ APICLIENT Ở ĐÂY
 import { GoogleLogin } from "@react-oauth/google";
 import apiClient from "../../services/apiClient";
+import loginBannerImg from "../../assets/img/trang_dang_nhap.jpg";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -382,17 +383,12 @@ const Login = () => {
           </div>
 
           {/* --- PHẦN BÊN PHẢI: Ô CHỨA HÌNH ẢNH --- */}
-          <div className="flex-1 hidden md:block relative bg-surface-container-highest">
-            <div className="absolute inset-4 rounded-2xl overflow-hidden bg-white/40 backdrop-blur-sm border border-white/20 flex flex-col items-center justify-center p-10 text-center">
-              <Factory className="w-20 h-20 text-primary opacity-20 mb-6" />
-              <h2 className="text-2xl font-black text-primary uppercase tracking-tight opacity-40">
-                KPM Industrial
-              </h2>
-              <p className="text-xs font-medium text-on-surface-variant opacity-40 mt-2 max-w-sm">
-                Nền tảng cung ứng và quản lý vật liệu cơ khí chính xác. Giải
-                pháp toàn diện cho mọi công trình.
-              </p>
-            </div>
+          <div className="flex-1 hidden md:block relative overflow-hidden bg-[#FFFFFF]">
+            <img
+              src={loginBannerImg}
+              alt="KPM Login Banner"
+              className="absolute inset-0 w-full h-full object-contain p-4"
+            />
           </div>
         </div>
       </main>

@@ -7,6 +7,7 @@ import {
   Tag,
   ChevronRight,
 } from "lucide-react";
+import defaultProductImg from "../../assets/img/avt_chung.jpg";
 
 const ProductWidget = ({ items }) => {
   const [products, setProducts] = useState([]);
@@ -79,7 +80,7 @@ const ProductWidget = ({ items }) => {
               {/* Thumbnail vuông vức gọn gàng, tăng kích thước lên 24 */}
               <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-variant flex-shrink-0 relative border border-outline-variant/40 shadow-sm">
                 <img
-                  src={p.displayImage || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
+                  src={p.displayImage || defaultProductImg}
                   alt={p.product_name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
