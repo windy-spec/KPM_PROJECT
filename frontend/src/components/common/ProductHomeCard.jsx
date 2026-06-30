@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquare } from 'lucide-react';
+import defaultProductImg from '../../assets/img/avt_chung.jpg';
 
 const ProductHomeCard = ({ product }) => {
   return (
@@ -7,7 +8,7 @@ const ProductHomeCard = ({ product }) => {
       {/* Image Area */}
       <div className="h-48 bg-surface-container-variant relative overflow-hidden">
         <img 
-          src={product.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"} 
+          src={product.image || defaultProductImg} 
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

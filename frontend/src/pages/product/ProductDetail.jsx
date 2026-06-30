@@ -8,6 +8,9 @@ import { favoriteService } from "../../services/favorite.service";
 import cartService from "../../services/cart.service";
 import { useCart } from "../../context/CartContext";
 import { toast } from "react-toastify";
+import defaultProductImg from "../../assets/img/avt_chung.jpg";
+import policyImg from "../../assets/img/resize_avt2.jpg";
+import introImg from "../../assets/img/resize_avt_chung3.jpg";
 import {
   ChevronDown,
   ArrowLeft,
@@ -232,6 +235,16 @@ export default function ProductDetail() {
       </div>
     );
 
+  const productImgList = product.product_images?.length > 0 
+    ? product.product_images 
+    : [{ id: "default-img", image_url: defaultProductImg }];
+
+  const combinedImages = [
+    ...productImgList,
+    { id: "policy-img", image_url: policyImg },
+    { id: "intro-img", image_url: introImg }
+  ];
+
   return (
     <div className="min-h-screen bg-surface p-4 md:p-8">
       <button
@@ -246,16 +259,16 @@ export default function ProductDetail() {
         <div className="space-y-4">
           <div className="rounded-2xl overflow-hidden bg-surface-container aspect-[4/3] shadow-sm border border-outline-variant/30 flex items-center justify-center relative group">
               <img
-                src={mainImage || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
+                src={mainImage || defaultProductImg}
                 alt={product.product_name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
           </div>
 
           {/* Dàn ảnh Thumbnails */}
-          {product.product_images?.length > 1 && (
+          {combinedImages.length > 1 && (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-              {product.product_images.map((img) => (
+              {combinedImages.map((img) => (
                 <button
                   key={img.id}
                   onClick={() => setMainImage(img.image_url)}

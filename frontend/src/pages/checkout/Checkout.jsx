@@ -16,6 +16,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import apiClient from "../../services/apiClient";
 import { authService } from "../../services/auth.service";
 import notify from "../../utils/notify";
+import defaultProductImg from "../../assets/img/avt_chung.jpg";
 
 const Checkout = () => {
   const location = useLocation();
@@ -426,7 +427,7 @@ const Checkout = () => {
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-3 py-3 items-center">
                     <img
-                      src={item.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
+                      src={item.image || defaultProductImg}
                       alt={item.product_name}
                       className="w-14 h-14 object-cover rounded-lg border border-outline-variant/40 bg-surface-container/30"
                     />
