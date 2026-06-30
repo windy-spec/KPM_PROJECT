@@ -245,7 +245,7 @@ const Navbar = () => {
                           to="/profile?panel=favorites"
                           className="flex items-center gap-3 px-3 py-2 text-sm font-bold text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
                         >
-                          <ShoppingCart className="w-4 h-4" /> Cấu hình yêu thích
+                          <ShoppingCart className="w-4 h-4" /> Sản phẩm yêu thích
                         </Link>
 
                         <Link

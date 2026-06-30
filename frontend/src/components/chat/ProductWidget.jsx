@@ -46,8 +46,9 @@ const ProductWidget = ({ items }) => {
       }
     };
 
+    const itemsString = JSON.stringify(items);
     if (items && items.length > 0) fetchProducts();
-  }, [items]);
+  }, [JSON.stringify(items)]);
 
   if (loading) {
     return (
@@ -75,27 +76,18 @@ const ProductWidget = ({ items }) => {
             onClick={() => window.open(`/product/${p.id}`, "_blank")}
           >
             <div className="flex p-3 gap-3">
-              {/* Thumbnail vuông vức gọn gàng */}
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-surface-variant flex-shrink-0 relative border border-outline-variant/30">
-                {p.displayImage ? (
-                  <img
-                    src={p.displayImage}
-                    alt={p.product_name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-surface-variant to-outline-variant/20 gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-outline/60">
-                      <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="16" y2="21"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="2" y1="15" x2="22" y2="15"/>
-                    </svg>
-                    <span className="text-[9px] text-outline/50 font-medium">KPM</span>
-                  </div>
-                )}
+              {/* Thumbnail vuông vức gọn gàng, tăng kích thước lên 24 */}
+              <div className="w-24 h-24 rounded-2xl overflow-hidden bg-surface-variant flex-shrink-0 relative border border-outline-variant/40 shadow-sm">
+                <img
+                  src={p.displayImage || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
+                  alt={p.product_name}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                />
               </div>
 
               {/* Thông tin chính */}
-              <div className="flex-1 flex flex-col justify-center">
-                <div className="text-[10px] font-black text-primary/60 uppercase tracking-wider mb-0.5">
+              <div className="flex-1 flex flex-col justify-center py-1">
+                <div className="text-[11px] font-black text-primary/70 uppercase tracking-wider mb-1">
                   {p.product_code}
                 </div>
                 <h4 className="font-bold text-on-surface text-[14px] leading-tight line-clamp-2 group-hover:text-primary transition-colors">

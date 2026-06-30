@@ -426,7 +426,7 @@ const Checkout = () => {
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-3 py-3 items-center">
                     <img
-                      src={item.image}
+                      src={item.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
                       alt={item.product_name}
                       className="w-14 h-14 object-cover rounded-lg border border-outline-variant/40 bg-surface-container/30"
                     />

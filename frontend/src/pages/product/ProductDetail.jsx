@@ -4,6 +4,7 @@ import { productService } from "../../services/product.service";
 import apiClient from "../../services/apiClient";
 import { materialService } from "../../services/material.service";
 import { quotationService } from "../../services/quotation.service";
+import { favoriteService } from "../../services/favorite.service";
 import cartService from "../../services/cart.service";
 import { useCart } from "../../context/CartContext";
 import { toast } from "react-toastify";
@@ -14,6 +15,7 @@ import {
   Save,
   ShoppingCart,
   Star,
+  Heart,
   FileText,
   ClipboardList,
   CreditCard,
@@ -42,6 +44,7 @@ export default function ProductDetail() {
   const [expandedDesc, setExpandedDesc] = useState(false);
   const [expandedSpecs, setExpandedSpecs] = useState(false);
   const [isAgreed, setIsAgreed] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -58,6 +61,10 @@ export default function ProductDetail() {
 
         const pData = prodRes.data?.data || prodRes.data;
         setProduct(pData);
+
+        if (localStorage.getItem("accessToken")) {
+          favoriteService.checkFavorite(id).then(res => setIsFavorite(res.data?.isFavorite)).catch(() => {});
+        }
 
         // Khởi tạo ảnh chính (ưu tiên is_primary, nếu không thì lấy ảnh đầu tiên)
         if (pData?.product_images?.length > 0) {
@@ -205,30 +212,14 @@ export default function ProductDetail() {
   };
 
   const handleSaveFavorite = async () => {
-    if (!priceData) {
-      toast.warning("Vui lòng cấu hình đầy đủ trước khi lưu!");
-      return;
-    }
-
-    // Thêm prompt hỏi tên cấu hình
-    const title = window.prompt(
-      "Nhập tên cho thiết kế yêu thích của bạn:",
-      `Cấu hình ${product.product_name}`,
-    );
-    if (title === null) return; // Nếu khách bấm Cancel thì bỏ qua
-    if (!title.trim()) {
-      toast.warning("Tên thiết kế không được để trống!");
-      return;
-    }
-
     try {
-      await quotationService.saveFavorite({
-        product_id: product.id,
-        components: componentsConfig,
-        note: note,
-        title: title.trim(), // Truyền tên lên backend
-      });
-      toast.success("Đã lưu thiết kế vào mục yêu thích!");
+      const res = await favoriteService.toggleFavorite(product.id);
+      setIsFavorite(res.data?.isFavorite);
+      if (res.data?.isFavorite) {
+        toast.success("Đã lưu sản phẩm vào mục yêu thích!");
+      } else {
+        toast.success("Đã bỏ yêu thích sản phẩm!");
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Lỗi lưu yêu thích");
     }
@@ -254,17 +245,11 @@ export default function ProductDetail() {
         {/* Left: Visual */}
         <div className="space-y-4">
           <div className="rounded-2xl overflow-hidden bg-surface-container aspect-[4/3] shadow-sm border border-outline-variant/30 flex items-center justify-center relative group">
-            {mainImage ? (
               <img
-                src={mainImage}
+                src={mainImage || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
                 alt={product.product_name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
-            ) : (
-              <div className="text-on-surface-variant/50 font-medium">
-                Chưa có hình ảnh
-              </div>
-            )}
           </div>
 
           {/* Dàn ảnh Thumbnails */}
@@ -625,6 +610,26 @@ export default function ProductDetail() {
                 +
               </button>
             </div>
+            <button
+              onClick={handleSaveFavorite}
+              className={`relative w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-300 group/fav ${
+                isFavorite
+                  ? 'bg-gradient-to-br from-pink-50 to-rose-50 border-2 border-rose-300 text-rose-500 shadow-md shadow-rose-100'
+                  : 'bg-white border border-outline-variant text-on-surface-variant hover:border-rose-300 hover:text-rose-400 hover:bg-rose-50'
+              }`}
+              title={isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+            >
+              <Heart
+                className={`w-5 h-5 transition-all duration-300 ${
+                  isFavorite
+                    ? 'fill-rose-500 text-rose-500 scale-110 drop-shadow-sm'
+                    : 'group-hover/fav:scale-110'
+                }`}
+              />
+              <span className={`text-[9px] font-black tracking-tight leading-none ${isFavorite ? 'text-rose-500' : 'text-on-surface-variant/60 group-hover/fav:text-rose-400'}`}>
+                {isFavorite ? 'Đã lưu' : 'Yêu thích'}
+              </span>
+            </button>
 
             {(() => {
               // 1. Tính toán giá trị đơn hàng hiện tại
@@ -677,13 +682,6 @@ export default function ProductDetail() {
               );
             })()}
 
-            <button
-              onClick={handleSaveFavorite}
-              title="Lưu yêu thích"
-              className="flex-none w-14 bg-pink-50 text-pink-500 font-bold py-3.5 px-4 rounded-xl hover:bg-pink-100 hover:text-pink-600 transition-colors flex items-center justify-center shadow-sm"
-            >
-              <Star className="w-5 h-5 fill-current" />
-            </button>
           </div>
         </div>
       </div>

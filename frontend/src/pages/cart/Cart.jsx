@@ -246,7 +246,7 @@ const Cart = () => {
                     {/* Cột thông tin ảnh + tên */}
                     <div className="col-span-1 sm:col-span-6 flex gap-4 items-center">
                       <img
-                        src={item.image}
+                        src={item.image || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"}
                         alt={item.product_name}
                         className="w-20 h-20 object-cover rounded-xl border border-outline-variant/40 bg-surface-container/30 shrink-0"
                       />

@@ -98,13 +98,7 @@ const ProductCard = ({ product }) => {
 
       {/* Khung ảnh sản phẩm */}
       <Link to={`/product/${id}`} className="block w-full h-44 bg-surface-container/30 flex items-center justify-center border-b border-outline-variant/40 group-hover:bg-primary/[0.02] transition-colors relative overflow-hidden">
-        {imageUrl ? (
-          <img src={imageUrl} alt={product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : (
-          <div className="w-12 h-12 rounded-full border-2 border-dashed border-outline-variant/60 flex items-center justify-center group-hover:scale-110 group-hover:border-primary/40 transition-transform duration-300">
-            <Grid3X3 className="w-5 h-5 text-on-surface-variant/30 group-hover:text-primary/40 transition-colors" />
-          </div>
-        )}
+        <img src={imageUrl || "https://placehold.co/600x400/f8f9fa/a1a1aa?text=KPM+Chua+co+anh"} alt={product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
       </Link>
 
       {/* Nội dung chữ */}
