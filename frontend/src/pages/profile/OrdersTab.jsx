@@ -67,43 +67,44 @@ const OrdersTab = () => {
   const [trackingLoading, setTrackingLoading] = useState(false);
 
   const navigate = useNavigate();
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const res = await orderService.getMyOrders();
-        if (res.success && res.data) {
-          const formattedOrders = res.data.map((o) => ({
-            id: o.id, // GIỮ NGUYÊN UUID ĐỂ THANH TOÁN
-            order_code: o.order_code, // Tách riêng mã hiển thị
-            created_at: o.created_at,
-            total_amount: parseFloat(o.total_amount) || 0,
-            shipping_fee: parseFloat(o.shipping_fee) || 0,
-            installation_fee: parseFloat(o.installation_fee) || 0,
-            is_deposit_paid: o.is_deposit_paid,
-            deposit_amount: parseFloat(o.deposit_amount) || 0,
-            status: o.production_status,
-            items: o.quotation_id && o.quotations?.quotation_specs
-              ? o.quotations.quotation_specs.map((s) => ({
-                  name: s.component_name || "Linh kiện",
-                  specs: s.note || "",
-                }))
-              : o.order_items?.map((i) => ({
-                  name: i.products?.product_name || "Sản phẩm",
-                  specs: i.products?.materials?.material_name || "",
-                })) || [],
-            raw_items: o.order_items, // Giữ lại nguyên gốc để truyền qua Checkout
-            raw_quotation_specs: o.quotations?.quotation_specs, // Giữ thêm specs báo giá
-            quotations: o.quotations, // Truyền sang để lấy title
-          }));
-          setOrders(formattedOrders);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await orderService.getMyOrders();
+      if (res.success && res.data) {
+        const formattedOrders = res.data.map((o) => ({
+          id: o.id,
+          order_code: o.order_code,
+          created_at: o.created_at,
+          total_amount: parseFloat(o.total_amount) || 0,
+          shipping_fee: parseFloat(o.shipping_fee) || 0,
+          installation_fee: parseFloat(o.installation_fee) || 0,
+          is_deposit_paid: o.is_deposit_paid,
+          deposit_amount: parseFloat(o.deposit_amount) || 0,
+          status: o.production_status,
+          items: o.quotation_id && o.quotations?.quotation_specs
+            ? o.quotations.quotation_specs.map((s) => ({
+                name: s.component_name || "Linh kiện",
+                specs: s.note || "",
+              }))
+            : o.order_items?.map((i) => ({
+                name: i.products?.product_name || "Sản phẩm",
+                specs: i.products?.materials?.material_name || "",
+              })) || [],
+          raw_items: o.order_items,
+          raw_quotation_specs: o.quotations?.quotation_specs,
+          quotations: o.quotations,
+        }));
+        setOrders(formattedOrders);
       }
-    };
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchOrders();
   }, []);
 
@@ -436,14 +437,20 @@ const OrdersTab = () => {
                   <div className="flex gap-2">
                     {order.status === "delivering" && (
                       <button
-                        onClick={() => handleConfirmReceived(order.id)}
+                        onClick={() => {
+                          if (order.is_deposit_paid) {
+                            navigate("/phase2-checkout", { state: { order_id: order.id, total_amount: order.total_amount, deposit_amount: order.deposit_amount, shipping_fee: order.shipping_fee, installation_fee: order.installation_fee } });
+                          } else {
+                            handleConfirmReceived(order.id);
+                          }
+                        }}
                         disabled={confirmingOrderId === order.id}
-                        className="px-5 py-2 text-xs font-black uppercase tracking-widest bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-md disabled:opacity-60 flex items-center gap-1.5"
+                        className={`px-5 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl transition-all shadow-md disabled:opacity-60 flex items-center gap-1.5 ${order.is_deposit_paid ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                       >
                         {confirmingOrderId === order.id ? (
                           <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang xử lý...</>
                         ) : (
-                          <><CheckCircle2 className="w-3.5 h-3.5" /> Đã nhận hàng</>
+                          <><CheckCircle2 className="w-3.5 h-3.5" /> {order.is_deposit_paid ? "Thanh toán đợt 2" : "Đã nhận hàng"}</>
                         )}
                       </button>
                     )}

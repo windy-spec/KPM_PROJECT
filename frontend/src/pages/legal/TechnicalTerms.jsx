@@ -18,6 +18,16 @@ const TechnicalTerms = () => {
             category: "Thuật ngữ gia công"
         },
         {
+            term: "Chấn gấp CNC (CNC Bending)",
+            definition: "Quá trình sử dụng máy chấn thủy lực hoặc CNC để uốn, gấp các tấm kim loại (thép tấm, inox) thành các biên dạng hình học mong muốn (chữ U, V, Z...) với độ chính xác cao.",
+            category: "Gia công kim loại tấm"
+        },
+        {
+            term: "Hàn TIG/MIG (TIG/MIG Welding)",
+            definition: "Các phương pháp hàn hồ quang có khí bảo vệ. TIG thường dùng cho chi tiết yêu cầu thẩm mỹ cao, thành mỏng (inox). MIG cho tốc độ hàn nhanh, phù hợp cho thép kết cấu.",
+            category: "Công nghệ hàn"
+        },
+        {
             term: "Biên dạng cắt (Cutting Profile)",
             definition: "Đường vạch bề mặt hoặc hình dáng hình học mà mỏ cắt (Laser, Plasma) hoặc dao cắt sẽ đi qua để tạo hình cho chi tiết sản phẩm trên tấm phôi.",
             category: "Kỹ thuật sản xuất"

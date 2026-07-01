@@ -10,7 +10,7 @@ class JWTUtils {
         role: user.roles?.role_name, // Sửa chuẩn theo Schema DB của bro
       },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "60m" },
+      { expiresIn: "55m" },
     );
   }
 

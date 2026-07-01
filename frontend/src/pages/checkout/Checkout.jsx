@@ -44,6 +44,7 @@ const Checkout = () => {
     location.state?.from_order ? (location.state?.installation_fee > 0) : false
   );
   const [paymentMethod, setPaymentMethod] = useState("vietqr");
+  const [paymentOption, setPaymentOption] = useState("full"); // "full" or "deposit"
   const [qrData, setQrData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,7 +109,7 @@ const Checkout = () => {
   };
 
   const installationFee = needInstallation
-    ? (isFromOrder && passedInstallationFee !== undefined ? passedInstallationFee : calculateAutoInstallFee(cartItems))
+    ? (isFromOrder && passedInstallationFee > 0 ? passedInstallationFee : calculateAutoInstallFee(cartItems))
     : 0;
 
   const finalTotal = isFromOrder && passedTotalAmount !== undefined && (installationFee === passedInstallationFee)
@@ -137,33 +138,29 @@ const Checkout = () => {
         shipping_fee: shippingFee,
         installation_fee: installationFee,
         final_total: finalTotal,
+        is_deposit: paymentOption === "deposit"
       });
 
       // 2. Gọi thanh toán
+      let paymentUrl = null;
+      let payload = { order_id: orderId, is_deposit: paymentOption === "deposit" };
       if (paymentMethod === "momo") {
-        const res = await apiClient.post("/payments/momo", {
-          order_id: orderId,
-        });
-        if (res.data?.data?.payUrl) window.location.href = res.data.data.payUrl;
+        const res = await apiClient.post("/payments/momo", payload);
+        paymentUrl = res.data?.data?.payUrl;
       } else if (paymentMethod === "vnpay") {
-        const res = await apiClient.post("/payments/vnpay", {
-          order_id: orderId,
-        });
-        if (res.data?.data?.payUrl) window.location.href = res.data.data.payUrl;
+        const res = await apiClient.post("/payments/vnpay", payload);
+        paymentUrl = res.data?.data?.payUrl;
       } else if (paymentMethod === "vietqr") {
-        const res = await apiClient.post("/payments/vietqr", {
-          order_id: orderId,
-        });
+        const res = await apiClient.post("/payments/vietqr", payload);
         if (res.data?.success) setQrData(res.data.data);
       } else if (paymentMethod === "cod") {
-        await apiClient.post("/payments/cash", { order_id: orderId });
-        if (finalTotal >= 20000000) {
-          notify.showSuccess("Đã đặt hàng! Vui lòng kiểm tra Email để thanh toán cọc 10%.");
-        } else {
-          notify.showSuccess("Đã ghi nhận đặt hàng thành công!");
-        }
+        await apiClient.post("/payments/cash", payload);
+        notify.showSuccess("Đã ghi nhận đặt hàng thành công!");
         navigate("/profile?panel=orders");
+        return;
       }
+      
+      if (paymentUrl) window.location.href = paymentUrl;
     } catch (e) {
       notify.showError(
         "Lỗi thanh toán: " + (e.response?.data?.message || e.message),
@@ -332,6 +329,26 @@ const Checkout = () => {
                   Phương thức thanh toán
                 </h2>
               </div>
+              
+              {tempTotal >= 10000000 && (
+                <div className="mb-6 space-y-3">
+                  <h3 className="text-sm font-bold text-on-surface">Lựa chọn thanh toán:</h3>
+                  <div className="flex gap-4">
+                    <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${paymentOption === "full" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60 hover:bg-surface-container/10"}`}>
+                      <input type="radio" name="paymentOption" value="full" checked={paymentOption === "full"} onChange={() => setPaymentOption("full")} disabled={isLocked} className="accent-primary" />
+                      <span className="text-sm font-bold text-on-surface">Thanh toán toàn bộ</span>
+                    </label>
+                    <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${paymentOption === "deposit" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60 hover:bg-surface-container/10"}`}>
+                      <input type="radio" name="paymentOption" value="deposit" checked={paymentOption === "deposit"} onChange={() => { setPaymentOption("deposit"); if (paymentMethod === "cod") setPaymentMethod("vietqr"); }} disabled={isLocked} className="accent-primary" />
+                      <div>
+                        <span className="text-sm font-bold text-on-surface block">Thanh toán cọc 10%</span>
+                        <span className="text-[11px] text-on-surface-variant block">Chỉ tính trên vật tư. Ship/Lắp đặt thu đợt 2.</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label
                   className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "vietqr" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60 hover:bg-surface-container/10"}`}
@@ -388,7 +405,17 @@ const Checkout = () => {
                   </div>
                 </label>
                 <label
-                  className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === "cod" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60 hover:bg-surface-container/10"}`}
+                  className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${
+                    paymentMethod === "cod" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60"
+                  } ${
+                    isLocked || paymentOption === "deposit" || tempTotal >= 10000000 ||
+                    (shippingInfo.address.toLowerCase().includes("bình dương") ||
+                     shippingInfo.address.toLowerCase().includes("cần giờ") ||
+                     shippingInfo.address.toLowerCase().includes("vũng tàu") ||
+                     !shippingInfo.address.toLowerCase().includes("hồ chí minh"))
+                      ? "opacity-50 cursor-not-allowed bg-surface-container/30"
+                      : "cursor-pointer hover:bg-surface-container/10"
+                  }`}
                 >
                   <input
                     type="radio"
@@ -396,19 +423,36 @@ const Checkout = () => {
                     value="cod"
                     checked={paymentMethod === "cod"}
                     onChange={() => setPaymentMethod("cod")}
-                    disabled={isLocked}
-                    className="mt-1 accent-primary"
+                    disabled={isLocked || paymentOption === "deposit" || tempTotal >= 10000000 ||
+                      (shippingInfo.address.toLowerCase().includes("bình dương") ||
+                       shippingInfo.address.toLowerCase().includes("cần giờ") ||
+                       shippingInfo.address.toLowerCase().includes("vũng tàu") ||
+                       !shippingInfo.address.toLowerCase().includes("hồ chí minh"))}
+                    className="mt-1 accent-primary disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <span className="text-sm font-bold text-on-surface">
                       Thanh toán khi nhận hàng (COD)
                     </span>
-                    {finalTotal >= 20000000 && (
+                    {paymentOption === "deposit" ? (
                       <p className="mt-1.5 text-xs font-medium text-rose-600 flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        Đơn hàng trên 20 triệu. Sau khi Đặt hàng, hệ thống sẽ gửi Email yêu cầu cọc 10% ({(finalTotal * 0.1).toLocaleString("vi-VN")}đ) để bắt đầu sản xuất.
+                        Thanh toán cọc 10% không hỗ trợ COD, vui lòng chọn phương thức trực tuyến.
                       </p>
-                    )}
+                    ) : tempTotal >= 10000000 ? (
+                      <p className="mt-1.5 text-xs font-medium text-rose-600 flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        Đơn hàng từ 10.000.000đ trở lên bắt buộc phải đặt cọc, không hỗ trợ COD toàn bộ.
+                      </p>
+                    ) : (shippingInfo.address.toLowerCase().includes("bình dương") ||
+                         shippingInfo.address.toLowerCase().includes("cần giờ") ||
+                         shippingInfo.address.toLowerCase().includes("vũng tàu") ||
+                         !shippingInfo.address.toLowerCase().includes("hồ chí minh")) ? (
+                      <p className="mt-1.5 text-xs font-medium text-rose-600 flex items-center gap-1 animate-in fade-in duration-150">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        Khu vực của bạn không hỗ trợ COD, vui lòng chuyển khoản.
+                      </p>
+                    ) : null}
                   </div>
                 </label>
               </div>

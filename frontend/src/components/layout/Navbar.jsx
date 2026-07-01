@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart, User, Factory, LogOut, FileText } from "lucide-react";
 import { authService } from "../../services/auth.service";
+import { productService } from "../../services/product.service";
 import { useCart } from "../../context/CartContext";
 
 const Navbar = () => {
@@ -9,6 +10,13 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // Search Suggestion State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef(null);
 
   // LẤY THÊM cartItems TỪ CONTEXT
   const { cartCount, cartItems } = useCart();
@@ -47,11 +55,47 @@ const Navbar = () => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
 
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Effect fetch suggestions with Debounce
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!searchQuery.trim()) {
+        setSuggestions([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const res = await productService.getProducts(
+          { search: searchQuery.trim(), limit: 3 },
+          { headers: { "X-No-Loading": true } }
+        );
+        setSuggestions(res.data?.data || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim()) fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const handleLogout = async () => {
     try {
@@ -88,13 +132,74 @@ const Navbar = () => {
             </span>
           </Link>
 
-          <div className="flex-1 max-w-2xl relative hidden md:block">
+          <div ref={searchRef} className="flex-1 max-w-2xl relative hidden md:block">
             <input
               type="text"
               placeholder="Tìm kiếm mẫu thiết kế, vật liệu cơ khí..."
               className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-2.5 pl-11 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim()) setShowSuggestions(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim() !== '') {
+                  setShowSuggestions(false);
+                  navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                }
+              }}
             />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-4.5 h-4.5" />
+            
+            {/* Gợi ý Tìm Kiếm (Dropdown) */}
+            {showSuggestions && searchQuery.trim() !== "" && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant overflow-hidden z-50 animate-in fade-in zoom-in-95">
+                {isSearching ? (
+                  <div className="p-4 text-center text-on-surface-variant text-sm font-medium animate-pulse">
+                    Đang tìm kiếm...
+                  </div>
+                ) : suggestions.length > 0 ? (
+                  <div>
+                    {suggestions.map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          setShowSuggestions(false);
+                          navigate(`/product/${p.id}`);
+                        }}
+                        className="flex items-center gap-3 p-3 hover:bg-surface-container transition-colors border-b border-outline-variant/30 last:border-0 cursor-pointer"
+                      >
+                        <img 
+                          src={p.product_images?.[0]?.image_url || "https://placehold.co/40x40/f8f9fa/a1a1aa"} 
+                          alt={p.product_name} 
+                          className="w-10 h-10 object-cover rounded-md border border-outline-variant/50 shrink-0" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-on-surface truncate">{p.product_name}</p>
+                          <p className="text-xs text-on-surface-variant truncate">Mã SP: {p.product_code}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div 
+                      className="p-3 text-center text-sm text-primary font-bold hover:bg-primary/5 cursor-pointer border-t border-outline-variant/50 transition-colors"
+                      onClick={() => {
+                        setShowSuggestions(false);
+                        navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+                      }}
+                    >
+                      Xem tất cả kết quả
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-on-surface-variant text-sm font-medium">
+                    Không tìm thấy kết quả phù hợp.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

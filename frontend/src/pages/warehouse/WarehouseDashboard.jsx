@@ -60,10 +60,12 @@ const WarehouseDashboard = () => {
 
         socket.on("import_request_approved", handleImportApproved);
         socket.on("new_warehouse_request", handleNewWarehouseRequest);
+        socket.on("orderStatusUpdated", () => window.dispatchEvent(new Event('warehouse-refresh')));
 
         return () => {
             socket.off("import_request_approved", handleImportApproved);
             socket.off("new_warehouse_request", handleNewWarehouseRequest);
+            socket.off("orderStatusUpdated");
         };
     }, [socket]);
 

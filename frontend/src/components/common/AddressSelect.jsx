@@ -10,6 +10,13 @@ const AddressSelect = ({ value, onChange, disabled }) => {
   const [selectedWard, setSelectedWard] = useState("");
   const [street, setStreet] = useState("");
 
+  const normalize = (str) => {
+    if (!str) return "";
+    return str.toLowerCase().replace(/^(tỉnh|thành phố|tp|quận|huyện|thị xã|phường|xã|thị trấn)\s+/i, '').trim();
+  };
+
+  const matchName = (name1, name2) => normalize(name1) === normalize(name2);
+
   // 1. Load danh sách Tỉnh/Thành
   useEffect(() => {
     fetch("https://provinces.open-api.vn/api/p/")
@@ -29,27 +36,23 @@ const AddressSelect = ({ value, onChange, disabled }) => {
         const wName = parts[parts.length - 3];
         const streetName = parts.slice(0, parts.length - 3).join(", ");
 
-        const p = provinces.find(
-          (x) => pName === x.name || pName.includes(x.name),
-        );
+        const p = provinces.find((x) => matchName(pName, x.name) || pName.includes(x.name));
+        
         if (p) {
           setSelectedProvince(p.code);
           fetch(`https://provinces.open-api.vn/api/p/${p.code}?depth=2`)
             .then((res) => res.json())
             .then((data) => {
               setDistricts(data.districts || []);
-              const d = (data.districts || []).find(
-                (x) => dName === x.name || dName.includes(x.name),
-              );
+              const d = (data.districts || []).find((x) => matchName(dName, x.name) || dName.includes(x.name));
+              
               if (d) {
                 setSelectedDistrict(d.code);
                 fetch(`https://provinces.open-api.vn/api/d/${d.code}?depth=2`)
                   .then((res) => res.json())
                   .then((wData) => {
                     setWards(wData.wards || []);
-                    const w = (wData.wards || []).find(
-                      (x) => wName === x.name || wName.includes(x.name),
-                    );
+                    const w = (wData.wards || []).find((x) => matchName(wName, x.name) || wName.includes(x.name));
                     if (w) setSelectedWard(w.code);
                   });
               }
@@ -60,52 +63,14 @@ const AddressSelect = ({ value, onChange, disabled }) => {
         setStreet(value);
       }
     }
-  }, [value, provinces]); // Chạy lại khi có value hoặc load xong Tỉnh
+  }, [value, provinces, selectedProvince]);
 
-  // 3. Load Huyện khi chọn Tỉnh mới
-  useEffect(() => {
-    if (
-      selectedProvince &&
-      !districts.find((d) => d.province_code == selectedProvince)
-    ) {
-      fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
-        .then((res) => res.json())
-        .then((data) => {
-          setDistricts(data.districts || []);
-          setSelectedDistrict("");
-          setWards([]);
-        });
-    }
-  }, [selectedProvince]);
+  const handleUpdateAddress = (newStreet, newProvinceCode, newDistrictCode, newWardCode, currentDistricts, currentWards) => {
+    const pName = provinces.find((p) => String(p.code) === String(newProvinceCode))?.name || "";
+    const dName = (currentDistricts || districts).find((d) => String(d.code) === String(newDistrictCode))?.name || "";
+    const wName = (currentWards || wards).find((w) => String(w.code) === String(newWardCode))?.name || "";
 
-  // 4. Load Xã khi chọn Huyện mới
-  useEffect(() => {
-    if (
-      selectedDistrict &&
-      !wards.find((w) => w.district_code == selectedDistrict)
-    ) {
-      fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
-        .then((res) => res.json())
-        .then((data) => {
-          setWards(data.wards || []);
-          setSelectedWard("");
-        });
-    }
-  }, [selectedDistrict]);
-
-  const handleUpdateAddress = (
-    newStreet,
-    newProvince,
-    newDistrict,
-    newWard,
-  ) => {
-    const pName = provinces.find((p) => p.code == newProvince)?.name || "";
-    const dName = districts.find((d) => d.code == newDistrict)?.name || "";
-    const wName = wards.find((w) => w.code == newWard)?.name || "";
-
-    const fullAddress = [newStreet, wName, dName, pName]
-      .filter(Boolean)
-      .join(", ");
+    const fullAddress = [newStreet, wName, dName, pName].filter(Boolean).join(", ");
     onChange(fullAddress);
   };
 
@@ -116,8 +81,24 @@ const AddressSelect = ({ value, onChange, disabled }) => {
           disabled={disabled}
           value={selectedProvince}
           onChange={(e) => {
-            setSelectedProvince(e.target.value);
-            handleUpdateAddress(street, e.target.value, "", "");
+            const val = e.target.value;
+            setSelectedProvince(val);
+            if (val) {
+              fetch(`https://provinces.open-api.vn/api/p/${val}?depth=2`)
+                .then((res) => res.json())
+                .then((data) => {
+                  const newDistricts = data.districts || [];
+                  setDistricts(newDistricts);
+                  setSelectedDistrict("");
+                  setWards([]);
+                  handleUpdateAddress(street, val, "", "", newDistricts, []);
+                });
+            } else {
+              setDistricts([]);
+              setSelectedDistrict("");
+              setWards([]);
+              handleUpdateAddress(street, "", "", "", [], []);
+            }
           }}
           className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
         >
@@ -133,8 +114,22 @@ const AddressSelect = ({ value, onChange, disabled }) => {
           disabled={!selectedProvince || disabled}
           value={selectedDistrict}
           onChange={(e) => {
-            setSelectedDistrict(e.target.value);
-            handleUpdateAddress(street, selectedProvince, e.target.value, "");
+            const val = e.target.value;
+            setSelectedDistrict(val);
+            if (val) {
+              fetch(`https://provinces.open-api.vn/api/d/${val}?depth=2`)
+                .then((res) => res.json())
+                .then((data) => {
+                  const newWards = data.wards || [];
+                  setWards(newWards);
+                  setSelectedWard("");
+                  handleUpdateAddress(street, selectedProvince, val, "", districts, newWards);
+                });
+            } else {
+              setWards([]);
+              setSelectedWard("");
+              handleUpdateAddress(street, selectedProvince, "", "", districts, []);
+            }
           }}
           className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
         >
@@ -150,13 +145,9 @@ const AddressSelect = ({ value, onChange, disabled }) => {
           disabled={!selectedDistrict || disabled}
           value={selectedWard}
           onChange={(e) => {
-            setSelectedWard(e.target.value);
-            handleUpdateAddress(
-              street,
-              selectedProvince,
-              selectedDistrict,
-              e.target.value,
-            );
+            const val = e.target.value;
+            setSelectedWard(val);
+            handleUpdateAddress(street, selectedProvince, selectedDistrict, val, districts, wards);
           }}
           className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"
         >
@@ -175,12 +166,7 @@ const AddressSelect = ({ value, onChange, disabled }) => {
         value={street}
         onChange={(e) => {
           setStreet(e.target.value);
-          handleUpdateAddress(
-            e.target.value,
-            selectedProvince,
-            selectedDistrict,
-            selectedWard,
-          );
+          handleUpdateAddress(e.target.value, selectedProvince, selectedDistrict, selectedWard, districts, wards);
         }}
         placeholder="Số nhà, tên đường, tòa nhà..."
         className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/10 px-4 py-2.5 text-sm outline-none focus:border-primary disabled:opacity-60"

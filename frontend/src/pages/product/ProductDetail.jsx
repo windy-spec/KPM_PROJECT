@@ -262,6 +262,7 @@ export default function ProductDetail() {
                 src={mainImage || defaultProductImg}
                 alt={product.product_name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => { e.target.src = defaultProductImg; }}
               />
           </div>
 
@@ -278,6 +279,7 @@ export default function ProductDetail() {
                     src={img.image_url}
                     alt="Thumbnail"
                     className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = defaultProductImg; }}
                   />
                 </button>
               ))}

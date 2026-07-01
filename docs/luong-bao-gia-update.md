@@ -1,36 +1,33 @@
-# Cập nhật Luồng Báo Giá & Mặc Cả (Sau khi Pull Code)
+# Cập nhật Luồng Thanh toán Đặt Cọc & Hoá Đơn (Giai đoạn 2)
 
-## Vấn đề gặp phải sau khi Pull Code từ team
+## 1. Cơ chế mới về Đặt Cọc (Cập nhật Backend)
+- **Mốc kích hoạt**: Nếu tổng giá trị tiền **vật tư** (không bao gồm vận chuyển và lắp đặt) lớn hơn hoặc bằng **10,000,000 VNĐ**, đơn hàng sẽ yêu cầu thanh toán cọc 10%.
+- **Cách tính cọc**: Số tiền cọc = Tổng giá vật tư x 10%. Các loại phí vận chuyển và lắp đặt sẽ được gộp vào đợt thanh toán thứ 2 (Phase 2) khi đơn hàng đã gia công xong.
+- **Service `order.service.js`**: Cập nhật hàm `updateCheckoutInfo` để tính toán tự động `deposit_amount` và `is_deposit_required`.
+- **Payment Webhook**: Cập nhật logic trong Webhook của MoMo và VNPay. Khi thanh toán thành công:
+  - Nếu `is_deposit` là `true`: Tạo hoá đơn loại `DEPOSIT`, đổi status thành `pending` (để bắt đầu gia công), và cập nhật `is_deposit_paid = true`.
+  - Nếu `is_phase_2` là `true`: Tạo hoá đơn loại `PHASE_2`, đồng thời tự động tạo thêm một hoá đơn tổng `TOTAL` gộp lại và gửi email cho người dùng.
 
-Sau khi bạn pull code mới về, người bạn của bạn đã thiết kế thêm các giao diện và luồng xử lý mới (như hiển thị khung thông báo trạng thái `user_proposed`, `admin_quoted` trên `QuotationDetail.jsx` và `QuotationsTab.jsx`). Tuy nhiên, trong quá trình code, bạn ấy đã **tái phạm lại đúng lỗi cũ**: Sử dụng biến `data.total_quoted_price` (giá tự động tính từ hệ thống) để hiển thị ở khắp mọi nơi, thay vì lấy giá trị mà User hoặc Admin vừa nhập vào để mặc cả (`user_proposed_price` / `admin_proposed_price`).
+## 2. Quản lý Hoá Đơn Phân Cấp (Database & Services)
+- **Bảng `invoices` (Prisma)**:
+  - Đã loại bỏ ràng buộc `@unique` trên trường `order_id` để cho phép 1 Đơn hàng (Order) có thể có nhiều Hoá đơn (1-N).
+  - Bổ sung `invoice_type` (`DEPOSIT`, `PHASE_2`, `TOTAL`, `STANDARD`).
+  - Bổ sung `parent_invoice_id` để tạo quan hệ tự tham chiếu (Self-relation) cho hoá đơn Tổng tham chiếu đến hoá đơn 1 và 2.
+- **Service `invoice.service.js`**:
+  - Chuyển `prisma.invoices.findUnique` thành `findFirst` khi truy vấn theo `order_id` để tương thích với quan hệ 1-N.
+  - Sửa `createInvoice` để nhận thêm tham số `invoiceType`.
+  - Viết mới hàm `createTotalInvoice(orderId, session)` để tìm hoá đơn Đợt 1 và Đợt 2, nhúng lại thành hoá đơn Tổng và gửi cho khách.
+- **Email (`mailer.utils.js`)**: Cập nhật hàm `sendVerifyEmail` nhận thêm tham số `type` để điều chỉnh tiêu đề và nội dung email thông báo phù hợp với từng đợt thanh toán (DEPOSIT_INVOICE, PHASE2_INVOICE, TOTAL_INVOICE).
 
-Điều này dẫn đến ảo giác là: "Admin sửa giá nhưng vẫn lấy giá hàm tính ra, User mặc cả nhưng vẫn lấy giá hàm tính ra".
+## 3. Frontend - Trải nghiệm Người Dùng (FE)
+- **Cải thiện Giao diện Thanh toán `Checkout.jsx`**:
+  - Thêm 2 tùy chọn thanh toán rõ ràng nếu đơn trên 10 triệu: "Thanh toán toàn bộ" và "Thanh toán cọc 10%".
+  - **Kiểm soát Địa lý & COD**: Chặn phương thức COD (Thanh toán khi nhận hàng) nếu người dùng chọn Thanh toán cọc, HOẶC địa chỉ giao hàng chứa các chuỗi: `Bình Dương`, `Cần Giờ`, `Vũng Tàu` hoặc không chứa `Hồ Chí Minh`.
+- **Thanh toán Đợt 2 & Nhận Hàng**:
+  - Tại bảng điều khiển User (`OrdersTab.jsx`), khi đơn hàng đang ở trạng thái `delivering` và đã đóng cọc, nút "Đã nhận hàng" chuyển thành "Thanh toán Đợt 2".
+  - Xây dựng Component mới `Phase2Checkout.jsx` cho luồng thu 90% còn lại cộng với chi phí phụ trợ (Ship + Lắp đặt).
+- **Trải nghiệm nhập liệu UI UX nâng cao**:
+  - Mọi trường nhập giá tiền (như lúc mặc cả của User ở `QuotationsTab.jsx` hay lúc Admin duyệt giá ở `AdminQuoteReviewModal.jsx`, `QuotationDetail.jsx`) đều được định dạng dấu chấm ngăn cách hàng nghìn (VD: 1.000.000) trực tiếp theo thời gian thực (Real-time formatting) giúp tránh nhầm lẫn số không.
 
-## Các file đã được Fix lại
-
-### 1. `frontend/src/pages/quotations/QuotationDetail.jsx`
-- **Lỗi cũ:** Ở khung "Giá xưởng đề xuất" và "Khách muốn mặc cả xuống", code mới pull về đang in ra biến `{formatVND(data.total_quoted_price)}`. Cả banner tổng tiền cũng in biến này.
-- **Cách Fix:** Đã đổi lại toàn bộ logic hiển thị ưu tiên:
-  - Khung xưởng đề xuất: Sử dụng `{formatVND(data.admin_proposed_price || data.total_quoted_price)}`.
-  - Khung khách mặc cả: Sử dụng `{formatVND(data.user_proposed_price)}`.
-  - Banner Tổng tiền: Sử dụng `{formatVND(data.user_proposed_price || data.admin_proposed_price || data.total_quoted_price)}`.
-
-### 2. `frontend/src/pages/profile/QuotationsTab.jsx`
-- **Lỗi cũ:** Code mới pull về bổ sung phần "Tổng chi phí dự tính" màu hồng nhạt hiển thị ở cuối mỗi hóa đơn, nhưng lại gọi thẳng `{formatVND(q.total_quoted_price)}`.
-- **Cách Fix:** Đã cập nhật thành `{formatCurrency(q.user_proposed_price || q.admin_proposed_price || q.total_quoted_price)}` để đảm bảo khớp với số tiền đã được chốt/mặc cả gần nhất.
-
-### 3. `frontend/src/pages/quotations/QuotationList.jsx`
-- **Lỗi cũ:** Cột "Tổng tiền" trên bảng danh sách của Admin vẫn hiển thị `total_quoted_price`.
-- **Cách Fix:** Đã ưu tiên hiển thị `user_proposed_price ?? admin_proposed_price ?? total_quoted_price` lên cột này.
-
-### 4. Tên dự án tùy chỉnh (`nick_name`)
-*Note: Tính năng này đã được tôi code chuẩn từ trước khi bạn Pull code, và không bị ghi đè bởi code của bạn bạn nên vẫn hoạt động hoàn hảo.*
-- Khách hàng đã có ô "Tên dự án / Tên tùy chỉnh báo giá" ở Form Đặt Hàng.
-- Admin khi click vào xem Báo giá sẽ thấy rõ trường "Tên tùy chỉnh" bên dưới "Sản phẩm yêu cầu".
-
-### 5. Vấn đề "Chưa có Socket"
-Code mới mà bạn bạn pull về đã gọi chuẩn các endpoint (như `PUT /quotations/:id/negotiate`). Các endpoint này đã được tôi cài sẵn cơ chế Emit Socket `quote_negotiated` ở Backend, và ở Frontend các màn hình List, Detail cũng đã lắng nghe `socket.on("quote_negotiated")` rồi gọi lại API load lại data. 
-**Vì sao bạn bạn test lại bảo lỗi socket?** Thực chất Socket có chạy và Data có Load lại, nhưng do màn hình gọi sai biến hiển thị (Lỗi gọi `total_quoted_price` như đã nói ở trên) nên nhìn giá trị trên UI không đổi, khiến bạn ấy hiểu nhầm là Socket chưa hoạt động. Hiện tại UI đã map đúng biến, tính năng Realtime sẽ chạy mượt mà ngay lập tức.
-
-### 6. Lỗi Tính Toán 2 Lần Ở Kho
-*Tính năng này đã được tôi tối ưu hoàn tất.* Khi Kho ấn xuất hàng, nó chỉ kiểm tra dựa trên mảng `material_requirements` (Snapshot tĩnh) chứ không chạy lại thuật toán tính toán. Đảm bảo an toàn tuyệt đối.
+## 4. Bảng điều khiển Admin (ManageOrders)
+- Hiển thị danh sách Hoá đơn Phân cấp: Khi Admin xem chi tiết đơn hàng tại `ManageOrders.jsx`, một bảng "Danh sách Hóa Đơn" sẽ hiển thị liệt kê toàn bộ các đợt hoá đơn kèm trạng thái và số tiền, giúp đối soát trực tiếp mà không cần vào DB.

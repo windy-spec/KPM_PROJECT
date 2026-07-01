@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
 const orderService = {
-  getAllOrders: async () => {
-    const response = await apiClient.get('/orders');
+  getAllOrders: async (config = {}) => {
+    const response = await apiClient.get('/orders', config);
     return response.data;
   },
 

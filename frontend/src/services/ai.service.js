@@ -33,7 +33,7 @@ const aiService = {
 
   getSessions: async () => {
     try {
-      const response = await apiClient.get("/ai/sessions");
+      const response = await apiClient.get("/ai/sessions", { headers: { "X-No-Loading": true } });
       return response.data;
     } catch (error) {
       console.error("Lỗi lấy danh sách lịch sử AI:", error);
@@ -43,7 +43,7 @@ const aiService = {
 
   getSessionDetails: async (sessionId) => {
     try {
-      const response = await apiClient.get(`/ai/sessions/${sessionId}`);
+      const response = await apiClient.get(`/ai/sessions/${sessionId}`, { headers: { "X-No-Loading": true } });
       return response.data;
     } catch (error) {
       console.error("Lỗi lấy chi tiết phiên chat AI:", error);

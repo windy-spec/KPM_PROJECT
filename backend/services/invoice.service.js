@@ -2,14 +2,12 @@ const prisma = require("../models/prisma");
 const { sendVerifyEmail } = require("../utils/mailer.utils");
 class InvoiceService {
   // Hàm này được gọi tự động sau khi thanh toán thành công
-  async createInvoice(orderId, totalAmount, prismaClient = prisma, isDepositPayment = false) {
-    // 1. Kiểm tra xem đã có hóa đơn chưa
-    const existing = await prismaClient.invoices.findUnique({
-      where: { order_id: orderId },
+  async createInvoice(orderId, totalAmount, prismaClient = prisma, invoiceType = "TOTAL") {
+    // 1. Kiểm tra xem đã có hóa đơn loại này chưa
+    const existing = await prismaClient.invoices.findFirst({
+      where: { order_id: orderId, invoice_type: invoiceType },
     });
-    // Nếu có rồi và không phải cọc, return luôn. Nếu là cọc thì có thể tạo thêm hoá đơn cọc (tạm thời không thay đổi logic tạo, chỉ update nội dung email)
-    // NOTE: Tạm giữ nguyên logic không tạo nhiều invoice để tránh lỗi, vì đây là Invoice duy nhất cho order này.
-    // Nếu đã có invoice (VD: từ lần chạy webhook trước đó) thì bỏ qua
+    
     if (existing) return existing;
 
     const invoiceNo = `INV-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -20,6 +18,8 @@ class InvoiceService {
         order_id: orderId,
         invoice_no: invoiceNo,
         total_amount: totalAmount,
+        invoice_type: invoiceType,
+        status: "PAID",
         email_sent_status: "sent",
       },
     });
@@ -48,11 +48,71 @@ class InvoiceService {
       sendVerifyEmail(
         orderData.users.email,
         invoiceNo,
-        "INVOICE",          // Từ khóa để mailer.utils biết đây là Hóa đơn
+        invoiceType === "DEPOSIT" ? "DEPOSIT_INVOICE" : invoiceType === "PHASE_2" ? "PHASE2_INVOICE" : "INVOICE",
         orderData,          // Dữ liệu Đơn hàng
         orderData.quotations,// Dữ liệu bóc tách
-        isDepositPayment
+        invoiceType === "DEPOSIT"
       ).catch((err) => console.error("Lỗi gửi mail hóa đơn:", err));
+    }
+
+    return newInvoice;
+  }
+
+  async createTotalInvoice(orderId, prismaClient = prisma) {
+    const order = await prismaClient.orders.findUnique({ where: { id: orderId }});
+    if (!order) return null;
+
+    const existingTotal = await prismaClient.invoices.findFirst({
+      where: { order_id: orderId, invoice_type: "TOTAL" },
+    });
+    if (existingTotal) return existingTotal;
+
+    const invoiceNo = `INV-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const newInvoice = await prismaClient.invoices.create({
+      data: {
+        order_id: orderId,
+        invoice_no: invoiceNo,
+        total_amount: order.total_amount,
+        invoice_type: "TOTAL",
+        status: "PAID",
+        email_sent_status: "sent",
+      },
+    });
+
+    // Cập nhật parent_invoice_id cho các hoá đơn con
+    await prismaClient.invoices.updateMany({
+      where: {
+        order_id: orderId,
+        invoice_type: { in: ["DEPOSIT", "PHASE_2"] }
+      },
+      data: { parent_invoice_id: newInvoice.id }
+    });
+
+    // Gửi email hoá đơn tổng
+    const orderData = await prismaClient.orders.findUnique({
+      where: { id: orderId },
+      include: {
+        users: { include: { user_profiles: true } },
+        quotations: {
+          include: {
+            users: { include: { user_profiles: true } },
+            quotation_specs: { include: { materials: true, paint_types: true } }
+          }
+        },
+        order_items: { include: { products: true } }
+      },
+    });
+
+    if (orderData && orderData.users?.email) {
+      sendVerifyEmail(
+        orderData.users.email,
+        invoiceNo,
+        "TOTAL_INVOICE",
+        orderData,
+        orderData.quotations,
+        false
+      ).catch((err) => console.error("Lỗi gửi mail hóa đơn tổng:", err));
     }
 
     return newInvoice;

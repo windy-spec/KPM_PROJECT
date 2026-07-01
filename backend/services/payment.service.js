@@ -82,7 +82,7 @@ class PaymentService {
   }
 
   // 2. THANH TOÁN TIỀN MẶT (CASH)
-  async createCashPayment(userId, { quotation_id, order_id }) {
+  async createCashPayment(userId, { quotation_id, order_id, is_deposit, is_phase_2 }) {
     let amount = 0;
 
     if (quotation_id) {
@@ -96,12 +96,15 @@ class PaymentService {
         where: { id: order_id },
       });
       if (!order) throw new Error("Không tìm thấy đơn hàng!");
-      amount = order.total_amount;
+      amount = Number(order.total_amount);
+      if (is_deposit && order.deposit_amount) {
+        amount = Number(order.deposit_amount);
+      }
     } else {
       throw new Error("Vui lòng cung cấp quotation_id hoặc order_id");
     }
 
-    const isDepositRequired = amount >= 20000000;
+    const isDepositRequired = is_deposit;
 
     const transaction = await prisma.transactions.create({
       data: {
@@ -115,36 +118,73 @@ class PaymentService {
     });
 
     if (order_id) {
-      await prisma.orders.update({
-        where: { id: order_id },
-        data: {
-          production_status: isDepositRequired ? "pending_deposit" : "pending",
-          is_deposit_required: isDepositRequired,
-          deposit_amount: isDepositRequired ? amount * 0.1 : 0,
-        },
-      });
-      if (!isDepositRequired) {
-        await invoiceService.createInvoice(order_id, amount);
-        if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
+      if (is_phase_2) {
+        const freshOrder = await prisma.orders.findUnique({ where: { id: order_id } });
+        const phase2Amount = Number(freshOrder.total_amount) - Number(freshOrder.deposit_amount || 0);
+        await prisma.orders.update({
+          where: { id: order_id },
+          data: { production_status: "completed" },
+        });
+        await invoiceService.createInvoice(order_id, phase2Amount, prisma, "PHASE_2");
+        if (global.io) {
+          global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", { orderId: order_id, status: "completed" });
+          global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order_id, status: "completed" });
+          global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order_id, status: "completed" });
+        }
+      } else {
+        await prisma.orders.update({
+          where: { id: order_id },
+          data: {
+            production_status: isDepositRequired ? "pending_deposit" : "pending",
+            is_deposit_required: isDepositRequired,
+            deposit_amount: isDepositRequired ? amount * 0.1 : 0,
+          },
+        });
+        if (!isDepositRequired) {
+          await invoiceService.createInvoice(order_id, amount);
+          if (global.io) {
+             global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
+             global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", { orderId: order_id, status: "pending" });
+             global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order_id, status: "pending" });
+          }
+        }
       }
     } else if (quotation_id) {
       const order = await prisma.orders.findUnique({
         where: { quotation_id: quotation_id },
       });
       if (order) {
-        await prisma.orders.update({
-          where: { id: order.id },
-          data: {
-            production_status: isDepositRequired
-              ? "pending_deposit"
-              : "pending",
-            is_deposit_required: isDepositRequired,
-            deposit_amount: isDepositRequired ? amount * 0.1 : 0,
-          },
-        });
-        if (!isDepositRequired) {
-          await invoiceService.createInvoice(order.id, amount);
-          if (global.io) global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
+        if (is_phase_2) {
+          const phase2Amount = Number(order.total_amount) - Number(order.deposit_amount || 0);
+          await prisma.orders.update({
+            where: { id: order.id },
+            data: { production_status: "completed" },
+          });
+          await invoiceService.createInvoice(order.id, phase2Amount, prisma, "PHASE_2");
+          if (global.io) {
+            global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", { orderId: order.id, status: "completed" });
+            global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: "completed" });
+            global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order.id, status: "completed" });
+          }
+        } else {
+          await prisma.orders.update({
+            where: { id: order.id },
+            data: {
+              production_status: isDepositRequired
+                ? "pending_deposit"
+                : "pending",
+              is_deposit_required: isDepositRequired,
+              deposit_amount: isDepositRequired ? amount * 0.1 : 0,
+            },
+          });
+          if (!isDepositRequired) {
+            await invoiceService.createInvoice(order.id, amount);
+            if (global.io) {
+              global.io.to("room_admin").emit("new_production_request", { message: "Có lệnh sản xuất mới bằng Tiền mặt!" });
+              global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", { orderId: order.id, status: "pending" });
+              global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: "pending" });
+            }
+          }
         }
       }
     }
@@ -216,15 +256,20 @@ class PaymentService {
             where: { quotation_id: transaction.quotation_id },
           });
           if (order) {
+            const isPhase2 = order.is_deposit_paid === true;
+            const isDepositPayment = order.is_deposit_required === true;
+            const newStatus = isPhase2 ? "completed" : "pending";
+            const invoiceType = isPhase2 ? "PHASE_2" : (isDepositPayment ? "DEPOSIT" : "TOTAL");
+            const invoiceAmount = isPhase2 ? (Number(order.total_amount) - Number(order.deposit_amount || 0)) : amount;
             // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
             await tx.orders.update({
               where: { id: order.id },
               data: {
-                production_status: "pending",
+                production_status: newStatus,
                 is_deposit_paid: true,
               },
             });
-            await invoiceService.createInvoice(order.id, amount, tx, isDepositPayment);
+            await invoiceService.createInvoice(order.id, invoiceAmount, tx, invoiceType);
 
             // Gửi email xác nhận
             const user = await tx.users.findUnique({
@@ -232,20 +277,33 @@ class PaymentService {
             });
             if (user && user.email) {
               emailService
-                .sendPaymentSuccessConfirmation(user.email, order)
+                .sendPaymentSuccessConfirmation(user.email, order, invoiceType)
                 .catch(console.error);
+            }
+            if (global.io) {
+              global.io.to(`room_user_${order.user_id}`).emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              if (isPhase2) {
+                global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              }
             }
           }
         } else if (transaction.order_id) {
+          const orderObj = await tx.orders.findUnique({ where: { id: transaction.order_id } });
+          const isPhase2 = orderObj?.is_deposit_paid === true;
+          const isDepositPayment = orderObj?.is_deposit_required === true;
+          const newStatus = isPhase2 ? "completed" : "pending";
+          const invoiceType = isPhase2 ? "PHASE_2" : (isDepositPayment ? "DEPOSIT" : "TOTAL");
+          const invoiceAmount = isPhase2 ? (Number(orderObj.total_amount) - Number(orderObj.deposit_amount || 0)) : amount;
           // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
           const order = await tx.orders.update({
             where: { id: transaction.order_id },
             data: {
-              production_status: "pending",
+              production_status: newStatus,
               is_deposit_paid: true,
             },
           });
-          await invoiceService.createInvoice(transaction.order_id, amount, tx, isDepositPayment);
+          await invoiceService.createInvoice(transaction.order_id, invoiceAmount, tx, invoiceType);
 
           // Gửi email xác nhận
           const user = await tx.users.findUnique({
@@ -253,8 +311,15 @@ class PaymentService {
           });
           if (user && user.email) {
             emailService
-              .sendPaymentSuccessConfirmation(user.email, order)
+              .sendPaymentSuccessConfirmation(user.email, order, invoiceType)
               .catch(console.error);
+          }
+          if (global.io) {
+            global.io.to(`room_user_${order.user_id}`).emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+            global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+            if (isPhase2) {
+              global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+            }
           }
         }
       });
@@ -472,16 +537,19 @@ class PaymentService {
               where: { quotation_id: transaction.quotation_id },
             });
             if (order) {
-              // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
+              const isPhase2 = order.is_deposit_paid === true;
               const isDepositPayment = order.is_deposit_required === true;
+              const newStatus = isPhase2 ? "completed" : "pending";
+              const invoiceType = isPhase2 ? "PHASE_2" : (isDepositPayment ? "DEPOSIT" : "TOTAL");
+              const invoiceAmount = isPhase2 ? (Number(order.total_amount) - Number(order.deposit_amount || 0)) : amount;
               await tx.orders.update({
                 where: { id: order.id },
                 data: {
-                  production_status: "pending",
+                  production_status: newStatus,
                   is_deposit_paid: true,
                 },
               });
-              await invoiceService.createInvoice(order.id, amount, tx, isDepositPayment);
+              await invoiceService.createInvoice(order.id, invoiceAmount, tx, invoiceType);
 
               // Gửi email xác nhận
               const user = await tx.users.findUnique({
@@ -489,26 +557,37 @@ class PaymentService {
               });
               if (user && user.email) {
                 emailService
-                  .sendPaymentSuccessConfirmation(user.email, order)
+                  .sendPaymentSuccessConfirmation(user.email, order, invoiceType)
                   .catch(console.error);
+              }
+              if (global.io) {
+                global.io.to(`room_user_${order.user_id}`).emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+                global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+                if (isPhase2) {
+                  global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+                }
               }
             }
           } else if (transaction.order_id) {
             // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
             const orderObj = await tx.orders.findUnique({ where: { id: transaction.order_id }});
+            const isPhase2 = orderObj?.is_deposit_paid === true;
             const isDepositPayment = orderObj?.is_deposit_required === true;
+            const newStatus = isPhase2 ? "completed" : "pending";
+            const invoiceType = isPhase2 ? "PHASE_2" : (isDepositPayment ? "DEPOSIT" : "TOTAL");
+            const invoiceAmount = isPhase2 ? (Number(orderObj.total_amount) - Number(orderObj.deposit_amount || 0)) : amount;
             const order = await tx.orders.update({
               where: { id: transaction.order_id },
               data: {
-                production_status: "pending",
+                production_status: newStatus,
                 is_deposit_paid: true,
               },
             });
             await invoiceService.createInvoice(
               transaction.order_id,
-              amount,
+              invoiceAmount,
               tx,
-              isDepositPayment
+              invoiceType
             );
 
             // Gửi email xác nhận
@@ -517,8 +596,15 @@ class PaymentService {
             });
             if (user && user.email) {
               emailService
-                .sendPaymentSuccessConfirmation(user.email, order)
+                .sendPaymentSuccessConfirmation(user.email, order, invoiceType)
                 .catch(console.error);
+            }
+            if (global.io) {
+              global.io.to(`room_user_${order.user_id}`).emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              global.io.to("room_admin").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              if (isPhase2) {
+                global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: order.id, status: newStatus });
+              }
             }
           }
         });
