@@ -245,11 +245,23 @@ const ManageProductionRequests = () => {
                                     <td className="p-4 max-w-xs">
                                         <div className="space-y-1">
                                             {order.order_items && order.order_items.length > 0 ? (
-                                                order.order_items.map((item, idx) => (
-                                                    <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">
-                                                        {item.products?.product_name || "Sản phẩm kỹ thuật"} (x{item.quantity})
-                                                    </div>
-                                                ))
+                                                order.order_items.flatMap((item, idx) => {
+                                                    const comps = typeof item.products?.components === 'string' 
+                                                        ? JSON.parse(item.products?.components || "[]") 
+                                                        : (item.products?.components || []);
+                                                    if (comps.length > 0) {
+                                                        return comps.map((comp, cIdx) => (
+                                                            <div key={`${idx}-${cIdx}`} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">
+                                                                {comp.component_name || "Linh kiện"} (x{item.quantity})
+                                                            </div>
+                                                        ));
+                                                    }
+                                                    return (
+                                                        <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">
+                                                            {item.products?.product_name || "Sản phẩm kỹ thuật"} (x{item.quantity})
+                                                        </div>
+                                                    );
+                                                })
                                             ) : order.quotations?.quotation_specs ? (
                                                 order.quotations.quotation_specs.map((spec, idx) => (
                                                     <div key={idx} className="bg-slate-100 px-2 py-1 rounded text-[11px] text-slate-700 truncate font-bold">

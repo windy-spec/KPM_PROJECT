@@ -87,10 +87,21 @@ const OrdersTab = () => {
                 name: s.component_name || "Linh kiện",
                 specs: s.note || "",
               }))
-            : o.order_items?.map((i) => ({
-                name: i.products?.product_name || "Sản phẩm",
-                specs: i.products?.materials?.material_name || "",
-              })) || [],
+            : (o.order_items || []).flatMap((i) => {
+                const comps = typeof i.products?.components === 'string' 
+                  ? JSON.parse(i.products?.components || "[]") 
+                  : (i.products?.components || []);
+                if (comps.length > 0) {
+                  return comps.map((comp) => ({
+                    name: comp.component_name || "Linh kiện kỹ thuật",
+                    specs: `Thuộc: ${i.products?.product_name || "Sản phẩm"} (x${i.quantity})`,
+                  }));
+                }
+                return [{
+                  name: i.products?.product_name || "Sản phẩm",
+                  specs: "Sản phẩm kỹ thuật",
+                }];
+              }),
           raw_items: o.order_items,
           raw_quotation_specs: o.quotations?.quotation_specs,
           quotations: o.quotations,
@@ -329,7 +340,7 @@ const OrdersTab = () => {
               </div>
               <div className="flex flex-col items-end gap-1.5">
                 {getStatusBadge(order.status)}
-                {order.is_deposit_paid ? (
+                {order.is_deposit_paid && order.total_amount > order.deposit_amount ? (
                   <div className="text-right">
                     <p className="text-xs font-bold text-on-surface-variant line-through decoration-rose-500/50 mb-0.5">
                       Tổng: {formatCurrency(order.total_amount)}
@@ -438,19 +449,19 @@ const OrdersTab = () => {
                     {order.status === "delivering" && (
                       <button
                         onClick={() => {
-                          if (order.is_deposit_paid) {
+                          if (order.is_deposit_paid && order.total_amount > order.deposit_amount) {
                             navigate("/phase2-checkout", { state: { order_id: order.id, total_amount: order.total_amount, deposit_amount: order.deposit_amount, shipping_fee: order.shipping_fee, installation_fee: order.installation_fee } });
                           } else {
                             handleConfirmReceived(order.id);
                           }
                         }}
                         disabled={confirmingOrderId === order.id}
-                        className={`px-5 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl transition-all shadow-md disabled:opacity-60 flex items-center gap-1.5 ${order.is_deposit_paid ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                        className={`px-5 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl transition-all shadow-md disabled:opacity-60 flex items-center gap-1.5 ${order.is_deposit_paid && order.total_amount > order.deposit_amount ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                       >
                         {confirmingOrderId === order.id ? (
                           <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang xử lý...</>
                         ) : (
-                          <><CheckCircle2 className="w-3.5 h-3.5" /> {order.is_deposit_paid ? "Thanh toán đợt 2" : "Đã nhận hàng"}</>
+                          <><CheckCircle2 className="w-3.5 h-3.5" /> {order.is_deposit_paid && order.total_amount > order.deposit_amount ? "Thanh toán đợt 2" : "Đã nhận hàng"}</>
                         )}
                       </button>
                     )}

@@ -117,6 +117,14 @@ const Checkout = () => {
     : tempTotal + shippingFee + installationFee;
   const isLocked = isSubmitting || !!qrData || profileLoading;
 
+  // Tự động chuyển phương thức thanh toán nếu COD bị khóa do finalTotal
+  useEffect(() => {
+    if (paymentMethod === "cod" && finalTotal >= 10000000) {
+      setPaymentMethod("vietqr");
+    }
+  }, [finalTotal, paymentMethod]);
+
+
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
     if (!orderId) {
@@ -330,7 +338,7 @@ const Checkout = () => {
                 </h2>
               </div>
               
-              {tempTotal >= 10000000 && (
+              {finalTotal >= 10000000 && (
                 <div className="mb-6 space-y-3">
                   <h3 className="text-sm font-bold text-on-surface">Lựa chọn thanh toán:</h3>
                   <div className="flex gap-4">
@@ -408,7 +416,7 @@ const Checkout = () => {
                   className={`flex items-start gap-4 p-4 rounded-xl border transition-all ${
                     paymentMethod === "cod" ? "border-primary bg-primary/[0.02]" : "border-outline-variant/60"
                   } ${
-                    isLocked || paymentOption === "deposit" || tempTotal >= 10000000 ||
+                    isLocked || paymentOption === "deposit" || finalTotal >= 10000000 ||
                     (shippingInfo.address.toLowerCase().includes("bình dương") ||
                      shippingInfo.address.toLowerCase().includes("cần giờ") ||
                      shippingInfo.address.toLowerCase().includes("vũng tàu") ||
@@ -423,7 +431,7 @@ const Checkout = () => {
                     value="cod"
                     checked={paymentMethod === "cod"}
                     onChange={() => setPaymentMethod("cod")}
-                    disabled={isLocked || paymentOption === "deposit" || tempTotal >= 10000000 ||
+                    disabled={isLocked || paymentOption === "deposit" || finalTotal >= 10000000 ||
                       (shippingInfo.address.toLowerCase().includes("bình dương") ||
                        shippingInfo.address.toLowerCase().includes("cần giờ") ||
                        shippingInfo.address.toLowerCase().includes("vũng tàu") ||
@@ -439,7 +447,7 @@ const Checkout = () => {
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         Thanh toán cọc 10% không hỗ trợ COD, vui lòng chọn phương thức trực tuyến.
                       </p>
-                    ) : tempTotal >= 10000000 ? (
+                    ) : finalTotal >= 10000000 ? (
                       <p className="mt-1.5 text-xs font-medium text-rose-600 flex items-center gap-1 animate-in fade-in duration-150">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         Đơn hàng từ 10.000.000đ trở lên bắt buộc phải đặt cọc, không hỗ trợ COD toàn bộ.

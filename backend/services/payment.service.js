@@ -164,24 +164,18 @@ class PaymentService {
           "PHASE_2",
         );
         if (global.io) {
-          global.io
-            .to(`room_user_${userId}`)
-            .emit("orderStatusUpdated", {
-              orderId: order_id,
-              status: "completed",
-            });
-          global.io
-            .to("room_admin")
-            .emit("orderStatusUpdated", {
-              orderId: order_id,
-              status: "completed",
-            });
-          global.io
-            .to("room_warehouse")
-            .emit("orderStatusUpdated", {
-              orderId: order_id,
-              status: "completed",
-            });
+          global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
+            orderId: order_id,
+            status: "completed",
+          });
+          global.io.to("room_admin").emit("orderStatusUpdated", {
+            orderId: order_id,
+            status: "completed",
+          });
+          global.io.to("room_warehouse").emit("orderStatusUpdated", {
+            orderId: order_id,
+            status: "completed",
+          });
         }
       } else {
         await prisma.orders.update({
@@ -197,23 +191,17 @@ class PaymentService {
         if (!isDepositRequired) {
           await invoiceService.createInvoice(order_id, amount);
           if (global.io) {
-            global.io
-              .to("room_admin")
-              .emit("new_production_request", {
-                message: "Có lệnh sản xuất mới bằng Tiền mặt!",
-              });
-            global.io
-              .to(`room_user_${userId}`)
-              .emit("orderStatusUpdated", {
-                orderId: order_id,
-                status: "pending",
-              });
-            global.io
-              .to("room_admin")
-              .emit("orderStatusUpdated", {
-                orderId: order_id,
-                status: "pending",
-              });
+            global.io.to("room_admin").emit("new_production_request", {
+              message: "Có lệnh sản xuất mới bằng Tiền mặt!",
+            });
+            global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
+              orderId: order_id,
+              status: "pending",
+            });
+            global.io.to("room_admin").emit("orderStatusUpdated", {
+              orderId: order_id,
+              status: "pending",
+            });
           }
         }
       }
@@ -236,24 +224,18 @@ class PaymentService {
             "PHASE_2",
           );
           if (global.io) {
-            global.io
-              .to(`room_user_${userId}`)
-              .emit("orderStatusUpdated", {
-                orderId: order.id,
-                status: "completed",
-              });
-            global.io
-              .to("room_admin")
-              .emit("orderStatusUpdated", {
-                orderId: order.id,
-                status: "completed",
-              });
-            global.io
-              .to("room_warehouse")
-              .emit("orderStatusUpdated", {
-                orderId: order.id,
-                status: "completed",
-              });
+            global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
+              orderId: order.id,
+              status: "completed",
+            });
+            global.io.to("room_admin").emit("orderStatusUpdated", {
+              orderId: order.id,
+              status: "completed",
+            });
+            global.io.to("room_warehouse").emit("orderStatusUpdated", {
+              orderId: order.id,
+              status: "completed",
+            });
           }
         } else {
           await prisma.orders.update({
@@ -269,23 +251,17 @@ class PaymentService {
           if (!isDepositRequired) {
             await invoiceService.createInvoice(order.id, amount);
             if (global.io) {
-              global.io
-                .to("room_admin")
-                .emit("new_production_request", {
-                  message: "Có lệnh sản xuất mới bằng Tiền mặt!",
-                });
-              global.io
-                .to(`room_user_${userId}`)
-                .emit("orderStatusUpdated", {
-                  orderId: order.id,
-                  status: "pending",
-                });
-              global.io
-                .to("room_admin")
-                .emit("orderStatusUpdated", {
-                  orderId: order.id,
-                  status: "pending",
-                });
+              global.io.to("room_admin").emit("new_production_request", {
+                message: "Có lệnh sản xuất mới bằng Tiền mặt!",
+              });
+              global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
+                orderId: order.id,
+                status: "pending",
+              });
+              global.io.to("room_admin").emit("orderStatusUpdated", {
+                orderId: order.id,
+                status: "pending",
+              });
             }
           }
         }
@@ -364,6 +340,9 @@ class PaymentService {
             const isPhase2 = order.is_deposit_paid === true;
             const isDepositPayment = order.is_deposit_required === true;
             const newStatus = isPhase2 ? "completed" : "pending";
+            const newDepositAmount = isPhase2
+              ? order.total_amount
+              : order.deposit_amount;
             const invoiceType = isPhase2
               ? "PHASE_2"
               : isDepositPayment
@@ -377,7 +356,8 @@ class PaymentService {
               where: { id: order.id },
               data: {
                 production_status: newStatus,
-                is_deposit_paid: true,
+                is_deposit_paid: isDepositPayment ? true : false,
+                deposit_amount: newDepositAmount,
               },
             });
             await invoiceService.createInvoice(
@@ -403,19 +383,15 @@ class PaymentService {
                   orderId: order.id,
                   status: newStatus,
                 });
-              global.io
-                .to("room_admin")
-                .emit("orderStatusUpdated", {
+              global.io.to("room_admin").emit("orderStatusUpdated", {
+                orderId: order.id,
+                status: newStatus,
+              });
+              if (isPhase2) {
+                global.io.to("room_warehouse").emit("orderStatusUpdated", {
                   orderId: order.id,
                   status: newStatus,
                 });
-              if (isPhase2) {
-                global.io
-                  .to("room_warehouse")
-                  .emit("orderStatusUpdated", {
-                    orderId: order.id,
-                    status: newStatus,
-                  });
               }
             }
           }
@@ -435,12 +411,15 @@ class PaymentService {
             ? Number(orderObj.total_amount) -
               Number(orderObj.deposit_amount || 0)
             : amount;
+          const newDepositAmount = isPhase2 ? orderObj.total_amount : orderObj.deposit_amount;
+
           // 👇 Cập nhật trạng thái đơn hàng (Đã cọc)
           const order = await tx.orders.update({
             where: { id: transaction.order_id },
             data: {
               production_status: newStatus,
-              is_deposit_paid: true,
+              is_deposit_paid: isDepositPayment ? true : false,
+              deposit_amount: newDepositAmount,
             },
           });
           await invoiceService.createInvoice(
@@ -466,29 +445,23 @@ class PaymentService {
                 orderId: order.id,
                 status: newStatus,
               });
-            global.io
-              .to("room_admin")
-              .emit("orderStatusUpdated", {
+            global.io.to("room_admin").emit("orderStatusUpdated", {
+              orderId: order.id,
+              status: newStatus,
+            });
+            if (isPhase2) {
+              global.io.to("room_warehouse").emit("orderStatusUpdated", {
                 orderId: order.id,
                 status: newStatus,
               });
-            if (isPhase2) {
-              global.io
-                .to("room_warehouse")
-                .emit("orderStatusUpdated", {
-                  orderId: order.id,
-                  status: newStatus,
-                });
             }
           }
         }
       });
       if (global.io)
-        global.io
-          .to("room_admin")
-          .emit("new_production_request", {
-            message: "Có lệnh sản xuất mới đã thanh toán MoMo!",
-          });
+        global.io.to("room_admin").emit("new_production_request", {
+          message: "Có lệnh sản xuất mới đã thanh toán MoMo!",
+        });
       console.log(
         "✅ [MOMO WEBHOOK] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
       );
@@ -724,11 +697,13 @@ class PaymentService {
               const invoiceAmount = isPhase2
                 ? Number(order.total_amount) - Number(order.deposit_amount || 0)
                 : amount;
+              const newDepositAmount = isPhase2 ? order.total_amount : order.deposit_amount;
               await tx.orders.update({
                 where: { id: order.id },
                 data: {
                   production_status: newStatus,
-                  is_deposit_paid: true,
+                  is_deposit_paid: isDepositPayment ? true : false,
+                  deposit_amount: newDepositAmount,
                 },
               });
               await invoiceService.createInvoice(
@@ -758,19 +733,15 @@ class PaymentService {
                     orderId: order.id,
                     status: newStatus,
                   });
-                global.io
-                  .to("room_admin")
-                  .emit("orderStatusUpdated", {
+                global.io.to("room_admin").emit("orderStatusUpdated", {
+                  orderId: order.id,
+                  status: newStatus,
+                });
+                if (isPhase2) {
+                  global.io.to("room_warehouse").emit("orderStatusUpdated", {
                     orderId: order.id,
                     status: newStatus,
                   });
-                if (isPhase2) {
-                  global.io
-                    .to("room_warehouse")
-                    .emit("orderStatusUpdated", {
-                      orderId: order.id,
-                      status: newStatus,
-                    });
                 }
               }
             }
@@ -791,11 +762,13 @@ class PaymentService {
               ? Number(orderObj.total_amount) -
                 Number(orderObj.deposit_amount || 0)
               : amount;
+            const newDepositAmount = isPhase2 ? orderObj.total_amount : orderObj.deposit_amount;
             const order = await tx.orders.update({
               where: { id: transaction.order_id },
               data: {
                 production_status: newStatus,
-                is_deposit_paid: true,
+                is_deposit_paid: isDepositPayment ? true : false,
+                deposit_amount: newDepositAmount,
               },
             });
             await invoiceService.createInvoice(
@@ -821,29 +794,23 @@ class PaymentService {
                   orderId: order.id,
                   status: newStatus,
                 });
-              global.io
-                .to("room_admin")
-                .emit("orderStatusUpdated", {
+              global.io.to("room_admin").emit("orderStatusUpdated", {
+                orderId: order.id,
+                status: newStatus,
+              });
+              if (isPhase2) {
+                global.io.to("room_warehouse").emit("orderStatusUpdated", {
                   orderId: order.id,
                   status: newStatus,
                 });
-              if (isPhase2) {
-                global.io
-                  .to("room_warehouse")
-                  .emit("orderStatusUpdated", {
-                    orderId: order.id,
-                    status: newStatus,
-                  });
               }
             }
           }
         });
         if (global.io)
-          global.io
-            .to("room_admin")
-            .emit("new_production_request", {
-              message: "Có lệnh sản xuất mới đã thanh toán VNPAY!",
-            });
+          global.io.to("room_admin").emit("new_production_request", {
+            message: "Có lệnh sản xuất mới đã thanh toán VNPAY!",
+          });
         console.log(
           "✅ [VNPAY IPN] Đã đổi trạng thái đơn hàng và lập hoá đơn thành công!",
         );
