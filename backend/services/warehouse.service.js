@@ -92,7 +92,7 @@ class WarehouseService {
   async receiveOrder(orderId) {
     const order = await prisma.orders.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
-    
+
     await prisma.$transaction(async (tx) => {
       await tx.orders.update({
         where: { id: orderId },
@@ -197,7 +197,7 @@ class WarehouseService {
         where: { material_id: matId }
       });
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
-      
+
       if (currentStock < requiredQty) {
         isReallyMissing = true;
         break;
@@ -333,7 +333,7 @@ class WarehouseService {
 
   // Lấy danh sách lịch sử phiếu xuất kho
   async getExportHistory() {
-    return await prisma.inventory_logs.findMany({
+    const exportLogs = await prisma.inventory_logs.findMany({
       where: {
         action_type: "EXPORT",
       },
@@ -354,6 +354,52 @@ class WarehouseService {
         created_at: "desc",
       },
     });
+
+    const groupedInvoices = new Map();
+
+    for (const log of exportLogs) {
+      const groupKey = log.reference_code || "SYSTEM_EXPORT";
+
+      if (!groupedInvoices.has(groupKey)) {
+        const orderId = groupKey.startsWith("ORDER_")
+          ? groupKey.replace("ORDER_", "")
+          : null;
+
+        groupedInvoices.set(groupKey, {
+          group_key: groupKey,
+          reference_code: log.reference_code || groupKey,
+          order_id: orderId,
+          created_at: log.created_at,
+          items: [],
+        });
+      }
+
+      const invoice = groupedInvoices.get(groupKey);
+      invoice.items.push({
+        id: log.id,
+        material_id: log.material_id,
+        material_code: log.materials?.material_code || "N/A",
+        material_name: log.materials?.material_name || "N/A",
+        unit_name: log.materials?.material_units?.unit_name || "Cai",
+        quantity_change: parseFloat(log.quantity_change),
+        note: log.note || "",
+        created_at: log.created_at,
+      });
+    }
+
+    return Array.from(groupedInvoices.values()).map((invoice) => ({
+      ...invoice,
+      items: invoice.items.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      }),
+      total_items: invoice.items.length,
+      total_quantity: invoice.items.reduce(
+        (sum, item) => sum + Math.abs(Number(item.quantity_change) || 0),
+        0,
+      ),
+    }));
   }
 
   // Lấy danh sách tồn kho sắp hết (dưới 20)
@@ -445,7 +491,7 @@ class WarehouseService {
   async requestImportMaterials(payload) {
     const { items, note } = payload;
     if (!items || !Array.isArray(items) || items.length === 0) {
-        throw new Error("Vui lòng chọn ít nhất 1 vật tư để yêu cầu!");
+      throw new Error("Vui lòng chọn ít nhất 1 vật tư để yêu cầu!");
     }
 
     const dataToInsert = items.map(item => ({
@@ -460,6 +506,92 @@ class WarehouseService {
       data: dataToInsert
     });
   }
+
+  // Nhận hàng từ yêu cầu nhập vật tư, cập nhật thực nhập và tồn kho trước/sau
+  async confirmImportRequest(requestId, actualQuantity) {
+    const request = await prisma.material_import_requests.findUnique({
+      where: { id: requestId },
+    });
+    if (!request) throw new Error("Không tìm thấy yêu cầu này!");
+    if (request.status !== "APPROVED")
+      throw new Error("Chỉ có thể nhập kho những yêu cầu đã được Admin duyệt mua (APPROVED)!");
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Get current inventory
+      const inv = await tx.inventory.findUnique({ where: { material_id: request.material_id } });
+      const inventory_before = inv ? parseFloat(inv.quantity) : 0;
+      const inventory_after = inventory_before + actualQuantity;
+
+      // 2. Update material_import_requests
+      const updatedReq = await tx.material_import_requests.update({
+        where: { id: requestId },
+        data: {
+          status: "IMPORTED",
+          actual_quantity: actualQuantity,
+          inventory_before: inventory_before,
+          inventory_after: inventory_after
+        },
+      });
+
+      // 3. Update inventory
+      await tx.inventory.upsert({
+        where: { material_id: request.material_id },
+        update: { quantity: inventory_after },
+        create: {
+          material_id: request.material_id,
+          quantity: inventory_after,
+        },
+      });
+
+      // 4. Log inventory
+      await tx.inventory_logs.create({
+        data: {
+          material_id: request.material_id,
+          action_type: "IMPORT",
+          quantity_change: actualQuantity,
+          reference_code: `REQ_${requestId}`,
+          note: request.order_id
+            ? `Kho nhận hàng từ yêu cầu nhập bù cho đơn hàng ${request.order_id}`
+            : "Kho nhận vật tư từ yêu cầu nhập bổ sung",
+        },
+      });
+
+      // 5. Nếu có order_id, kiểm tra xem đơn hàng đó đã đủ vật tư chưa
+      if (request.order_id) {
+        const order = await tx.orders.findUnique({ where: { id: request.order_id } });
+        if (order && order.production_status === "out_of_stock") {
+            const reqs = order.material_requirements || {};
+            let isEnough = true;
+            for (const [matId, reqQtyStr] of Object.entries(reqs)) {
+                const reqQty = parseFloat(reqQtyStr);
+                const matInv = await tx.inventory.findUnique({ where: { material_id: matId } });
+                const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
+                if (currentStock < reqQty) {
+                    isEnough = false;
+                    break;
+                }
+            }
+            if (isEnough) {
+                await tx.orders.update({
+                    where: { id: request.order_id },
+                    data: { production_status: "production_ready" }
+                });
+                await tx.order_tracking.create({
+                    data: {
+                        order_id: request.order_id,
+                        stage_name: "production_ready",
+                        stage_description: "Đã nhập đủ vật tư bù, đơn hàng sẵn sàng đưa vào sản xuất.",
+                        tracked_at: new Date(),
+                    }
+                });
+            }
+        }
+      }
+
+      return updatedReq;
+    });
+  }
+
   // Xoá tồn kho (Sử dụng Transaction & Ghi Log)
   async deleteInventory(id) {
     const inventory = await prisma.inventory.findUnique({ where: { id } });
@@ -484,6 +616,8 @@ class WarehouseService {
       return { message: "Đã xoá tồn kho thành công!" };
     });
   }
+
+
 }
 
 module.exports = new WarehouseService();

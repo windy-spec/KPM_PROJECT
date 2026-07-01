@@ -7,7 +7,7 @@ Tài liệu này mô tả kiến trúc component, state quản lý và cách ho�
 - `WarehouseDashboard.jsx`: Là Component Container gốc chứa toàn bộ các view của Kho. Quản lý trạng thái chung (`activePanel`) và hiển thị các Alert thông báo kết quả thao tác (Thành công, Lỗi, Bảng báo đỏ thiếu vật tư).
 - `WarehouseSidebar.jsx`: Thanh Menu điều hướng bên trái. Sử dụng Query Params (`?panel=...`) để chuyển trang mà không bị reload.
 - `ExportRequestsPanel.jsx`: Bảng điều khiển "Yêu Cầu Xuất Vật Tư" (Luồng chính xử lý đơn hàng).
-- `WarehouseExportHistory.jsx`: Trang "Lịch Sử Phiếu Xuất" hiển thị dạng bảng danh sách các lần xuất kho tự động, tích hợp phân trang và tìm kiếm theo mã đơn, mã vật tư.
+- `WarehouseExportHistory.jsx`: Trang "Lịch Sử Phiếu Xuất" hiển thị theo từng hóa đơn xuất kho, gom nhóm theo `reference_code` và cho phép bung/thu chi tiết bằng accordion để xem danh sách vật tư trong mỗi hóa đơn.
 - `WarehouseInventory.jsx`: Trang Quản lý tồn kho thực tế, nơi chứa Thẻ Kho chi tiết. Ngăn chặn nhập số lẻ khi chỉnh sửa lượng tồn kho (chỉ nhập số nguyên `step="1"`).
 - `WarehouseRequest.jsx`: Form lập phiếu đề xuất xin Admin cấp thêm vật tư.
 - `ManageMaterialRequests.jsx`: Dùng chung với Admin để theo dõi trạng thái các phiếu xin nhập hàng.

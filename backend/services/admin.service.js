@@ -5,7 +5,7 @@ class AdminService {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    
+
     // Doanh thu tháng này
     const currentMonthTransactions = await prisma.transactions.aggregate({
       _sum: { amount: true },
@@ -69,7 +69,7 @@ class AdminService {
       orderBy: { created_at: "desc" },
       include: { users: { select: { username: true } }, quotations: { include: { users: { select: { username: true } } } } }
     });
-    
+
     const recentItems = recentOrders.map(o => ({
       id: o.id,
       title: o.order_code,

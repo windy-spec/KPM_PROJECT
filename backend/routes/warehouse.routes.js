@@ -12,6 +12,7 @@ router.put("/inventory/:id", warehouseController.updateInventoryManual);
 
 // API Yêu cầu nhập hàng
 router.post("/request-import", warehouseController.requestImportMaterials);
+router.put("/import-requests/:id/confirm", warehouseController.confirmImportRequest);
 
 // Các API có sẵn trước đó
 router.post(

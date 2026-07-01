@@ -209,6 +209,23 @@ class WarehouseController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  async confirmImportRequest(req, res) {
+    try {
+      const { actualQuantity } = req.body;
+      const result = await warehouseService.confirmImportRequest(req.params.id, parseFloat(actualQuantity));
+      if (global.io) {
+        global.io.to("room_admin").emit("import_request_received", result);
+      }
+      res.status(200).json({
+        success: true,
+        message: "Đã nhập kho thành công",
+        data: result,
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
   async deleteInventory(req, res) {
     try {
       const result = await warehouseService.deleteInventory(req.params.id);
