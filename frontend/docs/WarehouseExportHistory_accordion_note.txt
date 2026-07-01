@@ -1,0 +1,21 @@
+WarehouseExportHistory accordion note
+
+Backend now returns export history grouped by `reference_code`.
+Each invoice item contains:
+- `group_key`
+- `reference_code`
+- `order_id`
+- `created_at`
+- `items[]`
+
+Frontend behavior:
+- The table renders one summary row per invoice.
+- `expandedRows` tracks which invoices are open.
+- Clicking an invoice row toggles a nested sub-table.
+- The sub-table lists exported materials for that invoice.
+
+Search behavior:
+- Search matches invoice code, order id, material code, material name, and note.
+
+Pagination:
+- Pagination now works on grouped invoices instead of flat log rows.

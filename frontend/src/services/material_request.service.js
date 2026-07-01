@@ -18,7 +18,7 @@ export const materialRequestService = {
 
   // Nhập kho thực tế (Dành cho Kho)
   receiveImport: async (id, actualQuantity) => {
-    return await axiosClient.put(`/material-requests/${id}/receive`, { actualQuantity });
+    return await axiosClient.put(`/warehouse/import-requests/${id}/confirm`, { actualQuantity });
   },
 };
 
