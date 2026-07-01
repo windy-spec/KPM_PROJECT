@@ -35,6 +35,7 @@ import PaymentResult from "./pages/checkout/PaymentResult";
 import Specification from "./pages/legal/Specification";
 import SpecConfirmation from "./pages/legal/SpecConfirmation";
 import DepositPayment from "./pages/checkout/DepositPayment";
+import Phase2Checkout from "./pages/checkout/Phase2Checkout";
 import About from "./pages/about/About"
 import TechnicalTerms from "./pages/legal/TechnicalTerms";
 import FAQ from "./pages/info/FAQ";
@@ -170,6 +171,16 @@ const routeMap = [
       <UserGuard>
         <MainLayout>
           <DepositPayment />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/phase2-checkout",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <Phase2Checkout />
         </MainLayout>
       </UserGuard>
     ),

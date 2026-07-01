@@ -64,26 +64,59 @@ class EmailService {
     }
   }
 
-  async sendPaymentSuccessConfirmation(userEmail, orderData) {
+  async sendPaymentSuccessConfirmation(userEmail, orderData, invoiceType = "DEPOSIT") {
     try {
-      const depositAmount = orderData.deposit_amount
-        ? Number(orderData.deposit_amount).toLocaleString("vi-VN")
-        : "Không xác định";
+      let subject = "";
+      let title = "";
+      let message = "";
+
+      const totalAmount = orderData.total_amount ? Number(orderData.total_amount) : 0;
+      const depositAmount = orderData.deposit_amount ? Number(orderData.deposit_amount) : 0;
+      const shippingFee = orderData.shipping_fee ? Number(orderData.shipping_fee) : 0;
+      const installFee = orderData.installation_fee ? Number(orderData.installation_fee) : 0;
+      
+      if (invoiceType === "PHASE_2") {
+        subject = `[KPM] Xác nhận Thanh Toán Đợt 2 cho Đơn hàng #${orderData.order_code}`;
+        title = "Đã Thanh Toán Đợt 2 Thành Công";
+        const paidAmount = totalAmount - depositAmount;
+        message = `
+          <p>Chúng tôi đã nhận được khoản thanh toán Đợt 2: <strong>${paidAmount.toLocaleString("vi-VN")}đ</strong> cho đơn hàng <strong>#${orderData.order_code}</strong>.</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Tổng tiền đơn hàng:</strong> ${totalAmount.toLocaleString("vi-VN")}đ</p>
+            <p style="margin: 5px 0; color: #10b981;"><strong>Đã thanh toán cọc (Đợt 1):</strong> -${depositAmount.toLocaleString("vi-VN")}đ</p>
+            <p style="margin: 5px 0; color: #2563eb; font-size: 16px;"><strong>Đã thanh toán Đợt 2: ${paidAmount.toLocaleString("vi-VN")}đ</strong></p>
+          </div>
+          <p>Đơn hàng của bạn đã hoàn tất quá trình thanh toán và bàn giao. Cảm ơn bạn đã sử dụng dịch vụ của Xưởng KPM!</p>
+        `;
+      } else if (invoiceType === "TOTAL") {
+        subject = `[KPM] Xác nhận Thanh Toán Toàn Bộ cho Đơn hàng #${orderData.order_code}`;
+        title = "Đã Thanh Toán Thành Công";
+        message = `
+          <p>Chúng tôi đã nhận được khoản thanh toán toàn bộ <strong>${totalAmount.toLocaleString("vi-VN")}đ</strong> cho đơn hàng <strong>#${orderData.order_code}</strong>.</p>
+          <p>Đơn hàng của bạn hiện đã được đưa vào lệnh sản xuất. Bạn có thể theo dõi tiến độ thi công trên trang cá nhân.</p>
+        `;
+      } else {
+        // DEPOSIT
+        subject = `[KPM] Xác nhận đã nhận tiền cọc cho Đơn hàng #${orderData.order_code}`;
+        title = "Đã Nhận Cọc Thành Công";
+        message = `
+          <p>Chúng tôi đã nhận được khoản thanh toán cọc <strong>${depositAmount.toLocaleString("vi-VN")}đ</strong> cho đơn hàng <strong>#${orderData.order_code}</strong>.</p>
+          <p>Đơn hàng của bạn hiện đã được đưa vào lệnh sản xuất. Bạn có thể theo dõi tiến độ thi công trên trang cá nhân.</p>
+        `;
+      }
 
       const mailOptions = {
         from: '"Xưởng Cơ Khí KPM" <noreply@kpm.com>',
         to: userEmail,
-        subject: `[KPM] Xác nhận đã nhận tiền cọc cho Đơn hàng #${orderData.order_code}`,
+        subject: subject,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
             <div style="background-color: #10b981; color: white; padding: 20px; text-align: center;">
-              <h2 style="margin: 0;">Đã Nhận Cọc Thành Công</h2>
+              <h2 style="margin: 0;">${title}</h2>
             </div>
             <div style="padding: 20px; color: #374151;">
               <p>Chào bạn,</p>
-              <p>Chúng tôi đã nhận được khoản thanh toán cọc <strong>${depositAmount}đ</strong> cho đơn hàng <strong>#${orderData.order_code}</strong>.</p>
-              <p>Đơn hàng của bạn hiện đã được đưa vào lệnh sản xuất. Bạn có thể theo dõi tiến độ thi công trên trang cá nhân hoặc hỏi AI trợ lý của chúng tôi.</p>
-              <p>Cảm ơn bạn rất nhiều!</p>
+              ${message}
               <p>Trân trọng,<br>Ban Quản Lý Xưởng KPM</p>
             </div>
           </div>

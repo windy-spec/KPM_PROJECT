@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Search, User, LogOut, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Bell, Search, User, LogOut, ChevronDown, AlertTriangle, Package } from 'lucide-react';
 import { authService } from "../../services/auth.service";
 import apiClient from "../../services/apiClient";
+import orderService from "../../services/order.service";
 
 const AdminTopbar = () => {
   const navigate = useNavigate();
@@ -11,6 +12,12 @@ const AdminTopbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef(null);
 
   const syncAuthState = async () => {
     const accessToken = localStorage.getItem("accessToken");
@@ -59,12 +66,57 @@ const AdminTopbar = () => {
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
+    
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Effect fetch order suggestions with Debounce
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!searchQuery.trim()) {
+        setSuggestions([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const res = await orderService.getAllOrders({ headers: { "X-No-Loading": true } });
+        if (res.success && res.data) {
+          const lowerQuery = searchQuery.toLowerCase().trim();
+          const filtered = res.data.filter((order) => {
+            const matchesSearch =
+              (order.order_code && order.order_code.toLowerCase().includes(lowerQuery)) ||
+              (order.users?.username && order.users.username.toLowerCase().includes(lowerQuery)) ||
+              (order.quotations?.users?.username && order.quotations.users.username.toLowerCase().includes(lowerQuery)) ||
+              (order.users?.phone && order.users.phone.includes(lowerQuery)) ||
+              (order.quotations?.users?.phone && order.quotations.users.phone.includes(lowerQuery));
+            return matchesSearch;
+          });
+          setSuggestions(filtered.slice(0, 3));
+        }
+      } catch (error) {
+        console.error("Lỗi lấy order gợi ý:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim()) fetchSuggestions();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   const handleLogout = async () => {
     try {
@@ -137,14 +189,78 @@ const AdminTopbar = () => {
           )}
         </div>
 
-        <label className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant/70 bg-surface-container/30 min-w-[280px]">
-          <Search className="w-4 h-4 text-on-surface-variant/50 shrink-0" />
-          <input
-            type="text"
-            placeholder="Tìm đơn hàng, khách hàng"
-            className="w-full bg-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/45"
-          />
-        </label>
+        <div ref={searchRef} className="hidden md:block relative min-w-[280px]">
+          <label className="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant/70 bg-surface-container/30">
+            <Search className="w-4 h-4 text-on-surface-variant/50 shrink-0" />
+            <input
+              type="text"
+              placeholder="Tìm đơn hàng, khách hàng"
+              className="w-full bg-transparent outline-none text-sm text-on-surface placeholder:text-on-surface-variant/45"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim()) setShowSuggestions(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim() !== '') {
+                  setShowSuggestions(false);
+                  navigate(`/admin/orders?search=${encodeURIComponent(searchQuery.trim())}`);
+                }
+              }}
+            />
+          </label>
+          
+          {/* Dropdown Gợi ý Order */}
+          {showSuggestions && searchQuery.trim() !== "" && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant overflow-hidden z-50 animate-in fade-in zoom-in-95">
+              {isSearching ? (
+                <div className="p-4 text-center text-on-surface-variant text-sm font-medium animate-pulse">
+                  Đang tìm kiếm...
+                </div>
+              ) : suggestions.length > 0 ? (
+                <div>
+                  {suggestions.map(order => {
+                    const customerName = order.users?.username || order.quotations?.users?.username || "Khách";
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          setShowSuggestions(false);
+                          navigate(`/admin/orders?search=${encodeURIComponent(order.order_code)}`);
+                        }}
+                        className="flex items-center gap-3 p-3 hover:bg-surface-container transition-colors border-b border-outline-variant/30 last:border-0 cursor-pointer"
+                      >
+                        <div className="w-10 h-10 bg-primary/10 rounded-md flex items-center justify-center text-primary shrink-0">
+                          <Package className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-on-surface truncate">{order.order_code}</p>
+                          <p className="text-xs text-on-surface-variant truncate">KH: {customerName}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div 
+                    className="p-3 text-center text-sm text-primary font-bold hover:bg-primary/5 cursor-pointer border-t border-outline-variant/50 transition-colors"
+                    onClick={() => {
+                      setShowSuggestions(false);
+                      navigate(`/admin/orders?search=${encodeURIComponent(searchQuery.trim())}`);
+                    }}
+                  >
+                    Xem tất cả kết quả
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 text-center text-on-surface-variant text-sm font-medium">
+                  Không tìm thấy đơn hàng.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* ---------- KHU VỰC DROPDOWN MENU TÀI KHOẢN ---------- */}
         <div className="flex items-center gap-4 border-l border-outline-variant/60 pl-4 h-8">

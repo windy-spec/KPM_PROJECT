@@ -111,6 +111,11 @@ class OrderService {
 
     if (!order) throw new Error("Không tìm thấy đơn hàng để thanh toán!");
 
+    const materialAmount = final_total - (shipping_fee || 0) - (installation_fee || 0);
+    // Ưu tiên dùng cờ is_deposit từ client truyền lên, nếu không có thì fallback
+    const isDepositRequired = payload.is_deposit !== undefined ? payload.is_deposit : materialAmount >= 10000000;
+    const depositAmount = isDepositRequired ? materialAmount * 0.1 : 0;
+
     // Cập nhật thông tin Snapshot vào DB
     return await prisma.orders.update({
       where: { id: orderId },
@@ -122,6 +127,8 @@ class OrderService {
         shipping_fee: shipping_fee || 0,
         installation_fee: installation_fee || 0,
         total_amount: final_total, // Trọng tâm: Cập nhật đè tổng tiền để MoMo/VNPay lấy đúng số này!
+        deposit_amount: depositAmount,
+        is_deposit_required: isDepositRequired,
       },
     });
   }

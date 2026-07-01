@@ -18,17 +18,21 @@ const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, totalPage: 1, totalItem: 0 });
-  const [filters, setFilters] = useState({ categories: initialCategory ? [initialCategory] : [] });
+  const [filters, setFilters] = useState({ 
+    categories: initialCategoryIds,
+    search: searchParams.get('search') || ""
+  });
 
   // Lắng nghe khi URL thay đổi (nhấn từ NavigationMenu hoặc F5) để đồng bộ vào State lọc
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const catParam = params.get('category');
+    const searchParam = params.get('search');
     const updatedIds = catParam
       ? catParam.split(',').map(id => String(id).trim()).filter(Boolean)
       : [];
 
-    setFilters({ categories: updatedIds });
+    setFilters({ categories: updatedIds, search: searchParam || "" });
   }, [location.search]);
 
   // Gọi API lấy sản phẩm dựa trên State lọc hiện tại
@@ -36,7 +40,12 @@ const ProductList = () => {
     setLoading(true);
     try {
       const categoryIdParam = filters.categories.length > 0 ? filters.categories.join(',') : undefined;
-      const res = await productService.getProducts({ page, limit: 12, category_id: categoryIdParam });
+      const res = await productService.getProducts({ 
+        page, 
+        limit: 12, 
+        category_id: categoryIdParam,
+        search: filters.search || undefined 
+      });
       const data = res.data;
       setProducts(data.data || []);
       setPagination(data.pagination || { page: 1, totalPage: 1, totalItem: 0 });
@@ -62,7 +71,7 @@ const ProductList = () => {
     const selectedIds = newFilters.categories || [];
 
     // 1. Cập nhật State để chạy API lấy sản phẩm mới
-    setFilters({ categories: selectedIds });
+    setFilters(prev => ({ ...prev, categories: selectedIds }));
 
     // 2. Đồng bộ hóa trực tiếp danh sách ID đang chọn lên thanh URL trình duyệt
     const params = new URLSearchParams(location.search);

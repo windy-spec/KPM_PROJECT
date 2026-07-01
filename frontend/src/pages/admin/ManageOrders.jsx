@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -44,10 +45,21 @@ const formatDate = (dateString) => {
 
 export default function ManageOrders() {
   const socket = useSocket();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("search") || "";
+  });
   const [statusFilter, setStatusFilter] = useState("ALL");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("search")) {
+      setSearchQuery(params.get("search"));
+    }
+  }, [location.search]);
 
   const fetchOrders = async () => {
     try {
@@ -58,13 +70,13 @@ export default function ManageOrders() {
             id: o.id,
             display_id: o.order_code,
             customer_name:
-              o.users?.username || o.quotations?.users?.username || "Khách",
+              o.customer_name || o.users?.username || o.quotations?.users?.username || "Khách",
             customer_phone:
-              o.users?.phone || o.quotations?.users?.phone || "N/A",
+              o.customer_phone || o.users?.phone || o.quotations?.users?.phone || "N/A",
             created_at: o.created_at,
             status: o.production_status || "pending",
-            shipping_address: o.quotations?.address || "Liên hệ nhận hàng",
-            notes: o.quotations?.notes || "",
+            shipping_address: o.shipping_address || o.quotations?.address || "Liên hệ nhận hàng",
+            notes: o.order_notes || o.quotations?.notes || "",
             items: o.order_items?.length > 0
               ? o.order_items.map((i) => ({
                 id: i.id,
@@ -85,6 +97,7 @@ export default function ManageOrders() {
             installation_fee: parseFloat(o.installation_fee) || 0,
             is_deposit_paid: o.is_deposit_paid,
             deposit_amount: parseFloat(o.deposit_amount) || 0,
+            invoices: o.invoices || [],
           }));
           setOrders(formattedOrders);
         }
@@ -612,6 +625,49 @@ export default function ManageOrders() {
                     </table>
                   </div>
                 </div>
+
+                {/* Danh sách hoá đơn */}
+                {selectedOrder.invoices && selectedOrder.invoices.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-black text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-4 h-4" /> Danh sách Hoá đơn
+                    </h4>
+                    <div className="rounded-xl border border-outline-variant/50 overflow-hidden bg-surface-container-lowest">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-outline-variant/40 bg-surface-container-low/60 text-[11px] font-black text-on-surface-variant uppercase tracking-wider">
+                            <th className="p-3">Loại Hóa Đơn</th>
+                            <th className="p-3">Mã Hóa Đơn</th>
+                            <th className="p-3">Ngày tạo</th>
+                            <th className="p-3 text-right">Số tiền</th>
+                            <th className="p-3 text-right">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-outline-variant/20 font-semibold text-on-surface">
+                          {selectedOrder.invoices.map((inv) => (
+                            <tr key={inv.id} className="hover:bg-surface-container-low/20 transition-colors">
+                              <td className="p-3 font-bold text-primary">
+                                {inv.invoice_type === 'DEPOSIT' ? 'Hóa đơn Cọc (Đợt 1)' :
+                                 inv.invoice_type === 'PHASE_2' ? 'Hóa đơn Thanh toán Đợt 2' :
+                                 inv.invoice_type === 'TOTAL' ? 'HÓA ĐƠN TỔNG (Cuối)' : 'Hóa đơn Toàn bộ'}
+                              </td>
+                              <td className="p-3 font-mono text-on-surface-variant">{inv.id.slice(0, 8).toUpperCase()}</td>
+                              <td className="p-3 text-on-surface-variant">{formatDate(inv.created_at)}</td>
+                              <td className="p-3 text-right font-mono font-black">{formatMoney.format(inv.total_amount || 0)}</td>
+                              <td className="p-3 text-right">
+                                {inv.status?.toLowerCase() === 'paid' ? (
+                                  <span className="text-emerald-600 font-bold px-2 py-1 bg-emerald-50 rounded-md text-[10px] uppercase">Đã thanh toán</span>
+                                ) : (
+                                  <span className="text-rose-600 font-bold px-2 py-1 bg-rose-50 rounded-md text-[10px] uppercase">Chưa thanh toán</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 {/* Ghi chú đơn hàng từ khách */}
                 {selectedOrder.notes && (

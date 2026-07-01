@@ -399,9 +399,9 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
                 <div className="space-y-1">
                   <input
-                    type="number"
-                    value={customPrice}
-                    onChange={(e) => setCustomPrice(e.target.value)}
+                    type="text"
+                    value={customPrice ? Number(customPrice).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => setCustomPrice(e.target.value.replace(/\D/g, ''))}
                     placeholder="Nhập tổng số tiền..."
                     className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm font-black text-on-surface focus:outline-none focus:border-amber-500 bg-white shadow-2xs"
                   />

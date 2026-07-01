@@ -296,9 +296,9 @@ const QuotationsTab = () => {
                   </div>
                   <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
                     <input
-                      type="number"
-                      value={negotiatePrices[q.id] || ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value)}
+                      type="text"
+                      value={negotiatePrices[q.id] ? Number(negotiatePrices[q.id]).toLocaleString('vi-VN') : ""}
+                      onChange={(e) => handleInputChange(q.id, e.target.value.replace(/\D/g, ''))}
                       placeholder="Nhập giá đề xuất..."
                       className="w-full md:w-44 px-3 h-9 text-xs font-bold border border-sky-200 rounded-xl focus:outline-none focus:border-sky-400 bg-white shadow-2xs"
                     />

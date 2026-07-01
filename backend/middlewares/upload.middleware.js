@@ -15,7 +15,7 @@ const storage = new CloudinaryStorage({
   params: {
     folder: "KPM_Products", // Tên thư mục nó sẽ tự tạo trên Cloudinary
     allowed_formats: ["jpg", "jpeg", "png", "webp"], // Chặn người dùng up file tào lao
-    transformation: [{ width: 1000, crop: "limit" }], // Tự động nén nếu ảnh quá to (tối ưu load web)
+    transformation: [{ width: 1920, crop: "limit" }], // Tự động nén nếu ảnh quá to (tối ưu load web) nhưng vẫn giữ chuẩn Full HD
   },
 });
 

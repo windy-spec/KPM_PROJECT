@@ -23,7 +23,7 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
   // ---------------------------------------------------------
   // KỊCH BẢN 1: NẾU LÀ HÓA ĐƠN (INVOICE)
   // ---------------------------------------------------------
-  if (type === "INVOICE") {
+  if (type === "INVOICE" || type === "DEPOSIT_INVOICE" || type === "PHASE2_INVOICE" || type === "TOTAL_INVOICE") {
     let itemsHtml = "";
     if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
       // DÀNH CHO ĐƠN CÓ BÓC TÁCH BÁO GIÁ
@@ -78,6 +78,24 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
     const installFee = orderData?.installation_fee || 0;
     const subTotal = finalTotal - shippingFee - installFee;
     
+    let invoiceTitle = "Hóa Đơn Điện Tử Đã Thanh Toán";
+    let invoiceNote = "ĐÃ THANH TOÁN:";
+    let paidAmount = finalTotal;
+
+    if (type === "DEPOSIT_INVOICE") {
+      invoiceTitle = "Hóa Đơn Đặt Cọc (Đợt 1)";
+      invoiceNote = "ĐÃ ĐẶT CỌC (10%):";
+      paidAmount = orderData?.deposit_amount || 0;
+    } else if (type === "PHASE2_INVOICE") {
+      invoiceTitle = "Hóa Đơn Thanh Toán Đợt 2";
+      invoiceNote = "ĐÃ THANH TOÁN (ĐỢT 2):";
+      paidAmount = finalTotal - (orderData?.deposit_amount || 0);
+    } else if (type === "TOTAL_INVOICE") {
+      invoiceTitle = "Hóa Đơn Tổng Tất Toán";
+      invoiceNote = "TỔNG ĐÃ THANH TOÁN:";
+      paidAmount = finalTotal;
+    }
+
     // Lấy tên khách hàng từ orderData hoặc quotationData, ưu tiên trường first_name
     let invoiceCustomerName = orderData?.customer_name || 'Khách hàng';
     let invoiceCustomerPhone = orderData?.customer_phone || 'Chưa cập nhật';
@@ -93,12 +111,12 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
     const mailOptions = {
       from: `"KPM Materials" <${process.env.MAIL_USER}>`,
       to: email,
-      subject: "[KPM] Biên lai xác nhận thanh toán & Chi tiết Hóa đơn",
+      subject: `[KPM] ${invoiceTitle} - ${code}`,
       html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; padding: 40px 10px;">
           <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
             <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 30px; text-align: center;">
-              <p style="color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">Hóa Đơn Điện Tử Đã Thanh Toán</p>
+              <p style="color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px 0;">${invoiceTitle}</p>
               <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: 2px;">KPM MATERIALS</h1>
             </div>
             <div style="padding: 30px;">
@@ -135,20 +153,22 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
                       </tr>
                       ${shippingFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Vận chuyển:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(shippingFee)}</td></tr>` : ""}
                       ${installFee > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #475569; text-align: right;">Lắp đặt:</td><td style="padding: 6px 12px; font-size: 13px; color: #0f172a; text-align: right;">${formatCurrency(installFee)}</td></tr>` : ""}
+                      ${type === "PHASE2_INVOICE" && orderData?.deposit_amount > 0 ? `<tr><td style="padding: 6px 12px; font-size: 13px; color: #ef4444; text-align: right;">Đã trừ cọc (Đợt 1):</td><td style="padding: 6px 12px; font-size: 13px; color: #ef4444; text-align: right;">-${formatCurrency(orderData.deposit_amount)}</td></tr>` : ""}
+                      <tr>
                         <td style="padding: 12px; font-size: 15px; color: #1e3a8a; text-align: right; font-weight: bold; border-top: 1px solid #bfdbfe;">
-                          ${isDepositPayment ? "ĐÃ ĐẶT CỌC (10%):" : "ĐÃ THANH TOÁN:"}
+                          ${invoiceNote}
                         </td>
                         <td style="padding: 12px; font-size: 20px; color: #10b981; text-align: right; font-weight: 900; border-top: 1px solid #bfdbfe;">
-                          ${isDepositPayment ? formatCurrency(orderData?.deposit_amount || 0) : formatCurrency(finalTotal)}
+                          ${formatCurrency(paidAmount)}
                         </td>
                       </tr>
-                      ${isDepositPayment ? `
+                      ${type === "DEPOSIT_INVOICE" ? `
                       <tr>
                         <td style="padding: 12px; font-size: 14px; color: #ef4444; text-align: right; font-weight: bold; border-top: 1px dashed #bfdbfe;">
-                          CÒN LẠI PHẢI THANH TOÁN (COD):
+                          CÒN LẠI PHẢI THANH TOÁN ĐỢT 2:
                         </td>
                         <td style="padding: 12px; font-size: 16px; color: #ef4444; text-align: right; font-weight: bold; border-top: 1px dashed #bfdbfe;">
-                          ${formatCurrency(finalTotal - (orderData?.deposit_amount || 0))}
+                          ${formatCurrency(finalTotal - paidAmount)}
                         </td>
                       </tr>
                       ` : ""}

@@ -11,6 +11,7 @@ const ProductHomeCard = ({ product }) => {
           src={product.image || defaultProductImg} 
           alt={product.name} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          onError={(e) => { e.target.src = defaultProductImg; }}
         />
         {product.isNew && (
           <span className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-2 py-1 text-[10px] font-bold border border-outline-variant rounded shadow-sm">MỚI</span>

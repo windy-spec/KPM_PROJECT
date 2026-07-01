@@ -382,11 +382,11 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
                                 <label className="text-[10px] font-black uppercase tracking-[0.15em] text-on-surface-variant/80 block">Đơn giá chốt cuối cùng gửi tới khách hàng (VNĐ) *</label>
                                 <div className="relative mt-1">
                                     <input
-                                        type="number"
+                                        type="text"
                                         placeholder="Nhập mức giá chính thức sau thẩm định"
                                         className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm font-black outline-none focus:border-primary focus:bg-white transition-all text-on-surface"
-                                        value={finalPrice}
-                                        onChange={(e) => setFinalPrice(e.target.value)}
+                                        value={finalPrice ? Number(finalPrice).toLocaleString('vi-VN') : ''}
+                                        onChange={(e) => setFinalPrice(e.target.value.replace(/\D/g, ''))}
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-on-surface-variant/60">VNĐ</span>
                                 </div>
