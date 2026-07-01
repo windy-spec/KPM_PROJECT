@@ -340,7 +340,7 @@ const OrdersTab = () => {
               </div>
               <div className="flex flex-col items-end gap-1.5">
                 {getStatusBadge(order.status)}
-                {order.is_deposit_paid && order.total_amount > order.deposit_amount ? (
+                {order.is_deposit_paid && order.total_amount > order.deposit_amount && order.status !== "completed" ? (
                   <div className="text-right">
                     <p className="text-xs font-bold text-on-surface-variant line-through decoration-rose-500/50 mb-0.5">
                       Tổng: {formatCurrency(order.total_amount)}
