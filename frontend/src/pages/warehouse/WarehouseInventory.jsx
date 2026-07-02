@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import warehouseService from "../../services/warehouse.service";
 import { materialService } from "../../services/material.service";
-import { Boxes, Plus, Edit3, History, FileText, Loader2, Trash2, X } from "lucide-react";
+import { Boxes, Plus, Edit3, History, FileText, Loader2, Trash2, X,Filter,FileDown } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
 import Portal from "../../components/common/Portal";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -20,6 +20,10 @@ const WarehouseInventory = () => {
     const [pageSize] = useState(6);
 
     const [formData, setFormData] = useState({ material_id: "", quantity: 0, leftover_amount: 0, note: "" });
+
+    const [selectedIds, setSelectedIds] = useState([]); // Lưu mảng các material_id được chọn
+    const [filterStock, setFilterStock] = useState("ALL"); // ALL (Tất cả), LOW (Tồn ít < 20), HIGH (Tồn nhiều >= 20)
+    const [exportLoading, setExportLoading] = useState(false);
 
     const fetchInventory = async () => {
         setLoading(true);
@@ -47,19 +51,96 @@ const WarehouseInventory = () => {
         fetchMaterialsCatalog();
     }, []);
 
-    // 1. SỬA LỖI: Tính toán mảng đã phân trang chuẩn chỉnh
-    const totalPages = Math.ceil(inventoryList.length / pageSize);
+    // --- 1. LỌC SẢN PHẨM NHIỀU / ÍT THEO ĐỊNH MỨC ---
+    const filteredInventory = React.useMemo(() => {
+        return inventoryList.filter((item) => {
+            const qty = parseFloat(item.quantity) || 0;
+            if (filterStock === "LOW") return qty < 20; // Ngưỡng dưới 20 tính là ít hàng
+            if (filterStock === "HIGH") return qty >= 20; // Ngưỡng từ 20 trở lên tính là nhiều hàng
+            return true;
+        });
+    }, [inventoryList, filterStock]);
+
+    // Reset lại trang về 1 nếu bộ lọc thay đổi để tránh lỗi rỗng trang
+    useEffect(() => {
+        setPage(1);
+    }, [filterStock]);
+
+    // Đổi nguồn mảng tính toán phân trang từ 'inventoryList' gốc sang 'filteredInventory' đã lọc
+    const totalPages = Math.ceil(filteredInventory.length / pageSize);
     const paginatedInventory = React.useMemo(() => {
         const offset = (page - 1) * pageSize;
-        return inventoryList.slice(offset, offset + pageSize);
-    }, [inventoryList, page, pageSize]);
+        return filteredInventory.slice(offset, offset + pageSize);
+    }, [filteredInventory, page, pageSize]);
 
-    // Tự động lùi trang nếu trang hiện tại bỗng nhiên không có dữ liệu (khi xóa bớt phần tử)
+    // Tự động lùi trang nếu trang hiện tại bỗng nhiên không có dữ liệu
     useEffect(() => {
         if (page > 1 && paginatedInventory.length === 0) {
             setPage(Math.max(1, totalPages));
         }
-    }, [inventoryList, paginatedInventory, page, totalPages]);
+    }, [filteredInventory, paginatedInventory, page, totalPages]);
+
+    // --- 2. XỬ LÝ CHỌN CHECKBOX (TỪNG DÒNG & CHỌN TẤT CẢ) ---
+    const handleSelectRow = (materialId) => {
+        if (!materialId) return;
+        setSelectedIds((prev) =>
+            prev.includes(materialId)
+                ? prev.filter((id) => id !== materialId)
+                : [...prev, materialId]
+        );
+    };
+
+    const handleSelectAllPage = () => {
+        const currentPageMaterialIds = paginatedInventory
+            .map((item) => item.material_id)
+            .filter(Boolean);
+
+        const isAllSelected = currentPageMaterialIds.every((id) => selectedIds.includes(id));
+
+        if (isAllSelected) {
+            // Nếu đã chọn hết ở trang hiện tại -> Bỏ chọn các sản phẩm thuộc trang này
+            setSelectedIds((prev) => prev.filter((id) => !currentPageMaterialIds.includes(id)));
+        } else {
+            // Thêm các mã chưa chọn của trang này vào danh sách gom
+            setSelectedIds((prev) => {
+                const uniqueIds = new Set([...prev, ...currentPageMaterialIds]);
+                return Array.from(uniqueIds);
+            });
+        }
+    };
+
+    // --- 3. GỌI SERVICE DOWNLOAD FILE PDF NHỊ PHÂN ---
+    const handleExportPDF = async () => {
+        setExportLoading(true);
+        try {
+            // Gửi danh sách các inventory/material_id đã chọn để backend lọc đúng
+            const payload = { selectedIds };
+            const res = await warehouseService.exportInventoryPDF(payload);
+
+            // Xử lý chuyển đổi luồng stream Blob nhị phân thành file tải xuống
+            const blob = new Blob([res.data], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            
+            const suffix = selectedIds.length > 0 ? "Tu_Chon" : "Toan_Bo";
+            link.setAttribute("download", `Bao_Cao_Ton_Kho_${suffix}.pdf`);
+            
+            document.body.appendChild(link);
+            link.click();
+            
+            // Dọn dẹp bộ nhớ RAM sau khi download xong
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            toast.success("Xuất báo cáo PDF thành công!");
+        } catch (err) {
+            console.error("Lỗi xuất PDF tồn kho:", err);
+            toast.error("Có lỗi xảy ra khi sinh và tải file báo cáo PDF.");
+        } finally {
+            setExportLoading(false);
+        }
+    };
 
     const handleSubmitForm = async (e) => {
         e.preventDefault();
@@ -128,6 +209,8 @@ const WarehouseInventory = () => {
             if (selectedItem?.id === id) {
                 setSelectedItem(null);
             }
+            // Loại bỏ ID khỏi mảng tích chọn nếu lỡ xóa vật tư này
+            setSelectedIds(prev => prev.filter(i => i !== id));
         } catch (e) {
             toast.error(e.response?.data?.message || "Xóa kho thất bại.");
         }
@@ -144,15 +227,60 @@ const WarehouseInventory = () => {
                         <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <Boxes className="w-4 h-4 text-teal-600" /> Thực Trạng Tồn Kho Vật Tư
                         </h2>
-                        <button onClick={openCreateModal} className="px-3 py-1.5 bg-primary text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer hover:bg-primary/90 transition-colors">
-                            <Plus className="w-3.5 h-3.5" /> Khởi tạo tồn
-                        </button>
+
+                        {/* THANH THAO TÁC: BỘ LỌC + XUẤT PDF + TẠO MỚI */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* BỘ LỌC SẢN PHẨM NHIỀU ÍT */}
+                            <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-lg px-2 py-1">
+                                <Filter className="w-3.5 h-3.5 text-slate-500" />
+                                <select
+                                    value={filterStock}
+                                    onChange={(e) => setFilterStock(e.target.value)}
+                                    className="bg-transparent text-[11px] font-bold text-slate-700 outline-none cursor-pointer"
+                                >
+                                    <option value="ALL">Tất cả lượng tồn</option>
+                                    <option value="LOW">Cảnh báo: Tồn ít (&lt; 20)</option>
+                                    <option value="HIGH">Ổn định: Tồn nhiều (&ge; 20)</option>
+                                </select>
+                            </div>
+
+                            {/* NÚT EXPORT PDF ĐỐI SOÁT */}
+                            <button
+                                type="button"
+                                onClick={handleExportPDF}
+                                disabled={exportLoading || filteredInventory.length === 0}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                                {exportLoading ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <FileDown className="w-3.5 h-3.5" />
+                                )}
+                                {selectedIds.length > 0 ? `Xuất PDF (${selectedIds.length})` : "Xuất PDF tất cả"}
+                            </button>
+
+                            <button onClick={openCreateModal} className="px-3 py-1.5 bg-primary text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer hover:bg-primary/90 transition-colors">
+                                <Plus className="w-3.5 h-3.5" /> Khởi tạo tồn
+                            </button>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto border border-outline-variant/60 rounded-xl">
                         <table className="w-full text-left text-xs">
                             <thead>
                                 <tr className="bg-slate-50 text-slate-700 uppercase font-black border-b border-outline-variant tracking-wider">
+                                    <th className="p-3 w-10 text-center">
+                                        <input
+                                            type="checkbox"
+                                            className="w-3.5 h-3.5 rounded accent-teal-600 cursor-pointer"
+                                            disabled={paginatedInventory.length === 0}
+                                            checked={
+                                                paginatedInventory.length > 0 &&
+                                                paginatedInventory.every((item) => selectedIds.includes(item.material_id))
+                                            }
+                                            onChange={handleSelectAllPage}
+                                        />
+                                    </th>
                                     <th className="p-3">Mã vật tư</th>
                                     <th className="p-3">Số lượng tồn</th>
                                     <th className="p-3">Hàng vụn/Leftover</th>
@@ -162,19 +290,28 @@ const WarehouseInventory = () => {
                             <tbody className="divide-y divide-outline-variant/40 font-semibold text-slate-600">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="4" className="p-8 text-center text-slate-400">
+                                        <td colSpan="5" className="p-8 text-center text-slate-400">
                                             <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-teal-600" />
                                             Đang tải dữ liệu tồn kho...
                                         </td>
                                     </tr>
                                 ) : inventoryList.length === 0 ? (
                                     <tr>
-                                        <td colSpan="4" className="p-8 text-center text-slate-400 italic">Kho trống hoặc chưa có vật tư nào được khởi tạo tồn.</td>
+                                        <td colSpan="5" className="p-8 text-center text-slate-400 italic">Kho trống hoặc chưa có vật tư nào được khởi tạo tồn.</td>
                                     </tr>
                                 ) : (
                                     // SỬA LỖI CHÍNH: Thay inventoryList bằng paginatedInventory để giới hạn số dòng hiển thị
                                     paginatedInventory.map((item) => (
                                         <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selectedItem?.id === item.id ? 'bg-teal-50/30' : ''}`}>
+                                            {/* CHECKBOX TỪNG DÒNG VẬT TƯ */}
+                                            <td className="p-3 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-3.5 h-3.5 rounded accent-teal-600 cursor-pointer"
+                                                    checked={selectedIds.includes(item.material_id)}
+                                                    onChange={() => handleSelectRow(item.material_id)}
+                                                />
+                                            </td>
                                             <td className="p-3">
                                                 <div className="font-mono text-[11px] text-teal-700 font-bold">
                                                     {item.materials?.material_code || "Chưa có mã"}

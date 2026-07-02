@@ -16,7 +16,11 @@ class MaterialRequestService {
   async getAllRequests() {
     return await prisma.material_import_requests.findMany({
       include: {
-        materials: true,
+        materials: {
+          include: {
+            inventory: true,
+          },
+        },
         orders: true,
       },
       orderBy: { created_at: "desc" },
