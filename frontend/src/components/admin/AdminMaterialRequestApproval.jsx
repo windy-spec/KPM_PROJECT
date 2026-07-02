@@ -94,9 +94,7 @@ const AdminMaterialRequestApproval = () => {
                                 <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-black uppercase tracking-[0.15em] text-on-surface-variant/80">
                                     <th className="p-4 rounded-tl-xl">Mã Vật Tư / Tên</th>
                                     <th className="p-4 text-center">SL Yêu cầu</th>
-                                    <th className="p-4 text-center">Tồn trước</th>
-                                    <th className="p-4 text-center">Thực nhập</th>
-                                    <th className="p-4 text-center">Tồn sau</th>
+                                    <th className="p-4 text-center">Tồn kho</th>
                                     <th className="p-4">Lý do / Mã Đơn</th>
                                     <th className="p-4 text-center">Trạng thái</th>
                                     <th className="p-4">Ngày tạo</th>
@@ -113,16 +111,8 @@ const AdminMaterialRequestApproval = () => {
                                         <td className="p-4 text-center font-black text-rose-600 text-sm">
                                             {Number(req.requested_quantity).toLocaleString("vi-VN")}
                                         </td>
-                                        <td className="p-4 text-center text-sm font-medium">
-                                            {req.inventory_before != null ? Number(req.inventory_before).toLocaleString("vi-VN") : "-"}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <span className="font-bold text-primary">
-                                                {req.actual_quantity != null ? Number(req.actual_quantity).toLocaleString("vi-VN") : "-"}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-center text-sm font-medium">
-                                            {req.inventory_after != null ? Number(req.inventory_after).toLocaleString("vi-VN") : "-"}
+                                        <td className="p-4 text-center text-sm font-medium text-slate-700">
+                                            {req.materials?.inventory?.quantity != null ? Number(req.materials.inventory.quantity).toLocaleString("vi-VN") : "-"}
                                         </td>
                                         <td className="p-4 max-w-xs">
                                             {req.orders ? (

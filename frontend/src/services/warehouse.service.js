@@ -113,7 +113,39 @@ const warehouseService = {
      */
     requestImportMaterials(payload) {
         return apiClient.post("/warehouse/request-import", payload);
-    }
+    },
+
+    /**
+     * HÀM MỚI BỔ SUNG: Duyệt thực nhập kho và đồng bộ số lượng thực tế nhận từ FE
+     * @param {string|number} requestId - ID của phiếu yêu cầu nhập hàng (material_import_requests)
+     * @param {Object} payload - { actual_quantity, note }
+     * Gắn trực tiếp vào API mà file component 'WarehouseMaterialRequestReceive' đang gọi
+     */
+    approveAndExecuteImport(requestId, payload) {
+        return apiClient.put(`/warehouse/request-import/${requestId}/approve`, payload);
+    },
+
+    /**
+     * BỔ SUNG MỚI (1): Xuất file PDF danh sách vật tư thiếu cho một đơn hàng cụ thể
+     * @param {string|number} orderId - ID đơn hàng cần xuất PDF đối soát
+     * Backend route: GET /warehouse/orders/:orderId/export-pdf
+     */
+    exportMissingMaterialsPDF(orderId) {
+        return apiClient.get(`/warehouse/orders/${orderId}/export-pdf`, {
+            responseType: "blob" // Nhận luồng dữ liệu file nhị phân từ Backend
+        });
+    },
+
+    /**
+     * BỔ SUNG MỚI (2): Xuất báo cáo PDF danh sách hàng tồn kho tùy chọn (Checkbox)
+     * @param {Object} payload - { selectedIds: [id1, id2...] } (Mảng rỗng nếu muốn in toàn bộ kho)
+     * Backend route: POST /warehouse/inventory/export-pdf
+     */
+    exportInventoryPDF(payload) {
+        return apiClient.post("/warehouse/inventory/export-pdf", payload, {
+            responseType: "blob" // Ép kiểu dữ liệu nhị phân thô để trình duyệt không parse thành JSON lỗi
+        });
+    },
 };
 
 export default warehouseService;
