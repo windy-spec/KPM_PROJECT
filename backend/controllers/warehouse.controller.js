@@ -1,4 +1,5 @@
 const warehouseService = require("../services/warehouse.service");
+const PdfService = require("../services/pdf.service");
 
 class WarehouseController {
   async confirmOrderMaterials(req, res) {
@@ -240,5 +241,54 @@ class WarehouseController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+  async generateExportPDF(req, res) {
+    try {
+      const { orderId } = req.params;
+      const missingMaterials = await warehouseService.getMissingMaterialsForPDF(orderId);
+      if (missingMaterials.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Đơn hàng này không bị thiếu vật tư nào!",
+        });
+      }
+      const pdfBuffer = await PdfService.generateWarehousePDF(missingMaterials);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=phieu-thieu-vat-tu_${orderId}.pdf`,
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Lỗi khi tạo PDF:", error);
+      res.status(500).json({ success: false, message: "Đã xảy ra lỗi khi tạo PDF." });
+    }
+  }
+
+  async generateInventoryPDF(req, res) {
+    try {
+      const { selectedIds } = req.body;
+      const inventories = await warehouseService.getInventoryForPDF(selectedIds);
+      if (!inventories || inventories.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Không tìm thấy dữ liệu tồn kho nào để xuất PDF!",
+        });
+      }
+      const pdfBuffer = await PdfService.generateInventoryReportPDF(inventories);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=bao-cao-ton-kho_${Date.now()}.pdf`,
+      );
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Lỗi khi tạo PDF Báo cáo tồn kho:", error);
+      res.status(500).json({
+        success: false,
+        message: "Đã xảy ra lỗi khi tạo báo cáo PDF.",
+      });
+    }
+  }
 }
+
 module.exports = new WarehouseController();

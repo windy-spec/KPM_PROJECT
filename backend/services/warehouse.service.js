@@ -66,7 +66,9 @@ class WarehouseService {
       });
     });
 
-    return { message: "Kho đã xác nhận xuất hàng. Đơn hàng chuyển sang Kiểm xuất kho!" };
+    return {
+      message: "Kho đã xác nhận xuất hàng. Đơn hàng chuyển sang Kiểm xuất kho!",
+    };
   }
 
   // Chuyển từ "Kiểm xuất kho" sang "Đang sản xuất"
@@ -102,7 +104,8 @@ class WarehouseService {
         data: {
           order_id: orderId,
           stage_name: "warehouse_received",
-          stage_description: "Kho đã tiếp nhận đơn hàng, đang chuẩn bị kiểm tra vật tư.",
+          stage_description:
+            "Kho đã tiếp nhận đơn hàng, đang chuẩn bị kiểm tra vật tư.",
           tracked_at: new Date(),
         },
       });
@@ -139,7 +142,9 @@ class WarehouseService {
     }
 
     if (missingMaterials.length > 0) {
-      const error = new Error("Hệ thống đối soát thấy vật tư hiện tại không đủ!");
+      const error = new Error(
+        "Hệ thống đối soát thấy vật tư hiện tại không đủ!",
+      );
       error.isMissingMaterialError = true;
       error.missingList = missingMaterials;
       throw error;
@@ -179,7 +184,10 @@ class WarehouseService {
       });
     });
 
-    return { message: "Xác nhận đủ vật tư, đơn hàng chuyển sang Sẵn sàng sản xuất!", order: order };
+    return {
+      message: "Xác nhận đủ vật tư, đơn hàng chuyển sang Sẵn sàng sản xuất!",
+      order: order,
+    };
   }
 
   // 3. Thiếu hàng -> Báo cáo thiếu (chuyển sang out_of_stock)
@@ -194,7 +202,7 @@ class WarehouseService {
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
       const inv = await prisma.inventory.findUnique({
-        where: { material_id: matId }
+        where: { material_id: matId },
       });
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
 
@@ -205,7 +213,9 @@ class WarehouseService {
     }
 
     if (!isReallyMissing) {
-      throw new Error("Toàn bộ vật tư cho đơn hàng này đã đầy đủ, không thể báo thiếu!");
+      throw new Error(
+        "Toàn bộ vật tư cho đơn hàng này đã đầy đủ, không thể báo thiếu!",
+      );
     }
 
     await prisma.$transaction(async (tx) => {
@@ -217,7 +227,8 @@ class WarehouseService {
         data: {
           order_id: orderId,
           stage_name: "out_of_stock",
-          stage_description: "Phát hiện thiếu vật tư, chờ NV Kho lập phiếu yêu cầu nhập thêm.",
+          stage_description:
+            "Phát hiện thiếu vật tư, chờ NV Kho lập phiếu yêu cầu nhập thêm.",
           tracked_at: new Date(),
         },
       });
@@ -260,13 +271,17 @@ class WarehouseService {
         data: {
           order_id: orderId,
           stage_name: "production_ready",
-          stage_description: "Đã nhập đủ vật tư bù, chuyển sang trạng thái sẵn sàng sản xuất.",
+          stage_description:
+            "Đã nhập đủ vật tư bù, chuyển sang trạng thái sẵn sàng sản xuất.",
           tracked_at: new Date(),
         },
       });
     });
 
-    return { message: "Cập nhật tồn kho và chuyển trạng thái sản xuất thành công!", order: order };
+    return {
+      message: "Cập nhật tồn kho và chuyển trạng thái sản xuất thành công!",
+      order: order,
+    };
   }
 
   // 4.5. Bắt đầu sản xuất (production_ready -> producing)
@@ -289,7 +304,10 @@ class WarehouseService {
       });
     });
 
-    return { message: "Đã đưa đơn hàng vào trạng thái đang sản xuất!", order: order };
+    return {
+      message: "Đã đưa đơn hàng vào trạng thái đang sản xuất!",
+      order: order,
+    };
   }
 
   // 5. Gia công xong (producing -> production_completed)
@@ -312,7 +330,10 @@ class WarehouseService {
       });
     });
 
-    return { message: "Gia công hoàn tất, đã gửi báo cáo nghiệm thu!", order: order };
+    return {
+      message: "Gia công hoàn tất, đã gửi báo cáo nghiệm thu!",
+      order: order,
+    };
   }
 
   // Lấy tất cả thông tin tồn kho
@@ -494,7 +515,7 @@ class WarehouseService {
       throw new Error("Vui lòng chọn ít nhất 1 vật tư để yêu cầu!");
     }
 
-    const dataToInsert = items.map(item => ({
+    const dataToInsert = items.map((item) => ({
       order_id: item.order_id || null,
       material_id: item.material_id,
       requested_quantity: parseFloat(item.requested_quantity),
@@ -503,7 +524,7 @@ class WarehouseService {
     }));
 
     return await prisma.material_import_requests.createMany({
-      data: dataToInsert
+      data: dataToInsert,
     });
   }
 
@@ -514,11 +535,15 @@ class WarehouseService {
     });
     if (!request) throw new Error("Không tìm thấy yêu cầu này!");
     if (request.status !== "APPROVED")
-      throw new Error("Chỉ có thể nhập kho những yêu cầu đã được Admin duyệt mua (APPROVED)!");
+      throw new Error(
+        "Chỉ có thể nhập kho những yêu cầu đã được Admin duyệt mua (APPROVED)!",
+      );
 
     return await prisma.$transaction(async (tx) => {
       // 1. Get current inventory
-      const inv = await tx.inventory.findUnique({ where: { material_id: request.material_id } });
+      const inv = await tx.inventory.findUnique({
+        where: { material_id: request.material_id },
+      });
       const inventory_before = inv ? parseFloat(inv.quantity) : 0;
       const inventory_after = inventory_before + actualQuantity;
 
@@ -529,7 +554,7 @@ class WarehouseService {
           status: "IMPORTED",
           actual_quantity: actualQuantity,
           inventory_before: inventory_before,
-          inventory_after: inventory_after
+          inventory_after: inventory_after,
         },
       });
 
@@ -558,33 +583,38 @@ class WarehouseService {
 
       // 5. Nếu có order_id, kiểm tra xem đơn hàng đó đã đủ vật tư chưa
       if (request.order_id) {
-        const order = await tx.orders.findUnique({ where: { id: request.order_id } });
+        const order = await tx.orders.findUnique({
+          where: { id: request.order_id },
+        });
         if (order && order.production_status === "out_of_stock") {
-            const reqs = order.material_requirements || {};
-            let isEnough = true;
-            for (const [matId, reqQtyStr] of Object.entries(reqs)) {
-                const reqQty = parseFloat(reqQtyStr);
-                const matInv = await tx.inventory.findUnique({ where: { material_id: matId } });
-                const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
-                if (currentStock < reqQty) {
-                    isEnough = false;
-                    break;
-                }
+          const reqs = order.material_requirements || {};
+          let isEnough = true;
+          for (const [matId, reqQtyStr] of Object.entries(reqs)) {
+            const reqQty = parseFloat(reqQtyStr);
+            const matInv = await tx.inventory.findUnique({
+              where: { material_id: matId },
+            });
+            const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
+            if (currentStock < reqQty) {
+              isEnough = false;
+              break;
             }
-            if (isEnough) {
-                await tx.orders.update({
-                    where: { id: request.order_id },
-                    data: { production_status: "production_ready" }
-                });
-                await tx.order_tracking.create({
-                    data: {
-                        order_id: request.order_id,
-                        stage_name: "production_ready",
-                        stage_description: "Đã nhập đủ vật tư bù, đơn hàng sẵn sàng đưa vào sản xuất.",
-                        tracked_at: new Date(),
-                    }
-                });
-            }
+          }
+          if (isEnough) {
+            await tx.orders.update({
+              where: { id: request.order_id },
+              data: { production_status: "production_ready" },
+            });
+            await tx.order_tracking.create({
+              data: {
+                order_id: request.order_id,
+                stage_name: "production_ready",
+                stage_description:
+                  "Đã nhập đủ vật tư bù, đơn hàng sẵn sàng đưa vào sản xuất.",
+                tracked_at: new Date(),
+              },
+            });
+          }
         }
       }
 
@@ -616,8 +646,68 @@ class WarehouseService {
       return { message: "Đã xoá tồn kho thành công!" };
     });
   }
+  // Hàm lấy vật tư bị thiếu để sinh PDF
+  async getMissingMaterialsForPDF(orderId) {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } });
+    if (!order) throw new Error("Không tìm thấy đơn hàng!");
+    
+    const requiredMaterials = order.material_requirements || {};
+    const missingMaterials = [];
+    
+    // Kiểm tra tồn kho
+    for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
+      const requiredQty = parseFloat(requiredQtyStr);
+      // Cần include thêm bảng materials và material_units để lấy tên và đơn vị tính
+      const inv = await prisma.inventory.findUnique({
+        where: { material_id: matId },
+        include: {
+          materials: {
+            include: {
+              material_units: true
+            }
+          }
+        }
+      });
+      
+      const currentStock = inv ? parseFloat(inv.quantity) : 0;
+      
+      if (currentStock < requiredQty) {
+        missingMaterials.push({
+          material_code: inv?.materials?.material_code || matId,
+          material_name: inv?.materials?.material_name || "Vật tư chưa rõ",
+          unit_name: inv?.materials?.material_units?.unit_name || "",
+          quantity: requiredQty - currentStock, // Số lượng cần xuất (tức là số lượng bị thiếu)
+        });
+      }
+    }
+    return missingMaterials;
+  }
+  // Hàm lấy thông tin tồn kho cho báo cáo PDF tuỳ chọn
+  async getInventoryForPDF(materialIds) {
+    let whereClause = {};
+    if (materialIds && Array.isArray(materialIds) && materialIds.length > 0) {
+      whereClause = { material_id: { in: materialIds } };
+    }
 
+    const inventories = await prisma.inventory.findMany({
+      where: whereClause,
+      include: {
+        materials: {
+          include: {
+            material_units: true
+          }
+        }
+      },
+      orderBy: { quantity: 'asc' } // Sắp xếp cái nào ít lên đầu
+    });
 
+    return inventories.map(inv => ({
+      material_code: inv.materials.material_code,
+      material_name: inv.materials.material_name,
+      unit_name: inv.materials.material_units?.unit_name || "",
+      quantity: parseFloat(inv.quantity)
+    }));
+  }
 }
 
 module.exports = new WarehouseService();

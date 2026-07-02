@@ -12,7 +12,10 @@ router.put("/inventory/:id", warehouseController.updateInventoryManual);
 
 // API Yêu cầu nhập hàng
 router.post("/request-import", warehouseController.requestImportMaterials);
-router.put("/import-requests/:id/confirm", warehouseController.confirmImportRequest);
+router.put(
+  "/import-requests/:id/confirm",
+  warehouseController.confirmImportRequest,
+);
 
 // Các API có sẵn trước đó
 router.post(
@@ -24,10 +27,27 @@ router.post(
   warehouseController.completeOrderExport,
 );
 router.post("/orders/:orderId/receive", warehouseController.receiveOrder);
-router.post("/orders/:orderId/confirm-stock", warehouseController.confirmSufficientStock);
-router.post("/orders/:orderId/out-of-stock", warehouseController.reportOutOfStock);
-router.post("/orders/:orderId/import-ready", warehouseController.completeImportAndReady);
-router.post("/orders/:orderId/start-production", warehouseController.startProduction);
-router.post("/orders/:orderId/complete-production", warehouseController.completeProduction);
+router.post(
+  "/orders/:orderId/confirm-stock",
+  warehouseController.confirmSufficientStock,
+);
+router.post(
+  "/orders/:orderId/out-of-stock",
+  warehouseController.reportOutOfStock,
+);
+router.post(
+  "/orders/:orderId/import-ready",
+  warehouseController.completeImportAndReady,
+);
+router.post(
+  "/orders/:orderId/start-production",
+  warehouseController.startProduction,
+);
+router.post(
+  "/orders/:orderId/complete-production",
+  warehouseController.completeProduction,
+);
 router.delete("/inventory/:id", warehouseController.deleteInventory);
+router.post("/inventory/export-pdf", warehouseController.generateInventoryPDF);
+router.get("/orders/:orderId/export-pdf", warehouseController.generateExportPDF);
 module.exports = router;
