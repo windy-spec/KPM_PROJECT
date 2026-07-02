@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from "react";
 import materialRequestService from "../../services/material_request.service";
-import { authService } from "../../services/auth.service";
-import { Loader2, CheckCircle2, XCircle, Clock, AlertCircle, Boxes, Check, RefreshCcw, Truck, PackagePlus, X } from "lucide-react";
+import { Loader2, CheckCircle2, Clock, AlertCircle, Boxes, RefreshCcw, Truck, PackagePlus } from "lucide-react";
 import { toast } from "react-toastify";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
-const ManageMaterialRequests = () => {
+const WarehouseMaterialRequestReceive = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [error, setError] = useState("");
-    const [currentUser, setCurrentUser] = useState(null);
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
     const [receiveModal, setReceiveModal] = useState({ isOpen: false, id: null, quantity: "" });
 
     useEffect(() => {
-        authService.getMe()
-            .then(res => setCurrentUser(res.data?.data?.user))
-            .catch(console.error);
         fetchRequests();
     }, []);
 
@@ -31,26 +25,6 @@ const ManageMaterialRequests = () => {
             setError("Lỗi khi tải danh sách yêu cầu nhập vật tư.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleApprove = (id) => {
-        setConfirmModal({ isOpen: true, id });
-    };
-
-    const executeApprove = async () => {
-        const id = confirmModal.id;
-        setConfirmModal({ isOpen: false, id: null });
-        if (!id) return;
-
-        setActionLoadingId(id);
-        try {
-            await materialRequestService.approveRequest(id);
-            fetchRequests(); // Reload data
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu.");
-        } finally {
-            setActionLoadingId(null);
         }
     };
 
@@ -85,18 +59,15 @@ const ManageMaterialRequests = () => {
         }
     };
 
-    const isAdmin = String(currentUser?.role || "").toUpperCase() === "ADMIN";
-    const isWarehouse = ["ADMIN_KHO", "WAREHOUSE"].includes(String(currentUser?.role || "").toUpperCase());
-
     return (
         <div className="bg-white rounded-2xl border border-outline-variant/70 shadow-sm flex flex-col h-full min-h-[500px] relative">
             <div className="p-5 border-b border-outline-variant/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container/20">
                 <div>
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface flex items-center gap-2">
-                        <Boxes className="w-5 h-5 text-primary" /> Quản lý Yêu cầu Nhập Vật tư
+                        <Boxes className="w-5 h-5 text-primary" /> Nhập Kho Yêu cầu Vật tư
                     </h2>
                     <p className="text-xs text-on-surface-variant font-medium mt-1">
-                        Theo dõi tiến độ duyệt mua và nhập hàng về kho
+                        Kho nhập số lượng thực tế sau khi admin duyệt mua
                     </p>
                 </div>
                 <button
@@ -156,7 +127,7 @@ const ManageMaterialRequests = () => {
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className="font-bold text-primary">
-                                                {req.actual_quantity != null ? Number(req.actual_quantity).toLocaleString("vi-VN") : (req.status === "APPROVED" && isWarehouse ? "Chờ nhập kho" : "-")}
+                                                {req.actual_quantity != null ? Number(req.actual_quantity).toLocaleString("vi-VN") : "Chờ nhập kho"}
                                             </span>
                                         </td>
                                         <td className="p-4 text-center text-sm font-medium">
@@ -173,11 +144,6 @@ const ManageMaterialRequests = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-center">
-                                            {req.status === "PENDING" && (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
-                                                    <Clock className="w-3 h-3" /> Chờ Duyệt Mua
-                                                </span>
-                                            )}
                                             {req.status === "APPROVED" && (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
                                                     <Truck className="w-3 h-3" /> Đang Giao Hàng
@@ -193,21 +159,7 @@ const ManageMaterialRequests = () => {
                                             {new Date(req.created_at).toLocaleString("vi-VN")}
                                         </td>
                                         <td className="p-4 text-center">
-                                            {isAdmin && req.status === "PENDING" && (
-                                                <button
-                                                    onClick={() => handleApprove(req.id)}
-                                                    disabled={actionLoadingId === req.id}
-                                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 mx-auto shadow-sm"
-                                                >
-                                                    {actionLoadingId === req.id ? (
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                    ) : (
-                                                        <Check className="w-3.5 h-3.5" />
-                                                    )}
-                                                    Xác nhận Mua
-                                                </button>
-                                            )}
-                                            {isWarehouse && req.status === "APPROVED" && (
+                                            {req.status === "APPROVED" && (
                                                 <button
                                                     onClick={() => handleOpenReceiveModal(req.id)}
                                                     disabled={actionLoadingId === req.id}
@@ -232,15 +184,6 @@ const ManageMaterialRequests = () => {
                     </div>
                 )}
             </div>
-
-
-            <ConfirmModal
-                open={confirmModal.isOpen}
-                title="Xác nhận mua hàng"
-                message="Xác nhận đã mua hàng cho yêu cầu này? Trạng thái sẽ chuyển thành 'Đang giao'."
-                onConfirm={executeApprove}
-                onCancel={() => setConfirmModal({ isOpen: false, id: null })}
-            />
 
             <ConfirmModal
                 open={receiveModal.isOpen}
@@ -270,4 +213,4 @@ const ManageMaterialRequests = () => {
     );
 };
 
-export default ManageMaterialRequests;
+export default WarehouseMaterialRequestReceive;

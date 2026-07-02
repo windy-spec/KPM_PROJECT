@@ -9,7 +9,7 @@ import ExportRequestsPanel from "../../components/warehouse/ExportRequestsPanel"
 import WarehouseInventory from "./WarehouseInventory";
 import WarehouseRequest from "./WarehouseRequest";
 import WarehouseExportHistory from "./WarehouseExportHistory";
-import ManageMaterialRequests from "../../components/admin/ManageMaterialRequests";
+import WarehouseMaterialRequestReceive from "../../components/warehouse/WarehouseMaterialRequestReceive";
 import { authService } from "../../services/auth.service";
 import warehouseService from "../../services/warehouse.service";
 import { AlertCircle, CheckCircle2, Loader2, Boxes, X } from "lucide-react";
@@ -352,7 +352,7 @@ const WarehouseDashboard = () => {
 
                     {activePanel === "material_requests" && (
                         <section className="h-[calc(100vh-100px)]">
-                            <ManageMaterialRequests />
+                            <WarehouseMaterialRequestReceive />
                         </section>
                     )}
 

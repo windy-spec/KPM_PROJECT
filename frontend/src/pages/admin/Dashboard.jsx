@@ -39,7 +39,7 @@ import ManageOrders from "./ManageOrders";
 import ManageUsers from "./ManageUsers";
 import ManageComponentTemplates from "./ManageComponentTemplates";
 import ManageProductionRequests from "./ManageProductionRequests";
-import ManageMaterialRequests from "../../components/admin/ManageMaterialRequests";
+import AdminMaterialRequestApproval from "../../components/admin/AdminMaterialRequestApproval";
 import adminService from "../../services/admin.service";
 
 
@@ -432,7 +432,7 @@ const Dashboard = () => {
 
             {activePanel === "material_requests" && (
               <section className="h-full">
-                <ManageMaterialRequests />
+                <AdminMaterialRequestApproval />
               </section>
             )}
 

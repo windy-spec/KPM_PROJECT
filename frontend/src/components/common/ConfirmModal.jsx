@@ -1,7 +1,7 @@
 import React from 'react';
 import Portal from './Portal';
 
-const ConfirmModal = ({ open, title = 'Xác nhận', message = 'Bạn chắc chắn muốn tiếp tục?', confirmText = 'Đồng ý', cancelText = 'Hủy', onConfirm, onCancel }) => {
+const ConfirmModal = ({ open, title = 'Xác nhận', message = 'Bạn chắc chắn muốn tiếp tục?', confirmText = 'Đồng ý', cancelText = 'Hủy', onConfirm, onCancel, children }) => {
   if (!open) return null;
 
   return (
@@ -13,6 +13,7 @@ const ConfirmModal = ({ open, title = 'Xác nhận', message = 'Bạn chắc ch�
           </div>
           <div className="px-6 py-5">
             <p className="text-sm text-on-surface-variant/75">{message}</p>
+            {children}
           </div>
           <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 px-6 py-4 bg-surface-container/10">
             <button type="button" onClick={onCancel} className="rounded-xl border border-outline-variant/60 px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors">{cancelText}</button>
