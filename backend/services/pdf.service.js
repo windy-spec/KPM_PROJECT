@@ -13,6 +13,10 @@ const fonts = {
 // Set fonts for pdfmake (Required in version 0.3.x)
 pdfmake.setFonts(fonts);
 
+// Tắt các warning log của pdfmake về policy bảo mật (No URL/Local access policy defined)
+pdfmake.setUrlAccessPolicy(() => false);
+pdfmake.setLocalAccessPolicy(() => false);
+
 class PdfService {
   // Chuyển logic sinh PDF thành 1 method nhận mảng vật tư và trả về Buffer (bất đồng bộ)
   async generateWarehousePDF(materials) {
