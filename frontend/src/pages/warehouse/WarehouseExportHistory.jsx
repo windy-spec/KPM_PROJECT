@@ -9,6 +9,7 @@ import {
     ChevronUp,
     FileText,
     Package,
+    Boxes,
 } from "lucide-react";
 import Pagination from "../../components/common/Pagination";
 import warehouseService from "../../services/warehouse.service";
@@ -80,18 +81,18 @@ const WarehouseExportHistory = () => {
     const currentTableData = filteredInvoices.slice((page - 1) * pageSize, page * pageSize);
 
     return (
-        <div className="w-full bg-white border border-outline-variant/70 rounded-2xl p-6 shadow-sm space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant/60 pb-4">
+        <div className="bg-white rounded-2xl border border-outline-variant/70 shadow-sm flex flex-col h-full min-h-[500px] relative">
+            <div className="p-5 border-b border-outline-variant/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-container/20">
                 <div>
-                    <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                        <History className="w-5 h-5 text-teal-600" /> Lịch sử phiếu xuất kho
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium mt-1">
-                        Danh sách toàn bộ các mã vật tư đã được xuất khỏi hệ thống để phục vụ sản xuất.
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface flex items-center gap-2">
+                        <History className="w-5 h-5 text-primary" /> Lịch sử phiếu xuất kho
+                    </h2>
+                    <p className="text-xs text-on-surface-variant font-medium mt-1">
+                        Theo dõi toàn bộ các phiếu xuất kho đã được xử lý cho sản xuất
                     </p>
                 </div>
 
-                <div className="relative">
+                <div className="relative w-full lg:w-72">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
@@ -101,35 +102,38 @@ const WarehouseExportHistory = () => {
                             setSearchQuery(e.target.value);
                             setPage(1);
                         }}
-                        className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold w-64 focus:outline-teal-600"
+                        className="w-full pl-9 pr-4 py-2.5 bg-surface-container/50 border border-outline-variant/60 rounded-xl text-xs font-semibold text-on-surface outline-none focus:border-primary"
                     />
                 </div>
             </div>
 
+            <div className="p-5 flex-1 overflow-auto">
+
             {error && (
-                <div className="p-4 bg-rose-50 text-rose-700 text-xs font-bold rounded-xl border border-rose-100">
-                    {error}
+                <div className="mb-4 flex items-center gap-2 text-error bg-error/10 p-3 rounded-lg text-sm font-semibold">
+                    <AlertCircle className="w-5 h-5" /> {error}
                 </div>
             )}
 
             {loading ? (
-                <div className="py-12 flex justify-center items-center gap-2 text-slate-500 text-sm font-semibold">
-                    <Loader2 className="w-6 h-6 animate-spin text-teal-600" /> Đang tải dữ liệu...
+                <div className="flex flex-col items-center justify-center h-48 gap-3 text-on-surface-variant">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-wider">Đang tải dữ liệu...</span>
                 </div>
             ) : (
-                <div className="border border-outline-variant/50 rounded-xl bg-slate-50/50 shadow-sm overflow-hidden">
+                <div className="border border-outline-variant/50 rounded-xl bg-surface-container/30 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs border-collapse">
                             <thead>
-                                <tr className="bg-slate-100 text-slate-600 uppercase tracking-wider font-black border-b border-outline-variant/60 text-[10px]">
-                                    <th className="p-3 pl-5">Thời gian xuất</th>
-                                    <th className="p-3">Mã hóa đơn</th>
-                                    <th className="p-3">Đơn hàng tham chiếu</th>
-                                    <th className="p-3 text-center">Số dòng vật tư</th>
-                                    <th className="p-3 text-center">Xem chi tiết</th>
+                                <tr className="bg-surface-container/40 border-b border-outline-variant/40 text-[10px] font-black uppercase tracking-[0.15em] text-on-surface-variant/80">
+                                    <th className="p-4 rounded-tl-xl">Thời gian xuất</th>
+                                    <th className="p-4">Mã hóa đơn</th>
+                                    <th className="p-4">Đơn hàng tham chiếu</th>
+                                    <th className="p-4 text-center">Số dòng vật tư</th>
+                                    <th className="p-4 text-center rounded-tr-xl">Xem chi tiết</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-outline-variant/40 font-medium">
+                            <tbody className="divide-y divide-outline-variant/30 text-xs font-semibold text-on-surface-variant">
                                 {currentTableData.length > 0 ? (
                                     currentTableData.map((invoice) => {
                                         const isExpanded = expandedRows.includes(invoice.group_key);
@@ -137,34 +141,34 @@ const WarehouseExportHistory = () => {
                                         return (
                                             <React.Fragment key={invoice.group_key}>
                                                 <tr
-                                                    className={`transition-colors cursor-pointer ${isExpanded ? "bg-white" : "hover:bg-white"}`}
+                                                    className={`transition-colors cursor-pointer ${isExpanded ? "bg-surface-container/40" : "hover:bg-surface-container/20"}`}
                                                     onClick={() => toggleRow(invoice.group_key)}
                                                 >
-                                                    <td className="p-3 pl-5 text-slate-500 font-semibold align-top">
+                                                    <td className="p-4 text-slate-600 font-semibold align-top">
                                                         <div className="flex items-center gap-1.5">
-                                                            <Calendar className="w-3.5 h-3.5" />
+                                                            <Calendar className="w-3.5 h-3.5 text-primary" />
                                                             {formatDate(invoice.created_at)}
                                                         </div>
                                                     </td>
-                                                    <td className="p-3 font-bold text-slate-700 align-top">
+                                                    <td className="p-4 font-bold text-on-surface align-top">
                                                         <div className="flex items-center gap-2">
-                                                            <FileText className="w-3.5 h-3.5 text-teal-600" />
-                                                            <span className="font-mono text-[11px] font-black text-teal-700">
+                                                            <FileText className="w-3.5 h-3.5 text-primary" />
+                                                            <span className="font-mono text-[11px] font-black text-primary">
                                                                 {invoice.reference_code || "Hệ thống"}
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-3 font-semibold text-slate-800 align-top">
+                                                    <td className="p-4 font-semibold text-on-surface-variant align-top">
                                                         {invoice.order_id ? `#${invoice.order_id}` : "---"}
                                                     </td>
-                                                    <td className="p-3 text-center align-top">
-                                                        <span className="inline-flex items-center gap-1 text-slate-700 bg-slate-100 px-2 py-0.5 rounded font-black border border-slate-200 uppercase text-[10px]">
+                                                    <td className="p-4 text-center align-top">
+                                                        <span className="inline-flex items-center gap-1 text-primary bg-primary/10 px-2.5 py-1 rounded-full font-black border border-primary/20 uppercase text-[10px]">
                                                             <Package className="w-3 h-3" />
                                                             {invoice.total_items || (invoice.items || []).length} dòng
                                                         </span>
                                                     </td>
-                                                    <td className="p-3 text-center align-top">
-                                                        <span className="inline-flex items-center justify-center gap-1 text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-black border border-teal-100 uppercase text-[10px]">
+                                                    <td className="p-4 text-center align-top">
+                                                        <span className="inline-flex items-center justify-center gap-1 text-primary bg-surface-container px-2.5 py-1 rounded-full font-black border border-outline-variant/60 uppercase text-[10px]">
                                                             {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                                             {isExpanded ? "Đang mở" : "Xem"}
                                                         </span>
@@ -173,14 +177,14 @@ const WarehouseExportHistory = () => {
 
                                                 {isExpanded && (
                                                     <tr>
-                                                        <td colSpan="5" className="p-0 bg-slate-50">
+                                                        <td colSpan="5" className="p-0 bg-surface-container/20">
                                                             <div className="border-t border-outline-variant/50 p-4">
                                                                 <div className="mb-3 flex items-center justify-between gap-3">
                                                                     <div>
-                                                                        <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+                                                                        <p className="text-xs font-black uppercase tracking-[0.2em] text-on-surface-variant">
                                                                             Danh sách vật tư trong hóa đơn
                                                                         </p>
-                                                                        <p className="text-[11px] text-slate-500 font-medium mt-1">
+                                                                        <p className="text-[11px] text-on-surface-variant/70 font-medium mt-1">
                                                                             {invoice.items?.length || 0} dòng vật tư đã được xuất.
                                                                         </p>
                                                                     </div>
@@ -190,7 +194,7 @@ const WarehouseExportHistory = () => {
                                                                             e.stopPropagation();
                                                                             toggleRow(invoice.group_key);
                                                                         }}
-                                                                        className="text-[11px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-700"
+                                                                        className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary"
                                                                     >
                                                                         Thu gọn
                                                                     </button>
@@ -199,7 +203,7 @@ const WarehouseExportHistory = () => {
                                                                 <div className="overflow-x-auto rounded-xl border border-outline-variant/50 bg-white">
                                                                     <table className="w-full text-left text-[11px] border-collapse">
                                                                         <thead>
-                                                                            <tr className="bg-slate-100 text-slate-600 uppercase tracking-wider font-black border-b border-outline-variant/60">
+                                                                            <tr className="bg-surface-container/40 text-on-surface-variant uppercase tracking-[0.15em] font-black border-b border-outline-variant/50">
                                                                                 <th className="p-3">Mã vật tư</th>
                                                                                 <th className="p-3">Tên vật tư</th>
                                                                                 <th className="p-3 text-center">Số lượng xuất</th>
@@ -207,19 +211,19 @@ const WarehouseExportHistory = () => {
                                                                                 <th className="p-3">Ghi chú</th>
                                                                             </tr>
                                                                         </thead>
-                                                                        <tbody className="divide-y divide-outline-variant/40 font-medium">
+                                                                        <tbody className="divide-y divide-outline-variant/30 font-medium">
                                                                             {(invoice.items || []).map((item) => (
-                                                                                <tr key={item.id} className="hover:bg-slate-50">
-                                                                                    <td className="p-3 font-black text-teal-700">{item.material_code}</td>
-                                                                                    <td className="p-3 font-semibold text-slate-800">{item.material_name}</td>
+                                                                                <tr key={item.id} className="hover:bg-surface-container/20">
+                                                                                    <td className="p-3 font-black text-primary">{item.material_code}</td>
+                                                                                    <td className="p-3 font-semibold text-on-surface">{item.material_name}</td>
                                                                                     <td className="p-3 text-center">
-                                                                                        <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-black border border-rose-100 uppercase">
+                                                                                        <span className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full font-black border border-rose-100 uppercase">
                                                                                             <ArrowUpRight className="w-3 h-3" />
                                                                                             {Math.abs(Number(item.quantity_change) || 0)}
                                                                                         </span>
                                                                                     </td>
-                                                                                    <td className="p-3 font-semibold text-slate-600">{item.unit_name || "Cai"}</td>
-                                                                                    <td className="p-3 text-slate-500">{item.note || "---"}</td>
+                                                                                    <td className="p-3 font-semibold text-on-surface-variant">{item.unit_name || "Cai"}</td>
+                                                                                    <td className="p-3 text-on-surface-variant/80">{item.note || "---"}</td>
                                                                                 </tr>
                                                                             ))}
                                                                         </tbody>
@@ -234,7 +238,7 @@ const WarehouseExportHistory = () => {
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" className="p-8 text-center text-slate-400 italic font-semibold text-xs">
+                                        <td colSpan="5" className="p-8 text-center text-on-surface-variant/70 font-semibold text-xs">
                                             Không tìm thấy dữ liệu phiếu xuất kho nào khớp với tìm kiếm.
                                         </td>
                                     </tr>
@@ -253,6 +257,7 @@ const WarehouseExportHistory = () => {
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 };

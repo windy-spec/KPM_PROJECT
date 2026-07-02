@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from "react";
 import materialRequestService from "../../services/material_request.service";
 import { authService } from "../../services/auth.service";
-import { Loader2, CheckCircle2, XCircle, Clock, AlertCircle, Boxes, Check, RefreshCcw, Truck, PackagePlus, X } from "lucide-react";
+import { Loader2, CheckCircle2, Clock, AlertCircle, Boxes, Check, RefreshCcw, Truck } from "lucide-react";
 import { toast } from "react-toastify";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
-const ManageMaterialRequests = () => {
+const AdminMaterialRequestApproval = () => {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [error, setError] = useState("");
-    const [currentUser, setCurrentUser] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
-    const [receiveModal, setReceiveModal] = useState({ isOpen: false, id: null, quantity: "" });
 
     useEffect(() => {
-        authService.getMe()
-            .then(res => setCurrentUser(res.data?.data?.user))
-            .catch(console.error);
         fetchRequests();
     }, []);
 
@@ -46,7 +41,8 @@ const ManageMaterialRequests = () => {
         setActionLoadingId(id);
         try {
             await materialRequestService.approveRequest(id);
-            fetchRequests(); // Reload data
+            toast.success("Đã duyệt mua thành công!");
+            fetchRequests();
         } catch (err) {
             toast.error(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu.");
         } finally {
@@ -54,49 +50,15 @@ const ManageMaterialRequests = () => {
         }
     };
 
-    const handleOpenReceiveModal = (reqId) => {
-        const req = requests.find(r => r.id === reqId);
-        setReceiveModal({
-            isOpen: true,
-            id: reqId,
-            quantity: req?.requested_quantity ?? ""
-        });
-    };
-
-    const executeReceive = async () => {
-        const id = receiveModal.id;
-        const actualQuantity = parseFloat(receiveModal.quantity);
-
-        if (isNaN(actualQuantity) || actualQuantity <= 0) {
-            toast.warning("Vui lòng nhập số lượng hợp lệ lớn hơn 0!");
-            return;
-        }
-
-        setReceiveModal({ isOpen: false, id: null, quantity: "" });
-        setActionLoadingId(id);
-        try {
-            const res = await materialRequestService.receiveImport(id, actualQuantity);
-            toast.success(res.data?.message || "Nhập kho thành công!");
-            fetchRequests();
-        } catch (err) {
-            toast.error(err.response?.data?.message || "Có lỗi xảy ra khi nhập kho.");
-        } finally {
-            setActionLoadingId(null);
-        }
-    };
-
-    const isAdmin = String(currentUser?.role || "").toUpperCase() === "ADMIN";
-    const isWarehouse = ["ADMIN_KHO", "WAREHOUSE"].includes(String(currentUser?.role || "").toUpperCase());
-
     return (
         <div className="bg-white rounded-2xl border border-outline-variant/70 shadow-sm flex flex-col h-full min-h-[500px] relative">
             <div className="p-5 border-b border-outline-variant/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container/20">
                 <div>
                     <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface flex items-center gap-2">
-                        <Boxes className="w-5 h-5 text-primary" /> Quản lý Yêu cầu Nhập Vật tư
+                        <Boxes className="w-5 h-5 text-primary" /> Duyệt Yêu cầu Nhập Vật tư
                     </h2>
                     <p className="text-xs text-on-surface-variant font-medium mt-1">
-                        Theo dõi tiến độ duyệt mua và nhập hàng về kho
+                        Admin chỉ thực hiện duyệt mua, sau đó chuyển cho kho nhập hàng
                     </p>
                 </div>
                 <button
@@ -156,7 +118,7 @@ const ManageMaterialRequests = () => {
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className="font-bold text-primary">
-                                                {req.actual_quantity != null ? Number(req.actual_quantity).toLocaleString("vi-VN") : (req.status === "APPROVED" && isWarehouse ? "Chờ nhập kho" : "-")}
+                                                {req.actual_quantity != null ? Number(req.actual_quantity).toLocaleString("vi-VN") : "-"}
                                             </span>
                                         </td>
                                         <td className="p-4 text-center text-sm font-medium">
@@ -193,7 +155,7 @@ const ManageMaterialRequests = () => {
                                             {new Date(req.created_at).toLocaleString("vi-VN")}
                                         </td>
                                         <td className="p-4 text-center">
-                                            {isAdmin && req.status === "PENDING" && (
+                                            {req.status === "PENDING" && (
                                                 <button
                                                     onClick={() => handleApprove(req.id)}
                                                     disabled={actionLoadingId === req.id}
@@ -205,20 +167,6 @@ const ManageMaterialRequests = () => {
                                                         <Check className="w-3.5 h-3.5" />
                                                     )}
                                                     Xác nhận Mua
-                                                </button>
-                                            )}
-                                            {isWarehouse && req.status === "APPROVED" && (
-                                                <button
-                                                    onClick={() => handleOpenReceiveModal(req.id)}
-                                                    disabled={actionLoadingId === req.id}
-                                                    className="px-3 py-1.5 bg-primary hover:bg-primary-dark text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 mx-auto shadow-sm"
-                                                >
-                                                    {actionLoadingId === req.id ? (
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                    ) : (
-                                                        <PackagePlus className="w-3.5 h-3.5" />
-                                                    )}
-                                                    Nhập Kho
                                                 </button>
                                             )}
                                             {req.status === "IMPORTED" && (
@@ -233,7 +181,6 @@ const ManageMaterialRequests = () => {
                 )}
             </div>
 
-
             <ConfirmModal
                 open={confirmModal.isOpen}
                 title="Xác nhận mua hàng"
@@ -241,33 +188,8 @@ const ManageMaterialRequests = () => {
                 onConfirm={executeApprove}
                 onCancel={() => setConfirmModal({ isOpen: false, id: null })}
             />
-
-            <ConfirmModal
-                open={receiveModal.isOpen}
-                title="Nhập số lượng thực tế"
-                message="Nhập số lượng vật tư đã nhận về kho để hoàn tất việc nhập kho."
-                confirmText="Xác nhận nhập kho"
-                cancelText="Hủy"
-                onConfirm={executeReceive}
-                onCancel={() => setReceiveModal({ isOpen: false, id: null, quantity: "" })}
-            >
-                <div className="mt-4">
-                    <label className="block text-xs font-black uppercase tracking-[0.18em] text-on-surface-variant mb-2">
-                        Số lượng thực nhập
-                    </label>
-                    <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={receiveModal.quantity}
-                        onChange={(e) => setReceiveModal(prev => ({ ...prev, quantity: e.target.value }))}
-                        className="w-full rounded-xl border border-outline-variant/60 px-3 py-2.5 text-sm font-semibold text-on-surface outline-none focus:border-primary"
-                        placeholder="Nhập số lượng"
-                    />
-                </div>
-            </ConfirmModal>
         </div>
     );
 };
 
-export default ManageMaterialRequests;
+export default AdminMaterialRequestApproval;
