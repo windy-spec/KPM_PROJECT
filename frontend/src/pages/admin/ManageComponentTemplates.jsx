@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Camera,
   Filter,
@@ -30,6 +30,8 @@ const normalizeTemplate = (item) => ({
 });
 
 function TemplateModal({ initial, categories, materials, loading, onCancel, onSave }) {
+  const previewRef = useRef(null);
+  const [capturing, setCapturing] = useState(false);
   const [form, setForm] = useState({
     component_name: initial?.component_name || "",
     category_code: initial?.category_code || "",
@@ -40,10 +42,9 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
     allow_paint: initial?.allow_paint ?? true,
     allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
     html_code: initial?.html_code || "",
+    drawing_image_url: initial?.drawing_image_url || "",
   });
   const [touched, setTouched] = useState(false);
-  const [capturing, setCapturing] = useState(false);
-  const previewRef = React.useRef(null);
 
   useEffect(() => {
     setForm({
@@ -56,16 +57,59 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
       allow_paint: initial?.allow_paint ?? true,
       allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
       html_code: initial?.html_code || "",
+      drawing_image_url: initial?.drawing_image_url || "",
     });
     setTouched(false);
   }, [initial]);
 
-  const canSubmit = form.component_name.trim() && form.category_code && !loading;
+  const canSubmit =
+    form.component_name.trim() &&
+    form.category_code &&
+    !loading && !capturing;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setTouched(true);
     if (!canSubmit) return;
-    onSave({ ...form, component_name: form.component_name.trim() });
+
+    let updatedDrawingUrl = form.drawing_image_url;
+
+    if (form.html_code && previewRef.current) {
+        setCapturing(true);
+        try {
+            const canvas = await html2canvas(previewRef.current, { backgroundColor: null, useCORS: true, logging: false });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (blob) {
+                const formData = new FormData();
+                formData.append("image", blob, `template_${Date.now()}.png`);
+                const res = await apiClient.post("/ai/upload-drawing", formData, {
+                  headers: { "Content-Type": "multipart/form-data" }
+                });
+                if (res.data?.data?.imageUrl) {
+                    updatedDrawingUrl = res.data.data.imageUrl;
+                }
+            }
+        } catch (error) {
+            console.error("Lỗi khi auto-capture html2canvas:", error);
+        } finally {
+            setCapturing(false);
+        }
+    }
+
+    onSave({
+      ...form,
+      component_name: form.component_name.trim(),
+      drawing_image_url: updatedDrawingUrl
+    });
+  };
+
+  const handleCodeUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setForm((prev) => ({ ...prev, html_code: evt.target.result }));
+    };
+    reader.readAsText(file);
   };
 
   const handleMaterialToggle = (materialId) => {
@@ -79,67 +123,28 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
     });
   };
 
-  const handleCapture = async () => {
-    if (!initial?.id) {
-      showError("Bạn cần lưu mẫu linh kiện lần đầu trước khi chụp ảnh!");
-      return;
-    }
-    if (!previewRef.current) return;
-    setCapturing(true);
-    try {
-      const canvas = await html2canvas(previewRef.current, { backgroundColor: null });
-      canvas.toBlob(async (blob) => {
-        const file = new File([blob], 'preview.png', { type: 'image/png' });
-        const formData = new FormData();
-        formData.append('image', file);
-
-        try {
-          const res = await apiClient.post('/ai/upload-drawing', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          const url = res.data?.data?.imageUrl || res.data?.imageUrl || res.data;
-
-          if (url && typeof url === 'string') {
-            await adminService.updateComponentDrawing(initial.id, { drawing_image_url: url });
-            showSuccess("Chụp ảnh và lưu thành công!");
-            onSave({ ...form, drawing_image_url: url }, true);
-          } else {
-            showError("Không lấy được đường dẫn ảnh từ server.");
-          }
-        } catch (uploadError) {
-          showError("Lỗi khi tải ảnh lên server.");
-        }
-      }, 'image/png');
-    } catch (e) {
-      showError("Lỗi khi chụp màn hình.");
-    } finally {
-      setCapturing(false);
-    }
-  };
-
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-        <div className="w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-
-          {/* HEADER */}
-          <div className="flex items-center justify-between gap-4 border-b border-outline-variant/50 px-6 py-4 shrink-0">
-            <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-              {initial?.id ? "Sửa mẫu linh kiện" : "Thêm mẫu linh kiện mới"}
-            </h3>
-            <button type="button" onClick={onCancel} className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors">
+        <div className="w-full max-w-[1000px] max-h-[90vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+          <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5 shrink-0">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
+                {initial?.id ? "Sửa mẫu linh kiện" : "Thêm mẫu linh kiện mới"}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {/* BODY — 2-column layout */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="grid gap-6 lg:grid-cols-2 h-full">
-
-              {/* Cột trái: form fields */}
-              <div className="space-y-4 overflow-y-auto custom-scrollbar pr-1">
-                <div className="grid gap-4 md:grid-cols-2">
-
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col md:flex-row gap-6">
+            <div className="w-full md:w-1/2">
+              <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên linh kiện</label>
                     <input
@@ -204,7 +209,7 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
 
                 </div>
 
-                <div className="space-y-3 border-t border-outline-variant/50 pt-4">
+                <div className="space-y-3 border-t border-outline-variant/50 pt-4 mt-4">
                   <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
                     Vật tư được phép sử dụng ({form.allowed_material_ids.length} đã chọn)
                   </label>
@@ -220,42 +225,35 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
                     ))}
                   </div>
                 </div>
+            </div>
 
-                <div className="space-y-2 border-t border-outline-variant/50 pt-4">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
-                    HTML Code (Tạo bởi AI — Dán vào đây để Preview)
-                  </label>
-                  <textarea
-                    value={form.html_code}
-                    onChange={(e) => setForm({ ...form, html_code: e.target.value })}
-                    placeholder="Dán mã HTML vào đây..."
-                    className="w-full h-40 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary font-mono text-xs"
-                  />
-                </div>
+            {/* Cột phải: HTML Source & Live Preview */}
+            <div className="w-full md:w-1/2 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-outline-variant/30 pt-4 md:pt-0 md:pl-6">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                    Source Code (HTML/CSS)
+                </label>
+                <p className="text-[11px] text-on-surface-variant/70 mb-2">Chọn file .html do AI sinh ra. Hệ thống sẽ tự chụp ảnh 3D khi bạn lưu.</p>
+                <input 
+                    type="file" 
+                    accept=".html,.txt" 
+                    onChange={handleCodeUpload} 
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                />
               </div>
-
-              {/* Cột phải: Live Preview */}
-              <div className="flex flex-col border border-outline-variant/50 rounded-xl bg-surface-container/10 overflow-hidden min-h-[400px]">
-                <div className="px-4 py-3 border-b border-outline-variant/50 flex justify-between items-center bg-white shrink-0">
-                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">Live Preview (HTML)</span>
-                  <button
-                    type="button"
-                    onClick={handleCapture}
-                    disabled={capturing || !initial?.id || !form.html_code.trim()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {capturing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
-                    {capturing ? "Đang xử lý..." : "Lưu & Chụp Ảnh"}
-                  </button>
+              
+              {form.html_code && (
+                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-hidden min-h-[300px] p-4 group">
+                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                        Live Preview 3D
+                    </div>
+                    <div 
+                        ref={previewRef}
+                        className="bg-transparent w-full h-full flex items-center justify-center"
+                        dangerouslySetInnerHTML={{ __html: form.html_code }}
+                    />
                 </div>
-                <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#f8f9fa] relative">
-                  <div ref={previewRef} className="inline-block" dangerouslySetInnerHTML={{ __html: form.html_code }} />
-                  {!form.html_code.trim() && (
-                    <p className="text-on-surface-variant/50 text-sm absolute pointer-events-none">Chưa có mã HTML — hãy dán code vào cột trái</p>
-                  )}
-                </div>
-              </div>
-
+              )}
             </div>
           </div>
 
@@ -270,8 +268,8 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
               disabled={!canSubmit}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black uppercase tracking-[0.12em] text-white hover:bg-primary/90 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {loading ? "Đang lưu..." : initial?.id ? "Cập nhật mẫu" : "Tạo mẫu linh kiện"}
+              {(loading || capturing) ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {capturing ? "Đang xử lý ảnh..." : (loading ? "Đang lưu..." : (initial?.id ? "Cập nhật mẫu" : "Tạo mẫu linh kiện"))}
             </button>
           </div>
 

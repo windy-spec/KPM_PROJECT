@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash, Image as ImageIcon, Save, X, Edit, Loader2 } from "lucide-react";
+import { Plus, Trash, Trash2, Maximize, X, Save, Image as ImageIcon, Lock, Unlock, Loader2 } from "lucide-react";
 import adminService from "../../services/admin.service";
 import apiClient from "../../services/apiClient";
 import { toast } from "react-toastify";
@@ -9,6 +9,7 @@ import html2canvas from "html2canvas";
 const ManageDrawings = () => {
   const [products, setProducts] = useState([]);
   const [drawings, setDrawings] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -28,7 +29,17 @@ const ManageDrawings = () => {
 
   useEffect(() => {
     loadProducts();
+    loadTemplates();
   }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const res = await apiClient.get('/component-templates');
+      setTemplates(res.data?.data || []);
+    } catch (e) {
+      console.warn("Lỗi tải templates", e);
+    }
+  };
 
   useEffect(() => {
     if (selectedProduct) {
@@ -78,11 +89,14 @@ const ManageDrawings = () => {
         }
 
         if (Array.isArray(compArray)) {
-          autoMappedParts = compArray.map((comp) => ({
-            component_name: comp.component_name || "",
-            material_category: comp.category_code || comp.component_name || "Khung/Vỏ",
-            part_image_url: comp.drawing_image_url || "", 
-          }));
+          autoMappedParts = compArray.map((comp) => {
+            const tmpl = templates.find(t => t.component_name === (comp.component_name || comp.name));
+            return {
+              component_name: comp.component_name || comp.name || "",
+              material_category: tmpl?.category_code || comp.category_code || comp.component_name || comp.name || "Khung/Vỏ",
+              part_image_url: comp.drawing_image_url || tmpl?.drawing_image_url || "", 
+            };
+          });
         }
       }
       setParts(autoMappedParts);
@@ -157,20 +171,69 @@ const ManageDrawings = () => {
   };
 
   // Canvas Logic
+  const bringToFront = (id) => {
+    setActiveCanvasItemId(id);
+    setCanvasItems(prev => {
+      const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
+      return prev.map(item => 
+        item.id === id ? { ...item, zIndex: currentMaxZ + 1 } : item
+      );
+    });
+  };
+
   const handleAddToCanvas = (part) => {
     if (!part.part_image_url) {
       toast.warning("Vui lòng upload ảnh cho linh kiện này trước khi đưa vào Canvas!");
       return;
     }
-    const newItem = {
-      id: Date.now().toString(),
-      part_image_url: part.part_image_url,
-      x: 50,
-      y: 50,
-      width: 150,
-      height: 150,
+
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      const MAX_SIZE = 300;
+      
+      if (w > MAX_SIZE || h > MAX_SIZE) {
+        if (w > h) {
+          h = (h / w) * MAX_SIZE;
+          w = MAX_SIZE;
+        } else {
+          w = (w / h) * MAX_SIZE;
+          h = MAX_SIZE;
+        }
+      } else if (w < 50 && h < 50) {
+        w = 100;
+        h = 100;
+      }
+
+      setCanvasItems(prev => {
+        const offset = (prev.length % 10) * 30;
+        const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
+        
+        const newItem = {
+          id: Date.now().toString() + Math.random().toString(),
+          part_image_url: part.part_image_url,
+          x: 50 + offset,
+          y: 50 + offset,
+          width: w,
+          height: h,
+          zIndex: currentMaxZ + 1,
+        };
+        return [...prev, newItem];
+      });
     };
-    setCanvasItems([...canvasItems, newItem]);
+    img.onerror = () => {
+        setCanvasItems(prev => {
+            const offset = (prev.length % 10) * 30;
+            const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
+            return [...prev, {
+                id: Date.now().toString() + Math.random().toString(),
+                part_image_url: part.part_image_url,
+                x: 50 + offset, y: 50 + offset, width: 150, height: 150, zIndex: currentMaxZ + 1,
+            }];
+        });
+    };
+    img.src = part.part_image_url;
   };
 
   const handleRemoveCanvasItem = (id) => {
@@ -517,13 +580,18 @@ const ManageDrawings = () => {
 
               {/* VÙNG CANVAS */}
               <div 
-                className="flex-1 w-full h-full overflow-auto p-12 flex justify-center items-center"
-                onClick={() => setActiveCanvasItemId(null)}
+                className="flex-1 w-full h-full overflow-auto p-12 flex justify-center items-center bg-surface-container/5"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setActiveCanvasItemId(null);
+                }}
               >
                 <div 
                   ref={canvasRef}
                   className="relative bg-white shadow-xl border border-outline-variant/30"
                   style={{ width: '800px', height: '600px', backgroundImage: mainImageUrl ? `url(${mainImageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) setActiveCanvasItemId(null);
+                  }}
                 >
                   {!mainImageUrl && canvasItems.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant/40 border-2 border-dashed border-outline-variant/30 m-4 rounded-xl pointer-events-none">
@@ -534,28 +602,51 @@ const ManageDrawings = () => {
                   {canvasItems.map((item) => (
                     <Rnd
                       key={item.id}
-                      default={{
-                        x: item.x,
-                        y: item.y,
-                        width: item.width,
-                        height: item.height,
+                      size={{ width: item.width, height: item.height }}
+                      position={{ x: item.x, y: item.y }}
+                      onDragStop={(e, d) => {
+                        setCanvasItems(prev => prev.map(i => i.id === item.id ? { ...i, x: d.x, y: d.y } : i));
+                      }}
+                      onResizeStop={(e, direction, ref, delta, position) => {
+                        setCanvasItems(prev => prev.map(i => i.id === item.id ? { 
+                          ...i, 
+                          width: ref.offsetWidth, 
+                          height: ref.offsetHeight, 
+                          ...position 
+                        } : i));
                       }}
                       bounds="parent"
-                      onDragStart={() => setActiveCanvasItemId(item.id)}
-                      onResizeStart={() => setActiveCanvasItemId(item.id)}
-                      className={activeCanvasItemId === item.id && !capturing ? "border-2 border-primary border-dashed !z-50" : ""}
+                      lockAspectRatio={item.aspectLocked !== false}
+                      onDragStart={() => bringToFront(item.id)}
+                      onResizeStart={() => bringToFront(item.id)}
+                      onMouseDown={() => bringToFront(item.id)}
+                      style={{ zIndex: item.zIndex || 1 }}
+                      className={activeCanvasItemId === item.id && !capturing ? "border-2 border-primary border-dashed !z-[9999]" : ""}
                     >
                       <div className="w-full h-full relative group">
-                        <img src={item.part_image_url} className="w-full h-full object-contain pointer-events-none select-none" alt="part in canvas" />
+                        <img src={item.part_image_url} className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm" alt="part in canvas" />
                         
                         {activeCanvasItemId === item.id && !capturing && (
-                          <button 
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleRemoveCanvasItem(item.id); }}
-                            className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full p-1 shadow-md hover:bg-rose-600 z-50"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                          <>
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleRemoveCanvasItem(item.id); }}
+                              className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full p-1.5 shadow-lg hover:bg-rose-600 z-50 cursor-pointer"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setCanvasItems(prev => prev.map(i => i.id === item.id ? { ...i, aspectLocked: i.aspectLocked === false ? true : false } : i));
+                              }}
+                              className="absolute -bottom-3 -right-3 bg-slate-800 text-white rounded-full p-1.5 shadow-lg hover:bg-slate-900 z-50 cursor-pointer"
+                              title={item.aspectLocked === false ? "Đang Mở khóa (Kéo tự do) - Bấm để Khóa" : "Đang Khóa tỷ lệ - Bấm để Mở"}
+                            >
+                              {item.aspectLocked === false ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-white" />}
+                            </button>
+                          </>
                         )}
                       </div>
                     </Rnd>
