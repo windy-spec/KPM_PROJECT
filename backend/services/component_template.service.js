@@ -30,7 +30,7 @@ class ComponentTemplateService {
   }
 
   async create(data) {
-    const { component_name, category_code, default_length, default_width, default_height, default_unit, allow_paint, allowed_material_ids } = data;
+    const { component_name, category_code, default_length, default_width, default_height, default_unit, allow_paint, allowed_material_ids, html_code, drawing_image_url } = data;
     
     // Create the template
     return await prisma.component_templates.create({
@@ -42,6 +42,8 @@ class ComponentTemplateService {
         default_height: default_height ? parseFloat(default_height) : null,
         default_unit: default_unit || "mm",
         allow_paint: allow_paint ?? true,
+        html_code,
+        drawing_image_url,
         allowed_materials: allowed_material_ids && allowed_material_ids.length > 0 ? {
           create: allowed_material_ids.map(item => {
             if (typeof item === 'string') return { material_id: item };
@@ -56,7 +58,7 @@ class ComponentTemplateService {
   }
 
   async update(id, data) {
-    const { component_name, category_code, default_length, default_width, default_height, default_unit, allow_paint, allowed_material_ids } = data;
+    const { component_name, category_code, default_length, default_width, default_height, default_unit, allow_paint, allowed_material_ids, html_code, drawing_image_url } = data;
     
     await this.getById(id);
 
@@ -78,6 +80,8 @@ class ComponentTemplateService {
           ...(default_height !== undefined && { default_height: default_height ? parseFloat(default_height) : null }),
           ...(default_unit && { default_unit }),
           ...(allow_paint !== undefined && { allow_paint }),
+          ...(html_code !== undefined && { html_code }),
+          ...(drawing_image_url !== undefined && { drawing_image_url }),
           ...(allowed_material_ids && {
             allowed_materials: {
               create: allowed_material_ids.map(item => {
