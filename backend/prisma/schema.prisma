@@ -393,6 +393,7 @@ model inventory {
   material_id     String    @unique @db.Uuid // Unique vì mỗi vật tư chỉ có 1 dòng tổng tồn kho
   quantity        Decimal   @default(0) @db.Decimal(12, 2) // Số lượng hiện có để sản xuất
   leftover_amount Decimal   @default(0) @db.Decimal(12, 2) // Số lượng vụn/thừa có thể tái chế
+  min_stock_level Decimal   @default(0) @db.Decimal(12, 2) // Mức tồn kho tối thiểu
   updated_at      DateTime? @default(now()) @db.Timestamptz(6)
   materials       materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }

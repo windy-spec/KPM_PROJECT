@@ -266,7 +266,7 @@ class WarehouseController {
 
   async generateInventoryPDF(req, res) {
     try {
-      const { selectedIds } = req.body;
+      const { selectedIds, reportType } = req.body;
       const inventories = await warehouseService.getInventoryForPDF(selectedIds);
       if (!inventories || inventories.length === 0) {
         return res.status(404).json({
@@ -274,11 +274,21 @@ class WarehouseController {
           message: "Không tìm thấy dữ liệu tồn kho nào để xuất PDF!",
         });
       }
-      const pdfBuffer = await PdfService.generateInventoryReportPDF(inventories);
+      
+      let pdfBuffer;
+      let filename = `bao-cao-ton-kho_${Date.now()}.pdf`;
+
+      if (reportType === 'LEFTOVER') {
+        pdfBuffer = await PdfService.generateLeftoverReportPDF(inventories);
+        filename = `bao-cao-vat-tu-thua_${Date.now()}.pdf`;
+      } else {
+        pdfBuffer = await PdfService.generateInventoryReportPDF(inventories);
+      }
+
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=bao-cao-ton-kho_${Date.now()}.pdf`,
+        `attachment; filename=${filename}`,
       );
       res.send(pdfBuffer);
     } catch (error) {

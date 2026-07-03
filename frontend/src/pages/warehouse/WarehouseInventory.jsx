@@ -110,11 +110,11 @@ const WarehouseInventory = () => {
     };
 
     // --- 3. GỌI SERVICE DOWNLOAD FILE PDF NHỊ PHÂN ---
-    const handleExportPDF = async () => {
+    const handleExportPDF = async (reportType = "INVENTORY") => {
         setExportLoading(true);
         try {
             // Gửi danh sách các inventory/material_id đã chọn để backend lọc đúng
-            const payload = { selectedIds };
+            const payload = { selectedIds, reportType };
             const res = await warehouseService.exportInventoryPDF(payload);
 
             // Xử lý chuyển đổi luồng stream Blob nhị phân thành file tải xuống
@@ -124,7 +124,8 @@ const WarehouseInventory = () => {
             link.href = url;
             
             const suffix = selectedIds.length > 0 ? "Tu_Chon" : "Toan_Bo";
-            link.setAttribute("download", `Bao_Cao_Ton_Kho_${suffix}.pdf`);
+            const prefix = reportType === "LEFTOVER" ? "Bao_Cao_Ton_Vun" : "Bao_Cao_Ton_Kho";
+            link.setAttribute("download", `${prefix}_${suffix}.pdf`);
             
             document.body.appendChild(link);
             link.click();
@@ -244,19 +245,34 @@ const WarehouseInventory = () => {
                                 </select>
                             </div>
 
-                            {/* NÚT EXPORT PDF ĐỐI SOÁT */}
+                            {/* NÚT EXPORT BÁO CÁO TỒN KHO */}
                             <button
                                 type="button"
-                                onClick={handleExportPDF}
+                                onClick={() => handleExportPDF("INVENTORY")}
                                 disabled={exportLoading || filteredInventory.length === 0}
-                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-sm shadow-slate-800/20"
                             >
                                 {exportLoading ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 ) : (
                                     <FileDown className="w-3.5 h-3.5" />
                                 )}
-                                {selectedIds.length > 0 ? `Xuất PDF (${selectedIds.length})` : "Xuất PDF tất cả"}
+                                {selectedIds.length > 0 ? `Tồn Kho (${selectedIds.length})` : "Tồn Kho (Tất cả)"}
+                            </button>
+
+                            {/* NÚT EXPORT BÁO CÁO VỤN THỪA */}
+                            <button
+                                type="button"
+                                onClick={() => handleExportPDF("LEFTOVER")}
+                                disabled={exportLoading || filteredInventory.length === 0}
+                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-sm shadow-amber-600/20"
+                            >
+                                {exportLoading ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <FileDown className="w-3.5 h-3.5" />
+                                )}
+                                {selectedIds.length > 0 ? `Vụn Thừa (${selectedIds.length})` : "Vụn Thừa (Tất cả)"}
                             </button>
 
                             <button onClick={openCreateModal} className="px-3 py-1.5 bg-primary text-white font-black text-[11px] uppercase tracking-wider rounded-lg flex items-center gap-1 cursor-pointer hover:bg-primary/90 transition-colors">

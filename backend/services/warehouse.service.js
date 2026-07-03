@@ -705,7 +705,10 @@ class WarehouseService {
       material_code: inv.materials.material_code,
       material_name: inv.materials.material_name,
       unit_name: inv.materials.material_units?.unit_name || "",
-      quantity: parseFloat(inv.quantity)
+      quantity: parseFloat(inv.quantity),
+      leftover_amount: parseFloat(inv.leftover_amount || 0),
+      min_stock_level: parseFloat(inv.min_stock_level || 0),
+      note: inv.note || ""
     }));
   }
 }
