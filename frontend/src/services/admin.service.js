@@ -276,7 +276,9 @@ const adminService = {
     return apiClient.get('/admin/dashboard/stats');
   },
 
-  /* Component Templates */
+  /* ========================================== */
+  /* 1. COMPONENT TEMPLATES APIS (MẪU LINH KIỆN) */
+  /* ========================================== */
   getComponentTemplates(params) {
     return apiClient.get('/component-templates', { params });
   },
@@ -291,6 +293,35 @@ const adminService = {
 
   deleteComponentTemplate(id) {
     return apiClient.delete(`/component-templates/${id}`);
+  },
+
+  uploadDrawingImage(base64Data) {
+    return apiClient.post('/component-templates/upload-drawing', {
+      image: base64Data // Truyền chuỗi base64 ngầm sang backend
+    });
+  },
+
+  updateComponentDrawing(id, data) {
+    return apiClient.put(`/admin/components/${id}/drawing`, data);
+  },
+
+  /* ========================================== */
+  /* 2. PRODUCT DRAWINGS APIS (BẢN VẼ SẢN PHẨM)  */
+  /* ========================================== */
+  getDrawingsByProduct(productId) {
+    return apiClient.get(`/drawings/product/${productId}`);
+  },
+
+  createDrawing(data) {
+    return apiClient.post('/drawings', data);
+  },
+
+  updateDrawing(id, data) {
+    return apiClient.put(`/drawings/${id}`, data);
+  },
+
+  deleteDrawing(id) {
+    return apiClient.delete(`/drawings/${id}`);
   }
 };
 

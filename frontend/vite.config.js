@@ -4,6 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    'process.env': {} 
+  },
   server: {
     // THÊM ĐOẠN HEADERS NÀY VÀO ĐỂ CHO PHÉP POPUP GOOGLE CHẠY
     headers: {

@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Camera,
   Filter,
   Loader2,
   Plus,
   Search,
   X,
 } from "lucide-react";
+import html2canvas from "html2canvas";
+import apiClient from "../../services/apiClient";
 import adminService from "../../services/admin.service";
 import Portal from "../../components/common/Portal";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -22,16 +25,11 @@ const normalizeTemplate = (item) => ({
   default_unit: item.default_unit || "mm",
   allow_paint: item.allow_paint ?? true,
   allowed_materials: item.allowed_materials || [],
+  html_code: item.html_code || "",
+  drawing_image_url: item.drawing_image_url || "",
 });
 
-function TemplateModal({
-  initial,
-  categories,
-  materials,
-  loading,
-  onCancel,
-  onSave,
-}) {
+function TemplateModal({ initial, categories, materials, loading, onCancel, onSave }) {
   const [form, setForm] = useState({
     component_name: initial?.component_name || "",
     category_code: initial?.category_code || "",
@@ -41,8 +39,11 @@ function TemplateModal({
     default_unit: initial?.default_unit || "mm",
     allow_paint: initial?.allow_paint ?? true,
     allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
+    html_code: initial?.html_code || "",
   });
   const [touched, setTouched] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const previewRef = React.useRef(null);
 
   useEffect(() => {
     setForm({
@@ -54,22 +55,17 @@ function TemplateModal({
       default_unit: initial?.default_unit || "mm",
       allow_paint: initial?.allow_paint ?? true,
       allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
+      html_code: initial?.html_code || "",
     });
     setTouched(false);
   }, [initial]);
 
-  const canSubmit =
-    form.component_name.trim() &&
-    form.category_code &&
-    !loading;
+  const canSubmit = form.component_name.trim() && form.category_code && !loading;
 
   const handleSubmit = () => {
     setTouched(true);
     if (!canSubmit) return;
-    onSave({
-      ...form,
-      component_name: form.component_name.trim(),
-    });
+    onSave({ ...form, component_name: form.component_name.trim() });
   };
 
   const handleMaterialToggle = (materialId) => {
@@ -83,157 +79,189 @@ function TemplateModal({
     });
   };
 
+  const handleCapture = async () => {
+    if (!initial?.id) {
+      showError("Bạn cần lưu mẫu linh kiện lần đầu trước khi chụp ảnh!");
+      return;
+    }
+    if (!previewRef.current) return;
+    setCapturing(true);
+    try {
+      const canvas = await html2canvas(previewRef.current, { backgroundColor: null });
+      canvas.toBlob(async (blob) => {
+        const file = new File([blob], 'preview.png', { type: 'image/png' });
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+          const res = await apiClient.post('/ai/upload-drawing', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          const url = res.data?.data?.imageUrl || res.data?.imageUrl || res.data;
+
+          if (url && typeof url === 'string') {
+            await adminService.updateComponentDrawing(initial.id, { drawing_image_url: url });
+            showSuccess("Chụp ảnh và lưu thành công!");
+            onSave({ ...form, drawing_image_url: url }, true);
+          } else {
+            showError("Không lấy được đường dẫn ảnh từ server.");
+          }
+        } catch (uploadError) {
+          showError("Lỗi khi tải ảnh lên server.");
+        }
+      }, 'image/png');
+    } catch (e) {
+      showError("Lỗi khi chụp màn hình.");
+    } finally {
+      setCapturing(false);
+    }
+  };
+
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-        <div className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
-          <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5 shrink-0">
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-                {initial?.id ? "Sửa mẫu linh kiện" : "Thêm mẫu linh kiện mới"}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
+        <div className="w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+
+          {/* HEADER */}
+          <div className="flex items-center justify-between gap-4 border-b border-outline-variant/50 px-6 py-4 shrink-0">
+            <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
+              {initial?.id ? "Sửa mẫu linh kiện" : "Thêm mẫu linh kiện mới"}
+            </h3>
+            <button type="button" onClick={onCancel} className="rounded-xl border border-outline-variant/60 p-2 text-on-surface-variant hover:bg-surface-container transition-colors">
               <X className="h-4 w-4" />
             </button>
           </div>
 
+          {/* BODY — 2-column layout */}
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Tên linh kiện
-                </label>
-                <input
-                  value={form.component_name}
-                  onChange={(e) => setForm({ ...form, component_name: e.target.value })}
-                  placeholder="VD: Cánh cửa cổng, Khung bao..."
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                />
-                {touched && !form.component_name.trim() ? (
-                  <p className="text-xs text-rose-600">Tên không được để trống.</p>
-                ) : null}
-              </div>
+            <div className="grid gap-6 lg:grid-cols-2 h-full">
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Danh mục áp dụng
-                </label>
-                <select
-                  value={form.category_code}
-                  onChange={(e) => setForm({ ...form, category_code: e.target.value })}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                >
-                  <option value="">Chọn danh mục</option>
-                  {categories.map((item) => (
-                    <option key={item.id} value={item.category_code}>
-                      {item.category_name} ({item.category_code})
-                    </option>
-                  ))}
-                </select>
-                {touched && !form.category_code ? (
-                  <p className="text-xs text-rose-600">Bắt buộc chọn danh mục.</p>
-                ) : null}
-              </div>
+              {/* Cột trái: form fields */}
+              <div className="space-y-4 overflow-y-auto custom-scrollbar pr-1">
+                <div className="grid gap-4 md:grid-cols-2">
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Đơn vị đo mặc định
-                </label>
-                <select
-                  value={form.default_unit}
-                  onChange={(e) => setForm({ ...form, default_unit: e.target.value })}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                >
-                  <option value="mm">mm</option>
-                  <option value="cm">cm</option>
-                  <option value="m">m</option>
-                  <option value="inch">inch</option>
-                </select>
-              </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên linh kiện</label>
+                    <input
+                      value={form.component_name}
+                      onChange={(e) => setForm({ ...form, component_name: e.target.value })}
+                      placeholder="VD: Cánh cửa cổng, Khung bao..."
+                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                    />
+                    {touched && !form.component_name.trim() ? (<p className="text-xs text-rose-600">Tên không được để trống.</p>) : null}
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Chiều dài mặc định (không bắt buộc)
-                </label>
-                <input
-                  type="number"
-                  value={form.default_length}
-                  onChange={(e) => setForm({ ...form, default_length: e.target.value })}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Danh mục áp dụng</label>
+                    <select
+                      value={form.category_code}
+                      onChange={(e) => setForm({ ...form, category_code: e.target.value })}
+                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                    >
+                      <option value="">Chọn danh mục</option>
+                      {categories.map((item) => (
+                        <option key={item.id} value={item.category_code}>{item.category_name} ({item.category_code})</option>
+                      ))}
+                    </select>
+                    {touched && !form.category_code ? (<p className="text-xs text-rose-600">Bắt buộc chọn danh mục.</p>) : null}
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Chiều rộng mặc định (không bắt buộc)
-                </label>
-                <input
-                  type="number"
-                  value={form.default_width}
-                  onChange={(e) => setForm({ ...form, default_width: e.target.value })}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Đơn vị đo mặc định</label>
+                    <select
+                      value={form.default_unit}
+                      onChange={(e) => setForm({ ...form, default_unit: e.target.value })}
+                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                    >
+                      <option value="mm">mm</option>
+                      <option value="cm">cm</option>
+                      <option value="m">m</option>
+                      <option value="inch">inch</option>
+                    </select>
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">
-                  Chiều cao mặc định (không bắt buộc)
-                </label>
-                <input
-                  type="number"
-                  value={form.default_height}
-                  onChange={(e) => setForm({ ...form, default_height: e.target.value })}
-                  className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                />
-              </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều dài mặc định</label>
+                    <input type="number" value={form.default_length} onChange={(e) => setForm({ ...form, default_length: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                  </div>
 
-              <div className="space-y-2 flex items-center h-full pt-6">
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-on-surface">
-                  <input
-                    type="checkbox"
-                    checked={form.allow_paint}
-                    onChange={(e) => setForm({ ...form, allow_paint: e.target.checked })}
-                    className="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60"
-                  />
-                  Cho phép chọn sơn phủ (Sơn tĩnh điện...)
-                </label>
-              </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều rộng mặc định</label>
+                    <input type="number" value={form.default_width} onChange={(e) => setForm({ ...form, default_width: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                  </div>
 
-              <div className="space-y-3 md:col-span-2 mt-4 border-t border-outline-variant/50 pt-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
-                  Vật tư được phép sử dụng ({form.allowed_material_ids.length} đã chọn)
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[200px] overflow-y-auto p-2 bg-surface-container/10 rounded-xl border border-outline-variant/40">
-                  {materials.map(mat => (
-                    <label key={mat.id} className="flex items-start gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container transition-colors">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60"
-                        checked={form.allowed_material_ids.includes(mat.id)}
-                        onChange={() => handleMaterialToggle(mat.id)}
-                      />
-                      <div className="text-xs">
-                        <div className="font-bold text-on-surface">{mat.material_name}</div>
-                        <div className="text-on-surface-variant/70">{mat.material_code}</div>
-                      </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều cao mặc định</label>
+                    <input type="number" value={form.default_height} onChange={(e) => setForm({ ...form, default_height: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                  </div>
+
+                  <div className="space-y-2 flex items-center h-full pt-4 md:col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-on-surface">
+                      <input type="checkbox" checked={form.allow_paint} onChange={(e) => setForm({ ...form, allow_paint: e.target.checked })} className="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" />
+                      Cho phép chọn sơn phủ (Sơn tĩnh điện...)
                     </label>
-                  ))}
+                  </div>
+
+                </div>
+
+                <div className="space-y-3 border-t border-outline-variant/50 pt-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
+                    Vật tư được phép sử dụng ({form.allowed_material_ids.length} đã chọn)
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto p-2 bg-surface-container/10 rounded-xl border border-outline-variant/40">
+                    {materials.map(mat => (
+                      <label key={mat.id} className="flex items-start gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container transition-colors">
+                        <input type="checkbox" className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" checked={form.allowed_material_ids.includes(mat.id)} onChange={() => handleMaterialToggle(mat.id)} />
+                        <div className="text-xs">
+                          <div className="font-bold text-on-surface">{mat.material_name}</div>
+                          <div className="text-on-surface-variant/70">{mat.material_code}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 border-t border-outline-variant/50 pt-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
+                    HTML Code (Tạo bởi AI — Dán vào đây để Preview)
+                  </label>
+                  <textarea
+                    value={form.html_code}
+                    onChange={(e) => setForm({ ...form, html_code: e.target.value })}
+                    placeholder="Dán mã HTML vào đây..."
+                    className="w-full h-40 rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary font-mono text-xs"
+                  />
                 </div>
               </div>
+
+              {/* Cột phải: Live Preview */}
+              <div className="flex flex-col border border-outline-variant/50 rounded-xl bg-surface-container/10 overflow-hidden min-h-[400px]">
+                <div className="px-4 py-3 border-b border-outline-variant/50 flex justify-between items-center bg-white shrink-0">
+                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-primary">Live Preview (HTML)</span>
+                  <button
+                    type="button"
+                    onClick={handleCapture}
+                    disabled={capturing || !initial?.id || !form.html_code.trim()}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {capturing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+                    {capturing ? "Đang xử lý..." : "Lưu & Chụp Ảnh"}
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#f8f9fa] relative">
+                  <div ref={previewRef} className="inline-block" dangerouslySetInnerHTML={{ __html: form.html_code }} />
+                  {!form.html_code.trim() && (
+                    <p className="text-on-surface-variant/50 text-sm absolute pointer-events-none">Chưa có mã HTML — hãy dán code vào cột trái</p>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
 
+          {/* FOOTER */}
           <div className="flex items-center justify-end gap-3 border-t border-outline-variant/50 bg-surface-container/10 px-6 py-4 shrink-0">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
+            <button type="button" onClick={onCancel} className="rounded-xl border border-outline-variant/60 px-4 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-colors">
               Hủy
             </button>
             <button
@@ -246,6 +274,7 @@ function TemplateModal({
               {loading ? "Đang lưu..." : initial?.id ? "Cập nhật mẫu" : "Tạo mẫu linh kiện"}
             </button>
           </div>
+
         </div>
       </div>
     </Portal>
@@ -318,23 +347,11 @@ const ManageComponentTemplates = () => {
     return filteredItems.slice(start, start + pageSize);
   }, [filteredItems, page, totalPages]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
-  const openCreate = () => {
-    setEditing(null);
-    setShowForm(true);
-  };
-
-  const openEdit = (item) => {
-    setEditing(item);
-    setShowForm(true);
-  };
+  const openCreate = () => { setEditing(null); setShowForm(true); };
+  const openEdit = (item) => { setEditing(item); setShowForm(true); };
 
   const handleDelete = async (item) => {
     setPendingDelete(item);
@@ -343,7 +360,6 @@ const ManageComponentTemplates = () => {
 
   const confirmDelete = async () => {
     if (!pendingDelete) return setShowConfirmDelete(false);
-
     try {
       await adminService.deleteComponentTemplate(pendingDelete.id);
       await loadInitialData();
@@ -355,7 +371,7 @@ const ManageComponentTemplates = () => {
     }
   };
 
-  const handleSave = async (form) => {
+  const handleSave = async (form, isCaptureOnly = false) => {
     setFormLoading(true);
     try {
       if (editing?.id) {
@@ -365,9 +381,14 @@ const ManageComponentTemplates = () => {
       }
 
       await loadInitialData();
-      setShowForm(false);
-      setEditing(null);
-      showSuccess(editing?.id ? "Cập nhật thành công." : "Thêm mới thành công.");
+      if (isCaptureOnly) {
+        // Chỉ cập nhật ảnh, không đóng form
+        setEditing(prev => ({ ...prev, drawing_image_url: form.drawing_image_url }));
+      } else {
+        setShowForm(false);
+        setEditing(null);
+        showSuccess(editing?.id ? "Cập nhật thành công." : "Thêm mới thành công.");
+      }
     } catch (e) {
       showError(e?.response?.data?.message || e?.message || "Lưu thất bại");
     } finally {
@@ -404,20 +425,12 @@ const ManageComponentTemplates = () => {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={() => { setPage(1); loadInitialData(); }}
-              className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/60 bg-white px-3.5 py-2 text-xs font-bold hover:bg-surface-container transition-colors"
-            >
+            <button type="button" onClick={() => { setPage(1); loadInitialData(); }} className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/60 bg-white px-3.5 py-2 text-xs font-bold hover:bg-surface-container transition-colors">
               <Search className="h-4 w-4" />
               <span className="hidden md:inline">Tải lại</span>
             </button>
 
-            <button
-              type="button"
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors"
-            >
+            <button type="button" onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors">
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Thêm mẫu mới</span>
               <span className="sm:hidden">Thêm</span>
@@ -437,9 +450,7 @@ const ManageComponentTemplates = () => {
         </div>
 
         {error ? (
-          <div className="mx-4 md:mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
+          <div className="mx-4 md:mx-5 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
         ) : null}
 
         <div className="overflow-x-auto">
@@ -452,6 +463,7 @@ const ManageComponentTemplates = () => {
                 <th className="p-4">Mặc định (D x R x C)</th>
                 <th className="p-4">Sơn phủ</th>
                 <th className="p-4">Vật tư khả dụng</th>
+                <th className="p-4">Ảnh Mô Hình</th>
                 <th className="p-4 pr-6 text-center w-[120px]">Thao tác</th>
               </tr>
             </thead>
@@ -459,7 +471,7 @@ const ManageComponentTemplates = () => {
             <tbody className="divide-y divide-outline-variant/25 text-sm">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-on-surface-variant/60">Đang tải dữ liệu...</td>
+                  <td colSpan={8} className="p-8 text-center text-sm text-on-surface-variant/60">Đang tải dữ liệu...</td>
                 </tr>
               ) : null}
 
@@ -470,6 +482,9 @@ const ManageComponentTemplates = () => {
                   </td>
                   <td className="p-4">
                     <div className="font-black text-on-surface">{item.component_name}</div>
+                    {item.html_code && (
+                      <div className="text-[10px] text-indigo-500 font-mono mt-0.5">HTML ✓</div>
+                    )}
                   </td>
                   <td className="p-4">
                     <span className="inline-flex rounded-md bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
@@ -489,20 +504,19 @@ const ManageComponentTemplates = () => {
                   <td className="p-4 text-on-surface-variant/70 font-semibold text-xs">
                     {item.allowed_materials?.length || 0} vật tư
                   </td>
+                  <td className="p-4">
+                    {item.drawing_image_url ? (
+                      <img src={item.drawing_image_url} alt="drawing" className="h-10 w-10 object-contain rounded border border-outline-variant/40" />
+                    ) : (
+                      <span className="text-[10px] text-on-surface-variant/40">Chưa có</span>
+                    )}
+                  </td>
                   <td className="p-4 pr-6">
                     <div className="flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(item)}
-                        className="rounded-lg border border-outline-variant/60 px-2.5 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
-                      >
+                      <button type="button" onClick={() => openEdit(item)} className="rounded-lg border border-outline-variant/60 px-2.5 py-1.5 text-[11px] font-bold text-on-surface-variant hover:bg-surface-container transition-colors">
                         Sửa
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item)}
-                        className="rounded-lg border border-outline-variant/60 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
+                      <button type="button" onClick={() => handleDelete(item)} className="rounded-lg border border-outline-variant/60 px-2.5 py-1.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-colors">
                         Xoá
                       </button>
                     </div>
@@ -512,7 +526,7 @@ const ManageComponentTemplates = () => {
 
               {pagedItems.length === 0 && !loading && !error && (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-sm text-on-surface-variant/60">Không tìm thấy mẫu linh kiện nào.</td>
+                  <td colSpan={8} className="p-8 text-center text-sm text-on-surface-variant/60">Không tìm thấy mẫu linh kiện nào.</td>
                 </tr>
               )}
             </tbody>
