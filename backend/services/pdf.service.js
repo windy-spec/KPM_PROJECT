@@ -512,6 +512,271 @@ class PdfService {
     const pdfDoc = pdfmake.createPdf(docDefinition);
     return await pdfDoc.getBuffer();
   }
+
+  // --- BÁO CÁO 3: BÁO GIÁ KỸ THUẬT (Quotation PDF) ---
+  async generateQuotationPDF(quotationData) {
+    const logoData = this._getLogoBase64();
+    const title = quotationData.title || "BÁO GIÁ KỸ THUẬT VÀ GIA CÔNG";
+    
+    // Format date
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    
+    const customerName = quotationData?.users?.user_profiles?.first_name || quotationData?.users?.username || "Khách hàng";
+    const customerPhone = quotationData?.users?.user_profiles?.phone_number || "Không có";
+    
+    const imageBlock = [];
+    if (quotationData.main_image_url) {
+      imageBlock.push({ image: quotationData.main_image_url, width: 200, alignment: 'center' }); 
+    } else {
+       imageBlock.push({ text: 'Không có ảnh 3D', alignment: 'center', margin: [0,50,0,50], color: 'gray' });
+    }
+    
+    const blueprintBlock = [];
+    if (quotationData.blueprint_image_url) {
+      blueprintBlock.push({ image: quotationData.blueprint_image_url, width: 200, alignment: 'center' });
+    } else {
+       blueprintBlock.push({ text: 'Không có ảnh bản vẽ kỹ thuật', alignment: 'center', margin: [0,50,0,50], color: 'gray' });
+    }
+    
+    // Image columns
+    const imageColumns = {
+      columns: [
+        { stack: [{ text: 'Bản vẽ 3D', alignment: 'center', bold: true, margin: [0,0,0,10] }, ...imageBlock] },
+        { stack: [{ text: 'Bản vẽ Nét đứt (Kỹ thuật)', alignment: 'center', bold: true, margin: [0,0,0,10] }, ...blueprintBlock] }
+      ],
+      margin: [0, 20, 0, 20]
+    };
+    
+    // Table
+    const tableHeader = [
+      { text: "STT", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Tên hạng mục / Linh kiện", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Vật tư", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Kích thước (mm)", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "SL", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Thành tiền", bold: true, alignment: "center", fillColor: "#e2e8f0" }
+    ];
+    
+    const tableBody = [tableHeader];
+    
+    if (quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
+      quotationData.quotation_specs.forEach((spec, idx) => {
+        const dim = spec.dimensions || {};
+        tableBody.push([
+          { text: idx + 1, alignment: "center" },
+          spec.component_name || "Linh kiện",
+          spec.materials?.material_name || "Theo TC",
+          { text: `${dim.width || '-'} x ${dim.height || dim.length || '-'}`, alignment: "center" },
+          { text: dim.quantity || 1, alignment: "center" },
+          { text: Number(spec.snapshot_price || 0).toLocaleString("vi-VN"), alignment: "right" }
+        ]);
+      });
+    } else {
+      tableBody.push([{ text: "Không có chi tiết vật tư", colSpan: 6, alignment: "center" }, {}, {}, {}, {}, {}]);
+    }
+    
+    const totalPrice = Number(quotationData.admin_proposed_price || quotationData.total_quoted_price || 0);
+
+    const docDefinition = {
+      pageSize: "A4",
+      pageMargins: [40, 40, 40, 40],
+      content: [
+        {
+          columns: [
+            logoData ? { image: logoData, width: 80 } : { text: "KPM", fontSize: 20, bold: true },
+            {
+              stack: [
+                { text: "CÔNG TY KPM MATERIALS", bold: true, fontSize: 14, alignment: "right" },
+                { text: "Mã Báo Giá: #" + String(quotationData.id || "DRAFT").slice(0, 8).toUpperCase(), alignment: "right", italics: true },
+                { text: "Ngày báo giá: " + dateStr, alignment: "right", italics: true }
+              ]
+            }
+          ]
+        },
+        { text: title, style: "header", alignment: "center", margin: [0, 20, 0, 10] },
+        {
+          text: [
+            { text: "Kính gửi Quý khách hàng: ", bold: true }, customerName, "\n",
+            { text: "Số điện thoại: ", bold: true }, customerPhone, "\n\n",
+            "Công ty KPM xin gửi đến quý khách hàng bảng báo giá gia công theo yêu cầu như sau:"
+          ],
+          margin: [0, 0, 0, 20]
+        },
+        imageColumns,
+        {
+          style: "tableStyle",
+          table: {
+            headerRows: 1,
+            widths: ["auto", "*", "auto", "auto", "auto", "auto"],
+            body: tableBody
+          },
+          layout: 'lightHorizontalLines'
+        },
+        {
+          columns: [
+            { text: "", width: "*" },
+            {
+              width: 250,
+              table: {
+                widths: ["*", "auto"],
+                body: [
+                  [{ text: "TỔNG THANH TOÁN:", bold: true, alignment: "right", border: [false, true, false, false] }, { text: totalPrice.toLocaleString("vi-VN") + " VNĐ", bold: true, alignment: "right", border: [false, true, false, false], color: 'red' }]
+                ]
+              },
+              layout: 'noBorders'
+            }
+          ],
+          margin: [0, 10, 0, 20]
+        },
+        { text: "* Ghi chú: " + (quotationData.note || "Báo giá có giá trị trong vòng 15 ngày."), italics: true, color: 'gray' },
+        {
+          columns: [
+            { text: "Khách hàng xác nhận\n(Ký và ghi rõ họ tên)", alignment: "center", bold: true, margin: [0, 30, 0, 0] },
+            { text: "Đại diện KPM\n(Ký và ghi rõ họ tên)", alignment: "center", bold: true, margin: [0, 30, 0, 0] }
+          ]
+        }
+      ],
+      styles: {
+        header: { fontSize: 18, bold: true, color: "#1e293b" },
+        tableStyle: { margin: [0, 5, 0, 15] }
+      },
+      defaultStyle: { font: "Roboto", fontSize: 11, color: "#334155" }
+    };
+    
+    const pdfDoc = pdfmake.createPdf(docDefinition);
+    return await pdfDoc.getBuffer();
+  }
+
+  // --- BÁO CÁO 4: HÓA ĐƠN ĐƠN HÀNG (Order Invoice PDF) ---
+  async generateOrderInvoicePDF(orderData) {
+    const logoData = this._getLogoBase64();
+    const title = "HÓA ĐƠN BÁN HÀNG";
+    
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    
+    const customerName = orderData?.customer_name || orderData?.users?.user_profiles?.first_name || "Khách hàng";
+    const customerPhone = orderData?.customer_phone || "Không có";
+    const shippingAddress = orderData?.shipping_address || "Tại xưởng";
+    
+    const tableHeader = [
+      { text: "STT", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Tên Hàng Hóa / Dịch vụ", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "SL", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Đơn giá", bold: true, alignment: "center", fillColor: "#e2e8f0" },
+      { text: "Thành tiền", bold: true, alignment: "center", fillColor: "#e2e8f0" }
+    ];
+    
+    const tableBody = [tableHeader];
+    
+    let subTotal = 0;
+    if (orderData.order_items && orderData.order_items.length > 0) {
+      orderData.order_items.forEach((item, idx) => {
+        const price = Number(item.price || 0);
+        const lineTotal = price * item.quantity;
+        subTotal += lineTotal;
+        tableBody.push([
+          { text: idx + 1, alignment: "center" },
+          item.products?.product_name || "Sản phẩm KPM",
+          { text: item.quantity, alignment: "center" },
+          { text: price.toLocaleString("vi-VN"), alignment: "right" },
+          { text: lineTotal.toLocaleString("vi-VN"), alignment: "right" }
+        ]);
+      });
+    } else {
+      // Nếu là đơn hàng tạo từ báo giá
+      const price = Number(orderData.total_amount || 0);
+      subTotal = price;
+      tableBody.push([
+        { text: 1, alignment: "center" },
+        "Sản xuất / Gia công theo Báo giá đính kèm",
+        { text: 1, alignment: "center" },
+        { text: price.toLocaleString("vi-VN"), alignment: "right" },
+        { text: price.toLocaleString("vi-VN"), alignment: "right" }
+      ]);
+    }
+    
+    const shippingFee = Number(orderData.shipping_fee || 0);
+    const installFee = Number(orderData.installation_fee || 0);
+    const depositAmount = Number(orderData.deposit_amount || 0);
+    const totalAmount = subTotal + shippingFee + installFee;
+    const remainingAmount = totalAmount - depositAmount;
+
+    const docDefinition = {
+      pageSize: "A5",
+      pageOrientation: "landscape",
+      pageMargins: [30, 30, 30, 30],
+      content: [
+        {
+          columns: [
+            logoData ? { image: logoData, width: 60 } : { text: "KPM", fontSize: 16, bold: true },
+            {
+              stack: [
+                { text: "CÔNG TY KPM MATERIALS", bold: true, fontSize: 12, alignment: "right" },
+                { text: "Mã Đơn: #" + String(orderData.order_code || "DRAFT"), alignment: "right", italics: true },
+                { text: "Ngày xuất: " + dateStr, alignment: "right", italics: true }
+              ]
+            }
+          ]
+        },
+        { text: title, style: "header", alignment: "center", margin: [0, 10, 0, 10] },
+        {
+          text: [
+            { text: "Khách hàng: ", bold: true }, customerName, "\n",
+            { text: "Số điện thoại: ", bold: true }, customerPhone, "\n",
+            { text: "Địa chỉ: ", bold: true }, shippingAddress
+          ],
+          margin: [0, 0, 0, 15],
+          fontSize: 10
+        },
+        {
+          style: "tableStyle",
+          table: {
+            headerRows: 1,
+            widths: ["auto", "*", "auto", "auto", "auto"],
+            body: tableBody
+          },
+          layout: 'lightHorizontalLines'
+        },
+        {
+          columns: [
+            { text: "", width: "*" },
+            {
+              width: 200,
+              table: {
+                widths: ["*", "auto"],
+                body: [
+                  [{ text: "Cộng tiền hàng:", alignment: "right", border: [false, true, false, false], fontSize: 10 }, { text: subTotal.toLocaleString("vi-VN"), alignment: "right", border: [false, true, false, false], fontSize: 10 }],
+                  ...(shippingFee > 0 ? [[{ text: "Phí vận chuyển:", alignment: "right", border: [false, false, false, false], fontSize: 10 }, { text: shippingFee.toLocaleString("vi-VN"), alignment: "right", border: [false, false, false, false], fontSize: 10 }]] : []),
+                  ...(installFee > 0 ? [[{ text: "Phí lắp đặt:", alignment: "right", border: [false, false, false, false], fontSize: 10 }, { text: installFee.toLocaleString("vi-VN"), alignment: "right", border: [false, false, false, false], fontSize: 10 }]] : []),
+                  [{ text: "TỔNG CỘNG:", bold: true, alignment: "right", border: [false, true, false, false], fontSize: 11 }, { text: totalAmount.toLocaleString("vi-VN") + " đ", bold: true, alignment: "right", border: [false, true, false, false], color: 'red', fontSize: 11 }],
+                  ...(depositAmount > 0 ? [[{ text: "Đã đặt cọc:", alignment: "right", border: [false, false, false, false], fontSize: 10, color: 'blue' }, { text: "-" + depositAmount.toLocaleString("vi-VN"), alignment: "right", border: [false, false, false, false], fontSize: 10, color: 'blue' }]] : []),
+                  ...(depositAmount > 0 ? [[{ text: "CÒN LẠI:", bold: true, alignment: "right", border: [false, true, false, false], fontSize: 11 }, { text: remainingAmount.toLocaleString("vi-VN") + " đ", bold: true, alignment: "right", border: [false, true, false, false], color: 'red', fontSize: 11 }]] : [])
+                ]
+              },
+              layout: 'noBorders'
+            }
+          ],
+          margin: [0, 5, 0, 15]
+        },
+        {
+          columns: [
+            { text: "Người mua hàng\n(Ký, họ tên)", alignment: "center", bold: true, fontSize: 10 },
+            { text: "Người lập phiếu\n(Ký, họ tên)", alignment: "center", bold: true, fontSize: 10 }
+          ]
+        }
+      ],
+      styles: {
+        header: { fontSize: 16, bold: true, color: "#1e293b" },
+        tableStyle: { margin: [0, 5, 0, 10], fontSize: 10 }
+      },
+      defaultStyle: { font: "Roboto", fontSize: 10, color: "#334155" }
+    };
+    
+    const pdfDoc = pdfmake.createPdf(docDefinition);
+    return await pdfDoc.getBuffer();
+  }
 }
 
 module.exports = new PdfService();

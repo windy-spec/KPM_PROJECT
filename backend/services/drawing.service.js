@@ -24,7 +24,7 @@ class DrawingService {
 
   // 3. Tạo mới Bản vẽ + Danh sách linh kiện (Nested Create)
   async createDrawing(data) {
-    const { product_id, drawing_name, drawing_type, main_image_url, scale_ratio, parts } = data;
+    const { product_id, drawing_name, drawing_type, main_image_url, blueprint_image_url, scale_ratio, parts } = data;
     
     return await prisma.product_drawings.create({
       data: {
@@ -32,6 +32,7 @@ class DrawingService {
         drawing_name,
         drawing_type: drawing_type || "ASSEMBLY",
         main_image_url,
+        blueprint_image_url,
         scale_ratio,
         drawing_parts: {
           create: parts && parts.length > 0 ? parts.map(part => ({
@@ -47,13 +48,13 @@ class DrawingService {
 
   // 4. Cập nhật bản vẽ (Transaction: Cập nhật thông tin chung + Cập nhật lại list linh kiện)
   async updateDrawing(drawingId, data) {
-    const { drawing_name, drawing_type, main_image_url, scale_ratio, is_active, parts } = data;
+    const { drawing_name, drawing_type, main_image_url, blueprint_image_url, scale_ratio, is_active, parts } = data;
 
     return await prisma.$transaction(async (tx) => {
       // Cập nhật Master
       const master = await tx.product_drawings.update({
         where: { id: drawingId },
-        data: { drawing_name, drawing_type, main_image_url, scale_ratio, is_active }
+        data: { drawing_name, drawing_type, main_image_url, blueprint_image_url, scale_ratio, is_active }
       });
 
       // Cập nhật Parts (Xóa cũ, Thêm mới cho sạch sẽ)

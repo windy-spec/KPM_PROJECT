@@ -27,6 +27,8 @@ const normalizeTemplate = (item) => ({
   allowed_materials: item.allowed_materials || [],
   html_code: item.html_code || "",
   drawing_image_url: item.drawing_image_url || "",
+  blueprint_html_code: item.blueprint_html_code || "",
+  blueprint_image_url: item.blueprint_image_url || "",
 });
 
 function TemplateModal({ initial, categories, materials, loading, onCancel, onSave }) {
@@ -43,8 +45,11 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
     allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
     html_code: initial?.html_code || "",
     drawing_image_url: initial?.drawing_image_url || "",
+    blueprint_html_code: initial?.blueprint_html_code || "",
+    blueprint_image_url: initial?.blueprint_image_url || "",
   });
   const [touched, setTouched] = useState(false);
+  const blueprintPreviewRef = useRef(null);
 
   useEffect(() => {
     setForm({
@@ -58,6 +63,8 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
       allowed_material_ids: initial?.allowed_materials?.map(m => m.material_id) || [],
       html_code: initial?.html_code || "",
       drawing_image_url: initial?.drawing_image_url || "",
+      blueprint_html_code: initial?.blueprint_html_code || "",
+      blueprint_image_url: initial?.blueprint_image_url || "",
     });
     setTouched(false);
   }, [initial]);
@@ -95,10 +102,35 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
         }
     }
 
+    let updatedBlueprintUrl = form.blueprint_image_url;
+
+    if (form.blueprint_html_code && blueprintPreviewRef.current) {
+        setCapturing(true);
+        try {
+            const canvas = await html2canvas(blueprintPreviewRef.current, { backgroundColor: null, useCORS: true, logging: false });
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (blob) {
+                const formData = new FormData();
+                formData.append("image", blob, `blueprint_${Date.now()}.png`);
+                const res = await apiClient.post("/ai/upload-drawing", formData, {
+                  headers: { "Content-Type": "multipart/form-data" }
+                });
+                if (res.data?.data?.imageUrl) {
+                    updatedBlueprintUrl = res.data.data.imageUrl;
+                }
+            }
+        } catch (error) {
+            console.error("Lỗi khi auto-capture blueprint html2canvas:", error);
+        } finally {
+            setCapturing(false);
+        }
+    }
+
     onSave({
       ...form,
       component_name: form.component_name.trim(),
-      drawing_image_url: updatedDrawingUrl
+      drawing_image_url: updatedDrawingUrl,
+      blueprint_image_url: updatedBlueprintUrl
     });
   };
 
@@ -108,6 +140,16 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
     const reader = new FileReader();
     reader.onload = (evt) => {
       setForm((prev) => ({ ...prev, html_code: evt.target.result }));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBlueprintCodeUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setForm((prev) => ({ ...prev, blueprint_html_code: evt.target.result }));
     };
     reader.readAsText(file);
   };
@@ -126,7 +168,7 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
-        <div className="w-full max-w-[1000px] max-h-[90vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+        <div className="w-full max-w-[1200px] max-h-[95vh] flex flex-col overflow-hidden rounded-[28px] border border-outline-variant/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
           <div className="flex items-start justify-between gap-4 border-b border-outline-variant/50 px-6 py-5 shrink-0">
             <div>
               <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
@@ -243,7 +285,7 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
               </div>
               
               {form.html_code && (
-                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-hidden min-h-[300px] p-4 group">
+                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
                     <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
                         Live Preview 3D
                     </div>
@@ -251,6 +293,32 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
                         ref={previewRef}
                         className="bg-transparent w-full h-full flex items-center justify-center"
                         dangerouslySetInnerHTML={{ __html: form.html_code }}
+                    />
+                </div>
+              )}
+
+              <div className="mt-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                    Source Code Nét Đứt (Blueprint HTML/CSS)
+                </label>
+                <p className="text-[11px] text-on-surface-variant/70 mb-2">Chọn file .html bản vẽ nét đứt (blueprint).</p>
+                <input 
+                    type="file" 
+                    accept=".html,.txt" 
+                    onChange={handleBlueprintCodeUpload} 
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                />
+              </div>
+
+              {form.blueprint_html_code && (
+                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
+                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                        Live Preview Blueprint
+                    </div>
+                    <div 
+                        ref={blueprintPreviewRef}
+                        className="bg-transparent w-full h-full flex items-center justify-center"
+                        dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
                     />
                 </div>
               )}

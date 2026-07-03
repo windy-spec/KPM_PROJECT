@@ -19,6 +19,7 @@ const ManageDrawings = () => {
   const [drawingName, setDrawingName] = useState("");
   const [scaleRatio, setScaleRatio] = useState("1:100");
   const [mainImageUrl, setMainImageUrl] = useState("");
+  const [blueprintImageUrl, setBlueprintImageUrl] = useState("");
   const [parts, setParts] = useState([]);
 
   // Canvas State
@@ -76,6 +77,7 @@ const ManageDrawings = () => {
     setEditingDrawingId(null);
     setCanvasItems([]);
     setMainImageUrl("");
+    setBlueprintImageUrl("");
 
     if (product) {
       setDrawingName(`Bản vẽ ${product.product_name || ""}`);
@@ -112,6 +114,7 @@ const ManageDrawings = () => {
     setDrawingName(drawing.drawing_name || "");
     setScaleRatio(drawing.scale_ratio || "1:100");
     setMainImageUrl(drawing.main_image_url || "");
+    setBlueprintImageUrl(drawing.blueprint_image_url || "");
     
     const loadedParts = drawing.drawing_parts?.map(part => ({
       ...part,
@@ -280,6 +283,7 @@ const ManageDrawings = () => {
           drawing_name: drawingName,
           scale_ratio: scaleRatio,
           main_image_url: finalMainImageUrl,
+          blueprint_image_url: blueprintImageUrl,
           parts,
         };
 
@@ -306,6 +310,7 @@ const ManageDrawings = () => {
     setDrawingName("");
     setScaleRatio("1:100");
     setMainImageUrl("");
+    setBlueprintImageUrl("");
     setParts([]);
     setCanvasItems([]);
     setEditingDrawingId(null);
@@ -478,6 +483,44 @@ const ManageDrawings = () => {
                   </div>
                 </div>
                 
+                <div className="grid grid-cols-2 gap-2 border-t border-outline-variant/30 pt-3">
+                  <div className="bg-surface-container/20 p-2 border border-outline-variant/50 rounded-lg">
+                    <label className="block text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/80 mb-1">Ảnh Tổng Thể 3D</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleUploadImage(e, setMainImageUrl)}
+                      className="block w-full text-[10px] text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                    />
+                    {mainImageUrl && (
+                      <div className="mt-2 relative w-full h-20 rounded-lg overflow-hidden border border-outline-variant/60">
+                        <img src={mainImageUrl} alt="Preview" className="w-full h-full object-contain bg-slate-50" />
+                        <button type="button" onClick={() => setMainImageUrl("")} className="absolute top-1 right-1 bg-rose-500/90 text-white p-1 rounded-md hover:bg-rose-600 transition-colors shadow-sm">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-surface-container/20 p-2 border border-outline-variant/50 rounded-lg">
+                    <label className="block text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/80 mb-1">Bản Vẽ Nét Đứt</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleUploadImage(e, setBlueprintImageUrl)}
+                      className="block w-full text-[10px] text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                    />
+                    {blueprintImageUrl && (
+                      <div className="mt-2 relative w-full h-20 rounded-lg overflow-hidden border border-outline-variant/60">
+                        <img src={blueprintImageUrl} alt="Blueprint Preview" className="w-full h-full object-contain bg-slate-50" />
+                        <button type="button" onClick={() => setBlueprintImageUrl("")} className="absolute top-1 right-1 bg-rose-500/90 text-white p-1 rounded-md hover:bg-rose-600 transition-colors shadow-sm">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-center pt-2">
                   <h5 className="font-black text-sm uppercase text-primary">
                     Bóc tách Linh Kiện
