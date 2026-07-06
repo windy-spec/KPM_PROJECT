@@ -81,49 +81,49 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
     let updatedDrawingUrl = form.drawing_image_url;
 
     if (form.html_code && previewRef.current) {
-        setCapturing(true);
-        try {
-            const canvas = await html2canvas(previewRef.current, { backgroundColor: null, useCORS: true, logging: false });
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            if (blob) {
-                const formData = new FormData();
-                formData.append("image", blob, `template_${Date.now()}.png`);
-                const res = await apiClient.post("/ai/upload-drawing", formData, {
-                  headers: { "Content-Type": "multipart/form-data" }
-                });
-                if (res.data?.data?.imageUrl) {
-                    updatedDrawingUrl = res.data.data.imageUrl;
-                }
-            }
-        } catch (error) {
-            console.error("Lỗi khi auto-capture html2canvas:", error);
-        } finally {
-            setCapturing(false);
+      setCapturing(true);
+      try {
+        const canvas = await html2canvas(previewRef.current, { backgroundColor: null, useCORS: true, logging: false });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
+          const formData = new FormData();
+          formData.append("image", blob, `template_${Date.now()}.png`);
+          const res = await apiClient.post("/ai/upload-drawing", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+          if (res.data?.data?.imageUrl) {
+            updatedDrawingUrl = res.data.data.imageUrl;
+          }
         }
+      } catch (error) {
+        console.error("Lỗi khi auto-capture html2canvas:", error);
+      } finally {
+        setCapturing(false);
+      }
     }
 
     let updatedBlueprintUrl = form.blueprint_image_url;
 
     if (form.blueprint_html_code && blueprintPreviewRef.current) {
-        setCapturing(true);
-        try {
-            const canvas = await html2canvas(blueprintPreviewRef.current, { backgroundColor: null, useCORS: true, logging: false });
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            if (blob) {
-                const formData = new FormData();
-                formData.append("image", blob, `blueprint_${Date.now()}.png`);
-                const res = await apiClient.post("/ai/upload-drawing", formData, {
-                  headers: { "Content-Type": "multipart/form-data" }
-                });
-                if (res.data?.data?.imageUrl) {
-                    updatedBlueprintUrl = res.data.data.imageUrl;
-                }
-            }
-        } catch (error) {
-            console.error("Lỗi khi auto-capture blueprint html2canvas:", error);
-        } finally {
-            setCapturing(false);
+      setCapturing(true);
+      try {
+        const canvas = await html2canvas(blueprintPreviewRef.current, { backgroundColor: null, useCORS: true, logging: false });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        if (blob) {
+          const formData = new FormData();
+          formData.append("image", blob, `blueprint_${Date.now()}.png`);
+          const res = await apiClient.post("/ai/upload-drawing", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+          if (res.data?.data?.imageUrl) {
+            updatedBlueprintUrl = res.data.data.imageUrl;
+          }
         }
+      } catch (error) {
+        console.error("Lỗi khi auto-capture blueprint html2canvas:", error);
+      } finally {
+        setCapturing(false);
+      }
     }
 
     onSave({
@@ -187,139 +187,148 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
           <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col md:flex-row gap-6">
             <div className="w-full md:w-1/2">
               <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên linh kiện</label>
-                    <input
-                      value={form.component_name}
-                      onChange={(e) => setForm({ ...form, component_name: e.target.value })}
-                      placeholder="VD: Cánh cửa cổng, Khung bao..."
-                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                    />
-                    {touched && !form.component_name.trim() ? (<p className="text-xs text-rose-600">Tên không được để trống.</p>) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Danh mục áp dụng</label>
-                    <select
-                      value={form.category_code}
-                      onChange={(e) => setForm({ ...form, category_code: e.target.value })}
-                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                    >
-                      <option value="">Chọn danh mục</option>
-                      {categories.map((item) => (
-                        <option key={item.id} value={item.category_code}>{item.category_name} ({item.category_code})</option>
-                      ))}
-                    </select>
-                    {touched && !form.category_code ? (<p className="text-xs text-rose-600">Bắt buộc chọn danh mục.</p>) : null}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Đơn vị đo mặc định</label>
-                    <select
-                      value={form.default_unit}
-                      onChange={(e) => setForm({ ...form, default_unit: e.target.value })}
-                      className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
-                    >
-                      <option value="mm">mm</option>
-                      <option value="cm">cm</option>
-                      <option value="m">m</option>
-                      <option value="inch">inch</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều dài mặc định</label>
-                    <input type="number" value={form.default_length} onChange={(e) => setForm({ ...form, default_length: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều rộng mặc định</label>
-                    <input type="number" value={form.default_width} onChange={(e) => setForm({ ...form, default_width: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều cao mặc định</label>
-                    <input type="number" value={form.default_height} onChange={(e) => setForm({ ...form, default_height: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
-                  </div>
-
-                  <div className="space-y-2 flex items-center h-full pt-4 md:col-span-2">
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-on-surface">
-                      <input type="checkbox" checked={form.allow_paint} onChange={(e) => setForm({ ...form, allow_paint: e.target.checked })} className="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" />
-                      Cho phép chọn sơn phủ (Sơn tĩnh điện...)
-                    </label>
-                  </div>
-
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Tên linh kiện</label>
+                  <input
+                    value={form.component_name}
+                    onChange={(e) => setForm({ ...form, component_name: e.target.value })}
+                    placeholder="VD: Cánh cửa cổng, Khung bao..."
+                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                  />
+                  {touched && !form.component_name.trim() ? (<p className="text-xs text-rose-600">Tên không được để trống.</p>) : null}
                 </div>
 
-                <div className="space-y-3 border-t border-outline-variant/50 pt-4 mt-4">
-                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
-                    Vật tư được phép sử dụng ({form.allowed_material_ids.length} đã chọn)
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto p-2 bg-surface-container/10 rounded-xl border border-outline-variant/40">
-                    {materials.map(mat => (
-                      <label key={mat.id} className="flex items-start gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container transition-colors">
-                        <input type="checkbox" className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" checked={form.allowed_material_ids.includes(mat.id)} onChange={() => handleMaterialToggle(mat.id)} />
-                        <div className="text-xs">
-                          <div className="font-bold text-on-surface">{mat.material_name}</div>
-                          <div className="text-on-surface-variant/70">{mat.material_code}</div>
-                        </div>
-                      </label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Danh mục áp dụng</label>
+                  <select
+                    value={form.category_code}
+                    onChange={(e) => setForm({ ...form, category_code: e.target.value })}
+                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                  >
+                    <option value="">Chọn danh mục</option>
+                    {categories.map((item) => (
+                      <option key={item.id} value={item.category_code}>{item.category_name} ({item.category_code})</option>
                     ))}
-                  </div>
+                  </select>
+                  {touched && !form.category_code ? (<p className="text-xs text-rose-600">Bắt buộc chọn danh mục.</p>) : null}
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Đơn vị đo mặc định</label>
+                  <select
+                    value={form.default_unit}
+                    onChange={(e) => setForm({ ...form, default_unit: e.target.value })}
+                    className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary"
+                  >
+                    <option value="mm">mm</option>
+                    <option value="cm">cm</option>
+                    <option value="m">m</option>
+                    <option value="inch">inch</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều dài mặc định</label>
+                  <input type="number" value={form.default_length} onChange={(e) => setForm({ ...form, default_length: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều rộng mặc định</label>
+                  <input type="number" value={form.default_width} onChange={(e) => setForm({ ...form, default_width: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Chiều cao mặc định</label>
+                  <input type="number" value={form.default_height} onChange={(e) => setForm({ ...form, default_height: e.target.value })} className="w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-4 py-3 text-sm outline-none transition-colors focus:border-primary" />
+                </div>
+
+                <div className="space-y-2 flex items-center h-full pt-4 md:col-span-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-on-surface">
+                    <input type="checkbox" checked={form.allow_paint} onChange={(e) => setForm({ ...form, allow_paint: e.target.checked })} className="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" />
+                    Cho phép chọn sơn phủ (Sơn tĩnh điện...)
+                  </label>
+                </div>
+
+              </div>
+
+              <div className="space-y-3 border-t border-outline-variant/50 pt-4 mt-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.22em] text-on-surface-variant/70 block">
+                  Vật tư được phép sử dụng ({form.allowed_material_ids.length} đã chọn)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto p-2 bg-surface-container/10 rounded-xl border border-outline-variant/40">
+                  {materials.map(mat => (
+                    <label key={mat.id} className="flex items-start gap-2 cursor-pointer p-2 rounded-lg hover:bg-surface-container transition-colors">
+                      <input type="checkbox" className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant/60" checked={form.allowed_material_ids.includes(mat.id)} onChange={() => handleMaterialToggle(mat.id)} />
+                      <div className="text-xs">
+                        <div className="font-bold text-on-surface">{mat.material_name}</div>
+                        <div className="text-on-surface-variant/70">{mat.material_code}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Cột phải: HTML Source & Live Preview */}
             <div className="w-full md:w-1/2 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-outline-variant/30 pt-4 md:pt-0 md:pl-6">
               <div>
                 <label className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
-                    Source Code (HTML/CSS)
+                  Source Code (HTML/CSS)
                 </label>
                 <p className="text-[11px] text-on-surface-variant/70 mb-2">Chọn file .html do AI sinh ra. Hệ thống sẽ tự chụp ảnh 3D khi bạn lưu.</p>
-                <input 
-                    type="file" 
-                    accept=".html,.txt" 
-                    onChange={handleCodeUpload} 
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                <input
+                  type="file"
+                  accept=".html,.txt"
+                  onChange={handleCodeUpload}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
                 />
               </div>
-              
+
               {form.html_code && (
                 <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
-                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
-                        Live Preview 3D
-                    </div>
-                    <div 
-                        ref={previewRef}
-                        className="bg-transparent w-full h-full flex items-center justify-center"
-                        dangerouslySetInnerHTML={{ __html: form.html_code }}
-                    />
+                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                    Live Preview 3D
+                  </div>
+                  <div
+                    ref={previewRef}
+                    className="bg-transparent w-full h-full flex items-center justify-center"
+                    dangerouslySetInnerHTML={{ __html: form.html_code }}
+                  />
                 </div>
               )}
 
               <div className="mt-4">
                 <label className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
-                    Source Code Nét Đứt (Blueprint HTML/CSS)
+                  Source Code Nét Đứt (Blueprint HTML/CSS)
                 </label>
-                <p className="text-[11px] text-on-surface-variant/70 mb-2">Chọn file .html bản vẽ nét đứt (blueprint).</p>
-                <input 
-                    type="file" 
-                    accept=".html,.txt" 
-                    onChange={handleBlueprintCodeUpload} 
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                <p className="text-xs text-on-surface-variant/70 leading-relaxed mb-1">Chọn file .html bản vẽ nét đứt (blueprint).
+                  {/* Đoạn text bổ sung */}
+                  <br />
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary mt-1 mr-1">{"{{COMPONENT_NAME}}"}</span>: Tên linh kiện
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary mr-1">{"{{LENGTH}}"}</span>: Chiều dài
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary mr-1">{"{{WIDTH}}"}</span>: Chiều rộng
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary mr-1">{"{{HEIGHT}}"}</span>: Chiều cao
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary mr-1">{"{{MATERIAL_NAME}}"}</span>: Tên vật liệu
+                  <span className="inline-block bg-surface-container px-1.5 py-0.5 rounded font-mono text-primary">{"{{THICKNESS}}"}</span>: Độ dày kĩ thuật
+                </p>
+                <input
+                  type="file"
+                  accept=".html,.txt"
+                  onChange={handleBlueprintCodeUpload}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
                 />
               </div>
 
               {form.blueprint_html_code && (
                 <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
-                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
-                        Live Preview Blueprint
-                    </div>
-                    <div 
-                        ref={blueprintPreviewRef}
-                        className="bg-transparent w-full h-full flex items-center justify-center"
-                        dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
-                    />
+                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                    Live Preview Blueprint
+                  </div>
+                  <div
+                    ref={blueprintPreviewRef}
+                    className="bg-transparent w-full h-full flex items-center justify-center"
+                    dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
+                  />
                 </div>
               )}
             </div>
