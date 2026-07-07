@@ -460,10 +460,10 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             <div className="pt-4 border-t border-outline-variant/30">
               <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/80 mb-3 flex items-center gap-1.5">
                 <Paperclip className="w-3.5 h-3.5 text-primary" />
-                <span>Tài liệu đính kèm ({data.attachments?.length || 0})</span>
+                <span>Tài liệu đính kèm ({(data.attachments?.length || 0) + (data.quotation_attachments?.length || 0)})</span>
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {(data.attachments || []).map((att) => (
+                {[...(data.attachments || []), ...(data.quotation_attachments || [])].map((att) => (
                   <div
                     key={att.id || att.file_url}
                     className="flex items-center justify-between border border-outline-variant/60 rounded-xl px-3 py-2 bg-surface-container/5 hover:bg-surface-container/10 transition-colors"
@@ -482,7 +482,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                     </a>
                   </div>
                 ))}
-                {(!data.attachments || data.attachments.length === 0) && (
+                {(!data.attachments || data.attachments.length === 0) && (!data.quotation_attachments || data.quotation_attachments.length === 0) && (
                   <div className="text-xs text-on-surface-variant/50 italic col-span-2">
                     Chưa có hồ sơ hay file đính kèm nào
                   </div>
