@@ -39,8 +39,11 @@ const ExportRequestsPanel = ({
             const map = {};
             if (Array.isArray(invData)) {
                 invData.forEach(item => {
-                    map[item.material_id] = {
-                        name: item.materials?.material_name || 'Vật tư chưa xác định',
+                    const reqKey = item.thickness_id ? `${item.material_id}_${item.thickness_id}` : item.material_id;
+                    let name = item.materials?.material_name || 'Vật tư chưa xác định';
+                    if (item.material_thickness?.thickness_value) name += ` (${item.material_thickness.thickness_value})`;
+                    map[reqKey] = {
+                        name: name,
                         stock: parseFloat(item.quantity || 0)
                     };
                 });

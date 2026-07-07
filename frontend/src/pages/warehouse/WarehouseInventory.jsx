@@ -81,18 +81,16 @@ const WarehouseInventory = () => {
     }, [filteredInventory, paginatedInventory, page, totalPages]);
 
     // --- 2. XỬ LÝ CHỌN CHECKBOX (TỪNG DÒNG & CHỌN TẤT CẢ) ---
-    const handleSelectRow = (materialId) => {
+    const handleSelectRow = (id) => {
         if (!materialId) return;
         setSelectedIds((prev) =>
-            prev.includes(materialId)
-                ? prev.filter((id) => id !== materialId)
-                : [...prev, materialId]
+            prev.includes(id) ? prev.filter((_id) => _id !== id) : [...prev, id]
         );
     };
 
     const handleSelectAllPage = () => {
         const currentPageMaterialIds = paginatedInventory
-            .map((item) => item.material_id)
+            .map((item) => item.id)
             .filter(Boolean);
 
         const isAllSelected = currentPageMaterialIds.every((id) => selectedIds.includes(id));
@@ -292,7 +290,7 @@ const WarehouseInventory = () => {
                                             disabled={paginatedInventory.length === 0}
                                             checked={
                                                 paginatedInventory.length > 0 &&
-                                                paginatedInventory.every((item) => selectedIds.includes(item.material_id))
+                                                paginatedInventory.every((item) => selectedIds.includes(item.id))
                                             }
                                             onChange={handleSelectAllPage}
                                         />
@@ -324,8 +322,8 @@ const WarehouseInventory = () => {
                                                 <input
                                                     type="checkbox"
                                                     className="w-3.5 h-3.5 rounded accent-teal-600 cursor-pointer"
-                                                    checked={selectedIds.includes(item.material_id)}
-                                                    onChange={() => handleSelectRow(item.material_id)}
+                                                    checked={selectedIds.includes(item.id)}
+                                                    onChange={() => handleSelectRow(item.id)}
                                                 />
                                             </td>
                                             <td className="p-3">
@@ -333,7 +331,7 @@ const WarehouseInventory = () => {
                                                     {item.materials?.material_code || "Chưa có mã"}
                                                 </div>
                                                 <div className="text-slate-800 font-black text-xs mt-0.5">
-                                                    {item.materials?.material_name || "Vật tư không xác định"}
+                                                    {item.materials?.material_name || "Vật tư không xác định"} {item.material_thickness?.thickness_value ? `(${item.material_thickness.thickness_value})` : ""}
                                                 </div>
                                             </td>
                                             <td className="p-3 text-teal-700 font-bold text-sm">{item.quantity}</td>

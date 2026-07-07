@@ -42,6 +42,28 @@ class QuotationService {
       },
     });
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
+
+    if (quotation.quotation_specs && quotation.quotation_specs.length > 0) {
+      const componentNames = quotation.quotation_specs.map((spec) => spec.component_name).filter(Boolean);
+      
+      if (componentNames.length > 0) {
+        const templates = await prisma.component_templates.findMany({
+          where: { component_name: { in: componentNames } }
+        });
+        
+        const templateMap = {};
+        templates.forEach(t => {
+          templateMap[t.component_name] = t.blueprint_html_code;
+        });
+
+        quotation.quotation_specs.forEach(spec => {
+          if (templateMap[spec.component_name]) {
+            spec.blueprint_html_code = templateMap[spec.component_name];
+          }
+        });
+      }
+    }
+
     return quotation;
   }
 
@@ -207,6 +229,7 @@ class QuotationService {
             paint_types: true,
           },
         },
+        quotation_attachments: true,
       },
       orderBy: { created_at: "desc" },
     });

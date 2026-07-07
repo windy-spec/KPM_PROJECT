@@ -11,12 +11,12 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { showError } from "../../utils/notify";
 import orderService from "../../services/order.service";
 import Portal from "../../components/common/Portal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { useSocket } from "../../context/SocketContext";
-import { showSuccess } from "../../utils/notify";
+import { showSuccess, showError } from "../../utils/notify";
+import html2pdf from "html2pdf.js";
 
 const OrdersTab = () => {
   const socket = useSocket();
@@ -65,8 +65,32 @@ const OrdersTab = () => {
   const [selectedTrackingOrder, setSelectedTrackingOrder] = useState(null);
   const [trackingData, setTrackingData] = useState([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(null);
 
   const navigate = useNavigate();
+
+  const handleExportPDF = async (orderId, orderCode) => {
+    setExportingPdf(orderId);
+    try {
+      const element = document.getElementById(`order-card-${orderId}`);
+      if (!element) return;
+      const opt = {
+        margin:       10,
+        filename:     `Don_Hang_${orderCode}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      // For user PDF export, we might want to temporarily hide the buttons before export,
+      // but html2pdf can handle it if we don't mind. We'll just export the card as is.
+      await html2pdf().set(opt).from(element).save();
+    } catch (e) {
+      showError("Xuất PDF thất bại!");
+    } finally {
+      setExportingPdf(null);
+    }
+  };
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -327,6 +351,7 @@ const OrdersTab = () => {
         orders.map((order) => (
           <div
             key={order.id}
+            id={`order-card-${order.id}`}
             className="bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all"
           >
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-outline-variant/30 pb-4 mb-4">
@@ -374,6 +399,25 @@ const OrdersTab = () => {
                 </div>
               ))}
             </div>
+
+            {order.quotations?.quotation_attachments && order.quotations.quotation_attachments.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs font-bold text-on-surface-variant uppercase mb-2">Tài liệu đính kèm (Bản vẽ)</h4>
+                <div className="flex flex-wrap gap-2">
+                  {order.quotations.quotation_attachments.map(att => (
+                    <a
+                      key={att.id}
+                      href={att.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors border border-primary/20"
+                    >
+                      {att.file_name || att.name}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-between items-center mt-4">
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest opacity-60">
@@ -465,6 +509,14 @@ const OrdersTab = () => {
                         )}
                       </button>
                     )}
+                    <button
+                      onClick={() => handleExportPDF(order.id, order.order_code)}
+                      disabled={exportingPdf === order.id}
+                      className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      {exportingPdf === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      Tải PDF
+                    </button>
                     <button
                       onClick={() => handleTrackOrder(order)}
                       className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors shadow-sm"

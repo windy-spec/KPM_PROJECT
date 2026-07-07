@@ -74,11 +74,15 @@ const WarehouseRequest = () => {
         const reqs = order.material_requirements;
         const missingList = [];
 
-        for (const [matId, reqQtyStr] of Object.entries(reqs)) {
+        for (const [reqKey, reqQtyStr] of Object.entries(reqs)) {
+            const [matId, thickId] = reqKey.split('_');
             const requiredQty = parseFloat(reqQtyStr);
-            const inv = inventoryMap.find(i => i.material_id === matId);
+            const inv = inventoryMap.find(i => i.material_id === matId && (thickId ? i.thickness_id === thickId : true));
             const currentStock = inv ? parseFloat(inv.quantity) : 0;
-            const matName = inv ? `${inv.materials?.material_code} - ${inv.materials?.material_name}` : "Vật tư không xác định";
+            let matName = inv ? `${inv.materials?.material_code} - ${inv.materials?.material_name}` : "Vật tư không xác định";
+              if (inv?.material_thickness?.thickness_value) {
+                  matName += ` (${inv.material_thickness.thickness_value})`;
+              }
 
             if (currentStock < requiredQty) {
                 missingList.push({

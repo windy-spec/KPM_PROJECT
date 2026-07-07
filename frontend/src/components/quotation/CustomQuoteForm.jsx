@@ -34,17 +34,25 @@ export default function CustomQuoteForm() {
 
   async function loadLookups() {
     try {
-      const [prodRes, matRes, thRes, paintRes, bpRes] = await Promise.all([
-        productService.getProducts({ page: 1, limit: 200 }),
-        adminService.getMaterials({ page: 1, limit: 500 }),
-        adminService.getMaterialThickness(),
-        adminService.getPaintTypes(),
-        apiClient.get("/component-templates"),
-      ]);
+      const [prodRes, matRes, paintRes, bpRes] = await Promise.all([
+          productService.getProducts({ page: 1, limit: 200 }),
+          adminService.getMaterials({ page: 1, limit: 500 }),
+          adminService.getPaintTypes(),
+          apiClient.get("/component-templates"),
+        ]);
 
       setSystemProducts(prodRes.data?.data || prodRes.data || []);
       setMaterials(matRes.data?.data || matRes.data || []);
-      setThicknessList(thRes.data?.data || thRes.data || []);
+      const allMats = matRes.data?.data || matRes.data || [];
+        const extractedThicknesses = [];
+        allMats.forEach(m => {
+          if (m.material_thickness && Array.isArray(m.material_thickness)) {
+            m.material_thickness.forEach(t => {
+              extractedThicknesses.push(t);
+            });
+          }
+        });
+        setThicknessList(extractedThicknesses);
       setPaints(paintRes.data?.data || paintRes.data || []);
       if (bpRes.data?.success) {
         setBlueprints(bpRes.data?.data || []);

@@ -285,15 +285,17 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
               </div>
 
               {form.html_code && (
-                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
-                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 relative overflow-auto min-h-[250px] p-4 group">
+                  <div className="sticky top-0 left-0 w-max bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity mb-4">
                     Live Preview 3D
                   </div>
-                  <div
-                    ref={previewRef}
-                    className="bg-transparent w-full h-full flex items-center justify-center"
-                    dangerouslySetInnerHTML={{ __html: form.html_code }}
-                  />
+                  <div className="w-full min-h-full">
+                    <div
+                      ref={previewRef}
+                      className="bg-transparent inline-block min-w-full origin-top-left"
+                      dangerouslySetInnerHTML={{ __html: form.html_code }}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -320,15 +322,17 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
               </div>
 
               {form.blueprint_html_code && (
-                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 flex items-center justify-center relative overflow-auto min-h-[250px] p-4 group">
-                  <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity">
+                <div className="flex-1 border-2 border-dashed border-outline-variant/60 rounded-xl bg-slate-50 relative overflow-auto min-h-[250px] p-4 group">
+                  <div className="sticky top-0 left-0 w-max bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity mb-4">
                     Live Preview Blueprint
                   </div>
-                  <div
-                    ref={blueprintPreviewRef}
-                    className="bg-transparent w-full h-full flex items-center justify-center"
-                    dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
-                  />
+                  <div className="w-full min-h-full">
+                    <div
+                      ref={blueprintPreviewRef}
+                      className="bg-transparent inline-block min-w-full origin-top-left"
+                      dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
+                    />
+                  </div>
                 </div>
               )}
             </div>

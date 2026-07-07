@@ -1,13 +1,13 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-  extensions = [vector]
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -23,21 +23,21 @@ model ai_chat_messages {
 }
 
 model ai_chat_sessions {
-  id                 String               @id @default(uuid()) @db.Uuid
-  user_id            String?              @db.Uuid
-  session_title      String?              @db.VarChar(255)
-  started_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  ai_chat_messages   ai_chat_messages[]
-  users              users?               @relation(fields: [user_id], references: [id], onUpdate: NoAction)
-  quotations         quotations[]
+  id               String             @id @default(uuid()) @db.Uuid
+  user_id          String?            @db.Uuid
+  session_title    String?            @db.VarChar(255)
+  started_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  ai_chat_messages ai_chat_messages[]
+  users            users?             @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  quotations       quotations[]
 }
 
 model ai_knowledge_base {
-  id                    String                 @id @default(uuid()) @db.Uuid
-  rule_title            String                 @db.VarChar(255)
-  rule_content          String
-  embedding_vector      Unsupported("vector(384)")?
-  created_at            DateTime?              @default(now()) @db.Timestamptz(6)
+  id               String                 @id @default(uuid()) @db.Uuid
+  rule_title       String                 @db.VarChar(255)
+  rule_content     String
+  created_at       DateTime?              @default(now()) @db.Timestamptz(6)
+  embedding_vector Unsupported("vector")?
 }
 
 model labor_categories {
@@ -72,6 +72,9 @@ model material_thickness {
   price_multiplier Decimal           @default(1.00) @db.Decimal(5, 2)
   materials        materials?        @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   quotation_specs  quotation_specs[]
+  inventory        inventory[]
+  inventory_logs   inventory_logs[]
+  material_import_requests material_import_requests[]
 
   @@unique([material_id, thickness_value])
 }
@@ -90,21 +93,21 @@ model material_units {
 }
 
 model materials {
-  id                 String               @id @default(uuid()) @db.Uuid
-  type_id            String?              @db.Uuid
-  unit_id            String?              @db.Uuid
-  material_code      String               @unique @db.VarChar(50)
-  material_name      String               @db.VarChar(255)
-  base_price         Decimal              @db.Decimal(12, 2)
-  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
-  material_thickness material_thickness[]
-  material_types     material_types?      @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  material_units     material_units?      @relation(fields: [unit_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  quotation_specs    quotation_specs[]
-  inventory          inventory?
-  inventory_logs     inventory_logs[]
+  id                          String                        @id @default(uuid()) @db.Uuid
+  type_id                     String?                       @db.Uuid
+  unit_id                     String?                       @db.Uuid
+  material_code               String                        @unique @db.VarChar(50)
+  material_name               String                        @db.VarChar(255)
+  base_price                  Decimal                       @db.Decimal(12, 2)
+  created_at                  DateTime?                     @default(now()) @db.Timestamptz(6)
   component_allowed_materials component_allowed_materials[]
-  material_import_requests material_import_requests[]
+  inventory                   inventory[]
+  inventory_logs              inventory_logs[]
+  material_import_requests    material_import_requests[]
+  material_thickness          material_thickness[]
+  material_types              material_types?               @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  material_units              material_units?               @relation(fields: [unit_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  quotation_specs             quotation_specs[]
 }
 
 model order_tracking {
@@ -117,40 +120,30 @@ model order_tracking {
 }
 
 model orders {
-  id                String         @id @default(uuid()) @db.Uuid
-  quotation_id      String?        @unique @db.Uuid
-  order_code        String         @unique @db.VarChar(50)
-  production_status String?        @default("pending_payment") @db.VarChar(50)
-  created_at        DateTime?      @default(now()) @db.Timestamptz(6)
-  
-  // Tiền nong
-  total_amount      Decimal?       @db.Decimal(15, 2)
-  shipping_fee      Decimal?       @default(0) @db.Decimal(15, 2)
-  installation_fee  Decimal?       @default(0) @db.Decimal(15, 2)
-  
-  // Snapshot thông tin giao hàng (Sao chép từ Profile qua lúc nhấn Đặt Hàng)
-  customer_name     String?        @db.VarChar(100)
-  customer_phone    String?        @db.VarChar(20)
-  shipping_address  String?
-  order_notes       String?
-
-  material_requirements Json?      @default("{}")
-
-  // Thông tin cọc (Dành cho Đơn hàng COD giá trị lớn)
-  is_deposit_required Boolean?     @default(false)
-  is_deposit_paid     Boolean?     @default(false)
-  deposit_amount      Decimal?     @db.Decimal(15, 2)
-  
-  // Quan hệ
-  user_id           String?        @db.Uuid
-  invoices          invoices[]
-  order_items       order_items[]
-  order_tracking    order_tracking[]
-  quotations        quotations?    @relation(fields: [quotation_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  users             users?         @relation(fields: [user_id], references: [id], onUpdate: NoAction)
-  transactions      transactions[]
+  id                       String                     @id @default(uuid()) @db.Uuid
+  quotation_id             String?                    @unique @db.Uuid
+  order_code               String                     @unique @db.VarChar(50)
+  production_status        String?                    @default("pending_payment") @db.VarChar(50)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  total_amount             Decimal?                   @db.Decimal(15, 2)
+  user_id                  String?                    @db.Uuid
+  customer_name            String?                    @db.VarChar(100)
+  customer_phone           String?                    @db.VarChar(20)
+  installation_fee         Decimal?                   @default(0) @db.Decimal(15, 2)
+  order_notes              String?
+  shipping_address         String?
+  shipping_fee             Decimal?                   @default(0) @db.Decimal(15, 2)
+  material_requirements    Json?                      @default("{}")
+  deposit_amount           Decimal?                   @db.Decimal(15, 2)
+  is_deposit_paid          Boolean?                   @default(false)
+  is_deposit_required      Boolean?                   @default(false)
+  invoices                 invoices[]
   material_import_requests material_import_requests[]
-  
+  order_items              order_items[]
+  order_tracking           order_tracking[]
+  quotations               quotations?                @relation(fields: [quotation_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  users                    users?                     @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  transactions             transactions[]
 }
 
 model paint_types {
@@ -160,8 +153,6 @@ model paint_types {
   description     String?
   quotation_specs quotation_specs[]
 }
-
-
 
 model product_images {
   id          String    @id @default(uuid()) @db.Uuid
@@ -196,11 +187,11 @@ model products {
   description        String?
   base_price         Decimal?            @default(0) @db.Decimal(15, 2)
   cart_items         cart_items[]
+  favorite_products  favorite_products[]
   order_items        order_items[]
+  product_drawings   product_drawings[]
   product_images     product_images[]
   product_categories product_categories? @relation(fields: [category_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  product_drawings   product_drawings[]
-  favorite_products  favorite_products[]
 }
 
 model quotation_attachments {
@@ -232,32 +223,30 @@ model quotations {
   id                    String                  @id @default(uuid()) @db.Uuid
   user_id               String?                 @db.Uuid
   session_id            String?                 @db.Uuid
-  drawing_id            String?                 @db.Uuid
   total_quoted_price    Decimal                 @db.Decimal(15, 2)
-  admin_proposed_price  Decimal?                @db.Decimal(15, 2) 
-  user_proposed_price   Decimal?                @db.Decimal(15, 2)
   status                String?                 @default("draft") @db.VarChar(50)
   created_at            DateTime?               @default(now()) @db.Timestamptz(6)
   title                 String?                 @db.VarChar(255)
+  admin_proposed_price  Decimal?                @db.Decimal(15, 2)
+  user_proposed_price   Decimal?                @db.Decimal(15, 2)
   nick_name             String?                 @db.VarChar(255)
+  drawing_id            String?                 @db.Uuid
   cart_items            cart_items[]
   orders                orders?
   quotation_attachments quotation_attachments[]
   quotation_specs       quotation_specs[]
+  product_drawings      product_drawings?       @relation(fields: [drawing_id], references: [id], onUpdate: NoAction)
   ai_chat_sessions      ai_chat_sessions?       @relation(fields: [session_id], references: [id], onUpdate: NoAction)
   users                 users?                  @relation(fields: [user_id], references: [id], onUpdate: NoAction)
   transactions          transactions[]
-  product_drawings      product_drawings?       @relation(fields: [drawing_id], references: [id], onUpdate: NoAction)
 }
 
-
-
 model roles {
-  id               String             @id @default(uuid()) @db.Uuid
-  role_name        String             @unique @db.VarChar(50)
-  description      String?
-  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
-  users            users[]
+  id          String    @id @default(uuid()) @db.Uuid
+  role_name   String    @unique @db.VarChar(50)
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users[]
 }
 
 model transactions {
@@ -287,25 +276,25 @@ model user_profiles {
 }
 
 model users {
-  id                String             @id @default(uuid()) @db.Uuid
-  role_id           String?            @db.Uuid
-  username          String             @unique @db.VarChar(50)
+  id                String              @id @default(uuid()) @db.Uuid
+  role_id           String?             @db.Uuid
+  username          String              @unique @db.VarChar(50)
   password_hash     String
-  email             String             @unique @db.VarChar(100)
-  is_active         Boolean?           @default(true)
-  is_verified       Boolean            @default(false)
-  verification_code String?            @db.VarChar(10)
-  code_expires_at   DateTime?          @db.Timestamptz(6)
+  email             String              @unique @db.VarChar(100)
+  is_active         Boolean?            @default(true)
+  is_verified       Boolean             @default(false)
+  verification_code String?             @db.VarChar(10)
+  code_expires_at   DateTime?           @db.Timestamptz(6)
   refresh_token     String?
-  created_at        DateTime?          @default(now()) @db.Timestamptz(6)
-  last_login_at     DateTime?          @db.Timestamptz(6)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  last_login_at     DateTime?           @db.Timestamptz(6)
   ai_chat_sessions  ai_chat_sessions[]
+  favorite_products favorite_products[]
   orders            orders[]
   quotations        quotations[]
   shopping_carts    shopping_carts[]
   user_profiles     user_profiles?
-  roles             roles?             @relation(fields: [role_id], references: [id], onUpdate: NoAction)
-  favorite_products favorite_products[]
+  roles             roles?              @relation(fields: [role_id], references: [id], onUpdate: NoAction)
 }
 
 model order_items {
@@ -361,20 +350,19 @@ model cart_items {
 }
 
 model invoices {
-  id                String    @id @default(uuid()) @db.Uuid
-  order_id          String?   @db.Uuid
-  invoice_no        String    @unique @db.VarChar(100)
-  total_amount      Decimal   @db.Decimal(15, 2)
-  invoice_type      String?   @default("TOTAL") @db.VarChar(50)
-  status            String?   @default("PENDING") @db.VarChar(50)
-  parent_invoice_id String?   @db.Uuid
+  id                String     @id @default(uuid()) @db.Uuid
+  order_id          String?    @db.Uuid
+  invoice_no        String     @unique @db.VarChar(100)
+  total_amount      Decimal    @db.Decimal(15, 2)
   pdf_url           String?
-  email_sent_status String?   @default("pending") @db.VarChar(20)
-  sent_at           DateTime? @db.Timestamptz(6)
-  created_at        DateTime? @default(now()) @db.Timestamptz(6)
-
-  orders            orders?   @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  parent_invoice    invoices? @relation("InvoiceHierarchy", fields: [parent_invoice_id], references: [id])
+  email_sent_status String?    @default("pending") @db.VarChar(20)
+  sent_at           DateTime?  @db.Timestamptz(6)
+  created_at        DateTime?  @default(now()) @db.Timestamptz(6)
+  invoice_type      String?    @default("TOTAL") @db.VarChar(50)
+  parent_invoice_id String?    @db.Uuid
+  status            String?    @default("PENDING") @db.VarChar(50)
+  orders            orders?    @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parent_invoice    invoices?  @relation("InvoiceHierarchy", fields: [parent_invoice_id], references: [id])
   sub_invoices      invoices[] @relation("InvoiceHierarchy")
 }
 
@@ -389,96 +377,102 @@ model ai_drawing_analyses {
   ai_chat_messages ai_chat_messages? @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-
 model inventory {
-  id              String    @id @default(uuid()) @db.Uuid
-  material_id     String    @unique @db.Uuid // Unique vì mỗi vật tư chỉ có 1 dòng tổng tồn kho
-  quantity        Decimal   @default(0) @db.Decimal(12, 2) // Số lượng hiện có để sản xuất
-  leftover_amount Decimal   @default(0) @db.Decimal(12, 2) // Số lượng vụn/thừa có thể tái chế
-  min_stock_level Decimal   @default(0) @db.Decimal(12, 2) // Mức tồn kho tối thiểu
-  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
-  materials       materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-model inventory_logs {
-  id               String    @id @default(uuid()) @db.Uuid
-  material_id      String    @db.Uuid
-  action_type      String    @db.VarChar(50) // Phân loại: 'IMPORT' (Nhập), 'EXPORT' (Xuất), 'WASTE' (Hao phí)
-  quantity_change  Decimal   @db.Decimal(12, 2) // Số lượng thay đổi (dương là nhập, âm là xuất)
-  reference_code   String?   @db.VarChar(100) // Mã tham chiếu (VD: Mã đơn hàng #ORD-123, Mã phiếu nhập)
-  note             String?   // Ghi chú (VD: "Xuất kho cho đơn hàng A", "Nhập hàng từ nhà cung cấp")
-  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  id              String              @id @default(uuid()) @db.Uuid
+  material_id     String              @db.Uuid
+  thickness_id    String?             @db.Uuid
+  quantity        Decimal             @default(0) @db.Decimal(12, 2)
+  leftover_amount Decimal             @default(0) @db.Decimal(12, 2)
+  updated_at      DateTime?           @default(now()) @db.Timestamptz(6)
+  min_stock_level Decimal             @default(0) @db.Decimal(12, 2)
+  materials       materials           @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  material_thickness material_thickness? @relation(fields: [thickness_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   
-  materials        materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@unique([material_id, thickness_id])
+}
+
+model inventory_logs {
+  id              String              @id @default(uuid()) @db.Uuid
+  material_id     String              @db.Uuid
+  thickness_id    String?             @db.Uuid
+  action_type     String              @db.VarChar(50)
+  quantity_change Decimal             @db.Decimal(12, 2)
+  reference_code  String?             @db.VarChar(100)
+  note            String?
+  created_at      DateTime?           @default(now()) @db.Timestamptz(6)
+  materials       materials           @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  material_thickness material_thickness? @relation(fields: [thickness_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model component_templates {
-  id                    String      @id @default(uuid()) @db.Uuid
-  component_name        String      @db.VarChar(255)
-  category_code         String?     @db.VarChar(50) 
-  default_length        Decimal?    @db.Decimal(12, 2)
-  default_width         Decimal?    @db.Decimal(12, 2)
-  default_height        Decimal?    @db.Decimal(12, 2)
-  default_unit          String      @default("mm") @db.VarChar(20)
-  allow_paint           Boolean     @default(true)
-  html_code             String?     @db.Text
-  drawing_image_url     String?
-  blueprint_html_code   String?     @db.Text
-  blueprint_image_url   String?
-  created_at            DateTime?   @default(now()) @db.Timestamptz(6)
-  
-  allowed_materials     component_allowed_materials[]
+  id                  String                        @id @default(uuid()) @db.Uuid
+  component_name      String                        @db.VarChar(255)
+  category_code       String?                       @db.VarChar(50)
+  default_length      Decimal?                      @db.Decimal(12, 2)
+  default_width       Decimal?                      @db.Decimal(12, 2)
+  default_height      Decimal?                      @db.Decimal(12, 2)
+  default_unit        String                        @default("mm") @db.VarChar(20)
+  allow_paint         Boolean                       @default(true)
+  created_at          DateTime?                     @default(now()) @db.Timestamptz(6)
+  drawing_image_url   String?
+  html_code           String?
+  blueprint_html_code String?
+  blueprint_image_url String?
+  allowed_materials   component_allowed_materials[]
 }
 
 model component_allowed_materials {
-  component_id String              @db.Uuid
-  material_id  String              @db.Uuid
-  default_waste Decimal?           @default(0) @db.Decimal(10, 2)
-  
-  components   component_templates @relation(fields: [component_id], references: [id], onDelete: Cascade)
-  materials    materials           @relation(fields: [material_id], references: [id], onDelete: Cascade)
+  component_id  String              @db.Uuid
+  material_id   String              @db.Uuid
+  default_waste Decimal?            @default(0) @db.Decimal(10, 2)
+  components    component_templates @relation(fields: [component_id], references: [id], onDelete: Cascade)
+  materials     materials           @relation(fields: [material_id], references: [id], onDelete: Cascade)
 
   @@id([component_id, material_id])
 }
+
 model material_import_requests {
-  id                 String    @id @default(uuid()) @db.Uuid
-  order_id           String?   @db.Uuid
-  material_id        String    @db.Uuid
-  requested_quantity Decimal   @db.Decimal(12, 2)
-  status             String?   @default("PENDING") @db.VarChar(50) // Trạng thái: PENDING, APPROVED, IMPORTED
+  id                 String              @id @default(uuid()) @db.Uuid
+  order_id           String?             @db.Uuid
+  material_id        String              @db.Uuid
+  thickness_id       String?             @db.Uuid
+  requested_quantity Decimal             @db.Decimal(12, 2)
+  status             String?             @default("PENDING") @db.VarChar(50)
   note               String?
-  created_at         DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime? @default(now()) @updatedAt @db.Timestamptz(6)
-  actual_quantity    Decimal?  @db.Decimal(12, 2)
-  inventory_before   Decimal?  @db.Decimal(12, 2)
-  inventory_after    Decimal?  @db.Decimal(12, 2)
-  orders             orders?   @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  materials          materials @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?           @default(now()) @updatedAt @db.Timestamptz(6)
+  actual_quantity    Decimal?            @db.Decimal(12, 2)
+  inventory_after    Decimal?            @db.Decimal(12, 2)
+  inventory_before   Decimal?            @db.Decimal(12, 2)
+  materials          materials           @relation(fields: [material_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  material_thickness material_thickness? @relation(fields: [thickness_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  orders             orders?             @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model product_drawings {
-  id              String   @id @default(uuid()) @db.Uuid
-  product_id      String   @db.Uuid 
-  drawing_name    String   @db.VarChar(255) 
-  drawing_type    String   @default("ASSEMBLY")
-  main_image_url  String   
+  id                  String          @id @default(uuid()) @db.Uuid
+  product_id          String          @db.Uuid
+  drawing_name        String          @db.VarChar(255)
+  drawing_type        String          @default("ASSEMBLY")
+  main_image_url      String
+  scale_ratio         String          @default("1:100") @db.VarChar(50)
+  is_active           Boolean         @default(true)
+  created_at          DateTime?       @default(now()) @db.Timestamptz(6)
   blueprint_image_url String?
-  scale_ratio     String   @default("1:100") @db.VarChar(50)
-  is_active       Boolean  @default(true)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
-
-  products        products @relation(fields: [product_id], references: [id], onDelete: Cascade)
-  drawing_parts   drawing_parts[]
-  quotations      quotations[]
+  html_code           String?
+  drawing_parts       drawing_parts[]
+  products            products        @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  quotations          quotations[]
 }
 
 model drawing_parts {
-  id                String   @id @default(uuid()) @db.Uuid
-  drawing_id        String   @db.Uuid
-  component_name    String   @db.VarChar(255) 
-  part_image_url    String?  
-  material_category String?  
-
-  product_drawings  product_drawings @relation(fields: [drawing_id], references: [id], onDelete: Cascade)
+  id                       String           @id @default(uuid()) @db.Uuid
+  drawing_id               String           @db.Uuid
+  component_name           String           @db.VarChar(255)
+  part_image_url           String?
+  part_blueprint_image_url String?
+  material_category        String?
+  product_drawings         product_drawings @relation(fields: [drawing_id], references: [id], onDelete: Cascade)
 }
 
 model favorite_products {
@@ -486,9 +480,8 @@ model favorite_products {
   user_id    String   @db.Uuid
   product_id String   @db.Uuid
   created_at DateTime @default(now()) @db.Timestamptz(6)
-
-  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   products   products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, product_id])
 }

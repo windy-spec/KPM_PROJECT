@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash, Trash2, Maximize, X, Save, Image as ImageIcon, Lock, Unlock, Loader2 } from "lucide-react";
+import { Plus, Trash, Trash2, Save, Image as ImageIcon, Loader2, Code, Edit } from "lucide-react";
 import adminService from "../../services/admin.service";
 import apiClient from "../../services/apiClient";
 import { toast } from "react-toastify";
-import { Rnd } from "react-rnd";
 import html2canvas from "html2canvas";
 
 const ManageDrawings = () => {
@@ -19,14 +18,11 @@ const ManageDrawings = () => {
   const [drawingName, setDrawingName] = useState("");
   const [scaleRatio, setScaleRatio] = useState("1:100");
   const [mainImageUrl, setMainImageUrl] = useState("");
-  const [blueprintImageUrl, setBlueprintImageUrl] = useState("");
+  const [htmlCode, setHtmlCode] = useState("");
   const [parts, setParts] = useState([]);
 
-  // Canvas State
-  const [canvasItems, setCanvasItems] = useState([]);
   const [capturing, setCapturing] = useState(false);
-  const [activeCanvasItemId, setActiveCanvasItemId] = useState(null);
-  const canvasRef = useRef(null);
+  const previewRef = useRef(null);
 
   useEffect(() => {
     loadProducts();
@@ -75,9 +71,8 @@ const ManageDrawings = () => {
   const handleOpenAddForm = () => {
     const product = products.find((p) => p.id === selectedProduct);
     setEditingDrawingId(null);
-    setCanvasItems([]);
     setMainImageUrl("");
-    setBlueprintImageUrl("");
+    setHtmlCode("");
 
     if (product) {
       setDrawingName(`Bản vẽ ${product.product_name || ""}`);
@@ -97,6 +92,7 @@ const ManageDrawings = () => {
               component_name: comp.component_name || comp.name || "",
               material_category: tmpl?.category_code || comp.category_code || comp.component_name || comp.name || "Khung/Vỏ",
               part_image_url: comp.drawing_image_url || tmpl?.drawing_image_url || "", 
+              part_blueprint_image_url: "",
             };
           });
         }
@@ -114,14 +110,14 @@ const ManageDrawings = () => {
     setDrawingName(drawing.drawing_name || "");
     setScaleRatio(drawing.scale_ratio || "1:100");
     setMainImageUrl(drawing.main_image_url || "");
-    setBlueprintImageUrl(drawing.blueprint_image_url || "");
+    setHtmlCode(drawing.html_code || "");
     
     const loadedParts = drawing.drawing_parts?.map(part => ({
       ...part,
-      part_image_url: part.part_image_url || ""
+      part_image_url: part.part_image_url || "",
+      part_blueprint_image_url: part.part_blueprint_image_url || ""
     })) || [];
     setParts(loadedParts);
-    setCanvasItems([]); // Reset canvas for new editing session
     setShowForm(true);
   };
 
@@ -157,8 +153,19 @@ const ManageDrawings = () => {
     }
   };
 
+  const handleHtmlCodeUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setHtmlCode(event.target.result);
+    };
+    reader.readAsText(file);
+  };
+
   const handleAddPart = () => {
-    setParts([...parts, { component_name: "", material_category: "", part_image_url: "" }]);
+    setParts([...parts, { component_name: "", material_category: "", part_image_url: "", part_blueprint_image_url: "" }]);
   };
 
   const handleRemovePart = (index) => {
@@ -173,91 +180,21 @@ const ManageDrawings = () => {
     setParts(newParts);
   };
 
-  // Canvas Logic
-  const bringToFront = (id) => {
-    setActiveCanvasItemId(id);
-    setCanvasItems(prev => {
-      const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
-      return prev.map(item => 
-        item.id === id ? { ...item, zIndex: currentMaxZ + 1 } : item
-      );
-    });
-  };
-
-  const handleAddToCanvas = (part) => {
-    if (!part.part_image_url) {
-      toast.warning("Vui lòng upload ảnh cho linh kiện này trước khi đưa vào Canvas!");
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      let w = img.width;
-      let h = img.height;
-      const MAX_SIZE = 300;
-      
-      if (w > MAX_SIZE || h > MAX_SIZE) {
-        if (w > h) {
-          h = (h / w) * MAX_SIZE;
-          w = MAX_SIZE;
-        } else {
-          w = (w / h) * MAX_SIZE;
-          h = MAX_SIZE;
-        }
-      } else if (w < 50 && h < 50) {
-        w = 100;
-        h = 100;
-      }
-
-      setCanvasItems(prev => {
-        const offset = (prev.length % 10) * 30;
-        const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
-        
-        const newItem = {
-          id: Date.now().toString() + Math.random().toString(),
-          part_image_url: part.part_image_url,
-          x: 50 + offset,
-          y: 50 + offset,
-          width: w,
-          height: h,
-          zIndex: currentMaxZ + 1,
-        };
-        return [...prev, newItem];
-      });
-    };
-    img.onerror = () => {
-        setCanvasItems(prev => {
-            const offset = (prev.length % 10) * 30;
-            const currentMaxZ = Math.max(0, ...prev.map(i => i.zIndex || 0));
-            return [...prev, {
-                id: Date.now().toString() + Math.random().toString(),
-                part_image_url: part.part_image_url,
-                x: 50 + offset, y: 50 + offset, width: 150, height: 150, zIndex: currentMaxZ + 1,
-            }];
-        });
-    };
-    img.src = part.part_image_url;
-  };
-
-  const handleRemoveCanvasItem = (id) => {
-    setCanvasItems(canvasItems.filter(item => item.id !== id));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedProduct) return toast.warning("Vui lòng chọn sản phẩm trước");
     if (!drawingName) return toast.warning("Vui lòng nhập tên bản vẽ");
+    if (!htmlCode) return toast.warning("Vui lòng tải lên Code HTML 3D tổng thể");
     
     setCapturing(true);
-    setActiveCanvasItemId(null); // Bỏ focus để ẩn viền resize
 
     setTimeout(async () => {
       try {
         let finalMainImageUrl = mainImageUrl;
         
-        // Nếu có canvas item, ưu tiên chụp canvas làm ảnh chính
-        if (canvasRef.current && canvasItems.length > 0) {
-          const canvas = await html2canvas(canvasRef.current, { backgroundColor: null });
+        // Auto capture HTML preview if no static image uploaded
+        if (previewRef.current && !finalMainImageUrl) {
+          const canvas = await html2canvas(previewRef.current, { backgroundColor: null });
           const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
           const file = new File([blob], 'master_drawing.png', { type: 'image/png' });
           const formData = new FormData();
@@ -273,7 +210,7 @@ const ManageDrawings = () => {
         }
 
         if (!finalMainImageUrl) {
-           toast.error("Vui lòng xếp linh kiện vào Canvas hoặc upload Ảnh Tổng Thể!");
+           toast.error("Không thể tạo ảnh đại diện tĩnh từ Code HTML. Vui lòng kiểm tra lại Code HTML.");
            setCapturing(false);
            return;
         }
@@ -283,7 +220,7 @@ const ManageDrawings = () => {
           drawing_name: drawingName,
           scale_ratio: scaleRatio,
           main_image_url: finalMainImageUrl,
-          blueprint_image_url: blueprintImageUrl,
+          html_code: htmlCode,
           parts,
         };
 
@@ -303,16 +240,15 @@ const ManageDrawings = () => {
       } finally {
         setCapturing(false);
       }
-    }, 300);
+    }, 500);
   };
 
   const resetForm = () => {
     setDrawingName("");
     setScaleRatio("1:100");
     setMainImageUrl("");
-    setBlueprintImageUrl("");
+    setHtmlCode("");
     setParts([]);
-    setCanvasItems([]);
     setEditingDrawingId(null);
   };
 
@@ -384,17 +320,18 @@ const ManageDrawings = () => {
                   </span>
                 </div>
                 <div className="p-4 flex flex-col xl:flex-row gap-4 h-full">
-                  <div className="w-full xl:w-2/5 flex items-center justify-center bg-[#f8f9fa] border border-dashed border-outline-variant/60 rounded-lg p-2 min-h-[200px]">
-                    <img
-                      src={d.main_image_url}
-                      alt="Main"
-                      className="w-full h-full object-contain max-h-[250px] rounded"
-                    />
+                  <div className="w-full xl:w-2/5 flex flex-col gap-2">
+                     <div className="flex-1 flex items-center justify-center bg-[#f8f9fa] border border-dashed border-outline-variant/60 rounded-lg p-2 min-h-[200px]">
+                       <img
+                         src={d.main_image_url}
+                         alt="Main"
+                         className="w-full h-full object-contain max-h-[250px] rounded"
+                       />
+                     </div>
                   </div>
                   <div className="w-full xl:w-3/5">
                     <h5 className="font-bold text-sm mb-3 text-on-surface flex items-center gap-2 border-b pb-2">
-                      <ImageIcon className="w-4 h-4 text-primary" /> Bóc tách
-                      linh kiện ({d.drawing_parts?.length || 0})
+                      <ImageIcon className="w-4 h-4 text-primary" /> Ảnh tĩnh/Bản vẽ linh kiện ({d.drawing_parts?.length || 0})
                     </h5>
                     <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
                       {d.drawing_parts?.map((part) => (
@@ -402,12 +339,23 @@ const ManageDrawings = () => {
                           key={part.id}
                           className="flex items-center gap-3 p-2 bg-surface-container/20 rounded-lg border border-outline-variant/40 hover:border-primary/50 transition-colors"
                         >
-                          <div className="w-12 h-12 rounded overflow-hidden border bg-white flex shrink-0 items-center justify-center">
-                            <img
-                              src={part.part_image_url || "/placeholder.png"}
-                              className="w-full h-full object-contain"
-                              alt="part"
-                            />
+                          <div className="flex gap-2 shrink-0">
+                            {part.part_blueprint_image_url && (
+                              <div className="w-12 h-12 rounded overflow-hidden border bg-white flex items-center justify-center" title="Ảnh nét đứt">
+                                <img
+                                  src={part.part_blueprint_image_url}
+                                  className="w-full h-full object-contain"
+                                  alt="nét đứt"
+                                />
+                              </div>
+                            )}
+                            <div className="w-12 h-12 rounded overflow-hidden border bg-slate-100 flex items-center justify-center" title="Ảnh 3D">
+                              <img
+                                src={part.part_image_url || "/placeholder.png"}
+                                className="w-full h-full object-contain"
+                                alt="3d"
+                              />
+                            </div>
                           </div>
                           <div>
                             <p className="text-[13px] font-bold text-on-surface">
@@ -428,7 +376,7 @@ const ManageDrawings = () => {
         </div>
       )}
 
-      {/* FORM TẠO/SỬA BẢN VẼ (CANVAS BUILDER) */}
+      {/* FORM TẠO/SỬA BẢN VẼ */}
       {showForm && (
         <div className="bg-white rounded-xl shadow-lg border border-outline-variant flex flex-col animate-in fade-in duration-200 min-h-[90vh]">
           <div className="flex justify-between items-center p-4 border-b">
@@ -458,9 +406,9 @@ const ManageDrawings = () => {
           </div>
 
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* CỘT TRÁI: DANH SÁCH LINH KIỆN */}
-            <div className="w-full lg:w-1/3 flex flex-col border-r border-outline-variant/60 bg-surface-container/5 overflow-hidden">
-              <div className="p-4 border-b bg-white space-y-4">
+            {/* CỘT TRÁI: NHẬP LIỆU */}
+            <div className="w-full lg:w-1/3 flex flex-col border-r border-outline-variant/60 bg-surface-container/5 overflow-y-auto custom-scrollbar">
+              <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-black uppercase tracking-wider text-on-surface-variant mb-1">Tên Bản Vẽ</label>
@@ -483,17 +431,37 @@ const ManageDrawings = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2 border-t border-outline-variant/30 pt-3">
-                  <div className="bg-surface-container/20 p-2 border border-outline-variant/50 rounded-lg">
-                    <label className="block text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/80 mb-1">Ảnh Tổng Thể 3D</label>
+                <div className="border-t border-outline-variant/30 pt-4">
+                  <div className="bg-surface-container/20 p-4 border border-outline-variant/50 rounded-lg">
+                    <label className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.1em] text-primary mb-2">
+                      <Code className="w-4 h-4" /> Code HTML 3D Tổng Thể
+                    </label>
                     <input
+                      type="file"
+                      accept=".html"
+                      onChange={handleHtmlCodeUpload}
+                      className="block w-full text-xs text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors border border-dashed border-outline-variant p-2 bg-white"
+                    />
+                    <p className="text-[10px] text-on-surface-variant/70 mt-2 font-medium">Tải lên file HTML (được AI sinh ra) chứa mô hình 3D cho toàn bộ sản phẩm.</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-outline-variant/30 pt-4">
+                  <div className="bg-surface-container/20 p-4 border border-outline-variant/50 rounded-lg">
+                     <label className="block text-xs font-black uppercase tracking-[0.1em] text-on-surface-variant/80 mb-2">
+                       Ảnh Tĩnh 3D (Tùy chọn)
+                     </label>
+                     <p className="text-[10px] text-on-surface-variant/70 mb-2 font-medium">
+                       Nếu không tải lên, hệ thống sẽ tự động chụp lại từ Code HTML.
+                     </p>
+                     <input
                       type="file"
                       accept="image/*"
                       onChange={(e) => handleUploadImage(e, setMainImageUrl)}
-                      className="block w-full text-[10px] text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
+                      className="block w-full text-xs text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
                     />
                     {mainImageUrl && (
-                      <div className="mt-2 relative w-full h-20 rounded-lg overflow-hidden border border-outline-variant/60">
+                      <div className="mt-3 relative w-full h-32 rounded-lg overflow-hidden border border-outline-variant/60">
                         <img src={mainImageUrl} alt="Preview" className="w-full h-full object-contain bg-slate-50" />
                         <button type="button" onClick={() => setMainImageUrl("")} className="absolute top-1 right-1 bg-rose-500/90 text-white p-1 rounded-md hover:bg-rose-600 transition-colors shadow-sm">
                           <Trash2 className="w-3 h-3" />
@@ -501,201 +469,125 @@ const ManageDrawings = () => {
                       </div>
                     )}
                   </div>
-
-                  <div className="bg-surface-container/20 p-2 border border-outline-variant/50 rounded-lg">
-                    <label className="block text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/80 mb-1">Bản Vẽ Nét Đứt</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleUploadImage(e, setBlueprintImageUrl)}
-                      className="block w-full text-[10px] text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer transition-colors"
-                    />
-                    {blueprintImageUrl && (
-                      <div className="mt-2 relative w-full h-20 rounded-lg overflow-hidden border border-outline-variant/60">
-                        <img src={blueprintImageUrl} alt="Blueprint Preview" className="w-full h-full object-contain bg-slate-50" />
-                        <button type="button" onClick={() => setBlueprintImageUrl("")} className="absolute top-1 right-1 bg-rose-500/90 text-white p-1 rounded-md hover:bg-rose-600 transition-colors shadow-sm">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-between items-center pt-4">
                   <h5 className="font-black text-sm uppercase text-primary">
-                    Bóc tách Linh Kiện
+                    Danh Sách Ảnh Linh Kiện
                   </h5>
                   <button
                     type="button"
                     onClick={handleAddPart}
-                    className="flex items-center gap-1 text-xs font-bold bg-white border border-outline-variant px-3 py-1.5 rounded hover:bg-surface-container transition-all"
+                    className="flex items-center gap-1 text-xs font-bold bg-white border border-outline-variant px-3 py-1.5 rounded hover:bg-surface-container transition-all shadow-sm"
                   >
                     <Plus className="w-3 h-3" /> Thêm
                   </button>
                 </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                {parts.map((part, index) => (
-                  <div key={index} className="bg-white border border-outline-variant/80 rounded-lg p-3 shadow-sm relative group">
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePart(index)}
-                      className="absolute top-2 right-2 text-on-surface-variant hover:text-rose-500 bg-surface-container/50 hover:bg-rose-50 p-1 rounded transition-colors"
-                    >
-                      <Trash className="w-3.5 h-3.5" />
-                    </button>
-                    
-                    <div className="grid grid-cols-1 gap-2 mb-3 pr-6">
-                      <input
-                        type="text"
-                        value={part.component_name}
-                        onChange={(e) => handlePartChange(index, "component_name", e.target.value)}
-                        className="w-full p-1.5 border-b border-outline-variant/40 bg-transparent text-sm focus:border-primary outline-none font-bold"
-                        placeholder="Tên linh kiện"
-                      />
-                      <input
-                        type="text"
-                        value={part.material_category}
-                        onChange={(e) => handlePartChange(index, "material_category", e.target.value)}
-                        className="w-full p-1.5 border-b border-outline-variant/40 bg-transparent text-xs focus:border-primary outline-none text-on-surface-variant"
-                        placeholder="Hạng mục vật tư"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 shrink-0 bg-surface-container/20 border border-dashed border-outline-variant rounded flex items-center justify-center overflow-hidden">
-                        {part.part_image_url ? (
-                          <img src={part.part_image_url} alt="part" className="w-full h-full object-contain" />
-                        ) : (
-                          <ImageIcon className="text-outline-variant/50 w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="flex-1 flex flex-col gap-2">
-                        <input
-                          type="file"
-                          onChange={(e) => handleUploadImage(e, (url) => handlePartChange(index, "part_image_url", url))}
-                          className="block w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer"
-                          accept="image/*"
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => handleAddToCanvas(part)}
-                          className="text-xs font-bold bg-primary text-white py-1.5 rounded hover:bg-primary/90 flex justify-center items-center gap-1 shadow-sm"
-                        >
-                          Đưa vào Canvas
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
                 
-                {parts.length === 0 && (
-                  <div className="text-center p-6 text-sm text-on-surface-variant/70 border-2 border-dashed border-outline-variant rounded-lg">
-                    Chưa có linh kiện. Hãy "Thêm" linh kiện.
-                  </div>
-                )}
+                <div className="space-y-4">
+                  {parts.map((part, index) => (
+                    <div key={index} className="bg-white border border-outline-variant/80 rounded-lg p-3 shadow-sm relative group">
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePart(index)}
+                        className="absolute top-2 right-2 text-on-surface-variant hover:text-rose-500 bg-surface-container/50 hover:bg-rose-50 p-1 rounded transition-colors"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                      </button>
+                      
+                      <div className="grid grid-cols-1 gap-2 mb-3 pr-6">
+                        <input
+                          type="text"
+                          value={part.component_name}
+                          onChange={(e) => handlePartChange(index, "component_name", e.target.value)}
+                          className="w-full p-1.5 border-b border-outline-variant/40 bg-transparent text-sm focus:border-primary outline-none font-bold"
+                          placeholder="Tên linh kiện"
+                        />
+                        <input
+                          type="text"
+                          value={part.material_category}
+                          onChange={(e) => handlePartChange(index, "material_category", e.target.value)}
+                          className="w-full p-1.5 border-b border-outline-variant/40 bg-transparent text-xs focus:border-primary outline-none text-on-surface-variant"
+                          placeholder="Hạng mục vật tư"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 shrink-0 bg-surface-container/20 border border-dashed border-outline-variant rounded flex items-center justify-center overflow-hidden">
+                            {part.part_blueprint_image_url ? (
+                              <img src={part.part_blueprint_image_url} alt="part" className="w-full h-full object-contain bg-white" />
+                            ) : (
+                              <ImageIcon className="text-outline-variant/50 w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-on-surface-variant mb-1">Ảnh Nét Đứt</label>
+                            <input
+                              type="file"
+                              onChange={(e) => handleUploadImage(e, (url) => handlePartChange(index, "part_blueprint_image_url", url))}
+                              className="block w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer"
+                              accept="image/*"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 shrink-0 bg-slate-100 border border-dashed border-outline-variant rounded flex items-center justify-center overflow-hidden">
+                            {part.part_image_url ? (
+                              <img src={part.part_image_url} alt="part 3d" className="w-full h-full object-contain" />
+                            ) : (
+                              <ImageIcon className="text-outline-variant/50 w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-bold text-on-surface-variant mb-1">Ảnh Tĩnh 3D</label>
+                            <input
+                              type="file"
+                              onChange={(e) => handleUploadImage(e, (url) => handlePartChange(index, "part_image_url", url))}
+                              className="block w-full text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer"
+                              accept="image/*"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {parts.length === 0 && (
+                    <div className="text-center p-6 text-sm text-on-surface-variant/70 border-2 border-dashed border-outline-variant rounded-lg">
+                      Chưa có linh kiện. Hãy thêm ảnh nét đứt và ảnh 3D để đính kèm vào báo giá.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* CỘT PHẢI: CANVAS BUILDER */}
-            <div className="w-full lg:w-2/3 flex flex-col bg-[#f0f2f5] relative overflow-hidden">
-              <div className="absolute top-4 left-4 z-10 flex gap-2">
-                 <div className="bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-outline-variant/50 shadow-sm text-xs font-bold text-on-surface">
-                   Canvas Builder
+            {/* CỘT PHẢI: LIVE PREVIEW HTML */}
+            <div className="w-full lg:w-2/3 flex flex-col bg-[#f8f9fa] relative border-l border-outline-variant/60 overflow-hidden">
+               <div className="absolute top-4 left-4 z-10 flex gap-2">
+                 <div className="bg-primary text-white px-3 py-1.5 rounded-lg shadow text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                   <Code className="w-4 h-4" /> Live Preview 3D
                  </div>
-                 {canvasItems.length === 0 && (
-                    <div className="bg-amber-50/80 backdrop-blur text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 shadow-sm text-xs font-semibold">
-                      Kéo thả, thay đổi kích thước linh kiện để tạo ảnh ghép.
+               </div>
+               
+               <div className="flex-1 overflow-auto bg-slate-100 p-4 flex justify-center min-h-[500px]">
+                  {htmlCode ? (
+                    <div className="w-full h-full flex items-center justify-center bg-transparent min-w-fit">
+                      <div
+                        ref={previewRef}
+                        dangerouslySetInnerHTML={{ __html: htmlCode }}
+                        className="pointer-events-auto bg-transparent relative rounded-xl border border-outline-variant/20 shadow-sm"
+                      />
                     </div>
-                 )}
-              </div>
-              
-              <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 bg-white/90 backdrop-blur p-2 rounded-xl shadow-sm border border-outline-variant/50">
-                 <div className="text-[11px] font-bold text-on-surface-variant px-2">Ảnh tải lên tự do (Nền):</div>
-                 <input
-                  type="file"
-                  onChange={(e) => handleUploadImage(e, setMainImageUrl)}
-                  className="block w-48 text-[10px] file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary hover:file:text-white cursor-pointer"
-                  accept="image/*"
-                />
-              </div>
-
-              {/* VÙNG CANVAS */}
-              <div 
-                className="flex-1 w-full h-full overflow-auto p-12 flex justify-center items-center bg-surface-container/5"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) setActiveCanvasItemId(null);
-                }}
-              >
-                <div 
-                  ref={canvasRef}
-                  className="relative bg-white shadow-xl border border-outline-variant/30"
-                  style={{ width: '800px', height: '600px', backgroundImage: mainImageUrl ? `url(${mainImageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget) setActiveCanvasItemId(null);
-                  }}
-                >
-                  {!mainImageUrl && canvasItems.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center text-on-surface-variant/40 border-2 border-dashed border-outline-variant/30 m-4 rounded-xl pointer-events-none">
-                      Vùng thiết kế bản vẽ tổng thể (800x600)
-                    </div>
+                  ) : (
+                     <div className="flex flex-col items-center justify-center text-outline-variant h-full w-full border-2 border-dashed border-outline-variant/40 rounded-xl m-8">
+                        <ImageIcon className="w-16 h-16 mb-4 text-outline-variant/50" />
+                        <p className="font-semibold text-lg text-on-surface-variant/50">Chưa tải lên Code HTML</p>
+                        <p className="text-sm mt-2 text-on-surface-variant/40">Tải lên file .html ở cột bên trái để xem trước Bản Vẽ Tổng Thể.</p>
+                     </div>
                   )}
-
-                  {canvasItems.map((item) => (
-                    <Rnd
-                      key={item.id}
-                      size={{ width: item.width, height: item.height }}
-                      position={{ x: item.x, y: item.y }}
-                      onDragStop={(e, d) => {
-                        setCanvasItems(prev => prev.map(i => i.id === item.id ? { ...i, x: d.x, y: d.y } : i));
-                      }}
-                      onResizeStop={(e, direction, ref, delta, position) => {
-                        setCanvasItems(prev => prev.map(i => i.id === item.id ? { 
-                          ...i, 
-                          width: ref.offsetWidth, 
-                          height: ref.offsetHeight, 
-                          ...position 
-                        } : i));
-                      }}
-                      bounds="parent"
-                      lockAspectRatio={item.aspectLocked !== false}
-                      onDragStart={() => bringToFront(item.id)}
-                      onResizeStart={() => bringToFront(item.id)}
-                      onMouseDown={() => bringToFront(item.id)}
-                      style={{ zIndex: item.zIndex || 1 }}
-                      className={activeCanvasItemId === item.id && !capturing ? "border-2 border-primary border-dashed !z-[9999]" : ""}
-                    >
-                      <div className="w-full h-full relative group">
-                        <img src={item.part_image_url} className="w-full h-full object-contain pointer-events-none select-none drop-shadow-sm" alt="part in canvas" />
-                        
-                        {activeCanvasItemId === item.id && !capturing && (
-                          <>
-                            <button 
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleRemoveCanvasItem(item.id); }}
-                              className="absolute -top-3 -right-3 bg-rose-500 text-white rounded-full p-1.5 shadow-lg hover:bg-rose-600 z-50 cursor-pointer"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setCanvasItems(prev => prev.map(i => i.id === item.id ? { ...i, aspectLocked: i.aspectLocked === false ? true : false } : i));
-                              }}
-                              className="absolute -bottom-3 -right-3 bg-slate-800 text-white rounded-full p-1.5 shadow-lg hover:bg-slate-900 z-50 cursor-pointer"
-                              title={item.aspectLocked === false ? "Đang Mở khóa (Kéo tự do) - Bấm để Khóa" : "Đang Khóa tỷ lệ - Bấm để Mở"}
-                            >
-                              {item.aspectLocked === false ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-white" />}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </Rnd>
-                  ))}
-                </div>
-              </div>
+               </div>
             </div>
           </div>
         </div>

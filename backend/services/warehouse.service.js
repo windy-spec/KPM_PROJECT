@@ -335,7 +335,7 @@ class WarehouseService {
       order: order,
     };
   }
-
+  
   // Lấy tất cả thông tin tồn kho
   async getAllInventory() {
     return await prisma.inventory.findMany({
@@ -347,6 +347,7 @@ class WarehouseService {
             base_price: true,
           },
         },
+        material_thickness: true,
       },
       orderBy: { updated_at: "desc" },
     });
@@ -499,7 +500,8 @@ class WarehouseService {
       await tx.inventory_logs.create({
         data: {
           material_id: inventory.material_id,
-          action_type: "MANUAL_ADJUST",
+            thickness_id: inventory.thickness_id || null,
+            action_type: "MANUAL_ADJUST",
           quantity_change: quantityChange,
           note: note || "Điều chỉnh tồn kho thủ công",
           reference_code: `INVENTORY_${id}`,
@@ -518,6 +520,7 @@ class WarehouseService {
     const dataToInsert = items.map((item) => ({
       order_id: item.order_id || null,
       material_id: item.material_id,
+        thickness_id: item.thickness_id || null,
       requested_quantity: parseFloat(item.requested_quantity),
       note: note || "Yêu cầu cấp vật tư bổ sung từ kho",
       status: "PENDING",
@@ -541,9 +544,10 @@ class WarehouseService {
 
     return await prisma.$transaction(async (tx) => {
       // 1. Get current inventory
-      const inv = await tx.inventory.findUnique({
-        where: { material_id: request.material_id },
-      });
+      let whereClause = { material_id: request.material_id };
+        if (request.thickness_id) whereClause.thickness_id = request.thickness_id;
+        else whereClause.thickness_id = null;
+        const inv = await tx.inventory.findFirst({ where: whereClause });
       const inventory_before = inv ? parseFloat(inv.quantity) : 0;
       const inventory_after = inventory_before + actualQuantity;
 
@@ -559,20 +563,28 @@ class WarehouseService {
       });
 
       // 3. Update inventory
-      await tx.inventory.upsert({
-        where: { material_id: request.material_id },
-        update: { quantity: inventory_after },
-        create: {
-          material_id: request.material_id,
-          quantity: inventory_after,
-        },
-      });
+      const existingInv = await tx.inventory.findFirst({ where: whereClause });
+      if (existingInv) {
+        await tx.inventory.update({
+          where: { id: existingInv.id },
+          data: { quantity: inventory_after }
+        });
+      } else {
+        await tx.inventory.create({
+          data: {
+            material_id: request.material_id,
+            thickness_id: request.thickness_id || null,
+            quantity: inventory_after
+          }
+        });
+      }
 
       // 4. Log inventory
       await tx.inventory_logs.create({
         data: {
           material_id: request.material_id,
-          action_type: "IMPORT",
+            thickness_id: request.thickness_id || null,
+            action_type: "IMPORT",
           quantity_change: actualQuantity,
           reference_code: `REQ_${requestId}`,
           note: request.order_id
@@ -591,9 +603,7 @@ class WarehouseService {
           let isEnough = true;
           for (const [matId, reqQtyStr] of Object.entries(reqs)) {
             const reqQty = parseFloat(reqQtyStr);
-            const matInv = await tx.inventory.findUnique({
-              where: { material_id: matId },
-            });
+            const matInv = await tx.inventory.findFirst({ where: { material_id: matId } });
             const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
             if (currentStock < reqQty) {
               isEnough = false;
@@ -632,7 +642,8 @@ class WarehouseService {
       await tx.inventory_logs.create({
         data: {
           material_id: inventory.material_id,
-          action_type: "DELETE",
+            thickness_id: inventory.thickness_id || null,
+            action_type: "DELETE",
           quantity_change: -parseFloat(inventory.quantity), // Trừ sạch số lượng hiện tại
           note: "Xoá hoàn toàn mã tồn kho khỏi hệ thống",
         },

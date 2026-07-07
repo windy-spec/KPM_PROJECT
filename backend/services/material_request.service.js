@@ -86,9 +86,13 @@ class MaterialRequestService {
         if (order && order.production_status === "out_of_stock") {
             const reqs = order.material_requirements || {};
             let isEnough = true;
-            for (const [matId, reqQtyStr] of Object.entries(reqs)) {
-                const reqQty = parseFloat(reqQtyStr);
-                const inv = await tx.inventory.findUnique({ where: { material_id: matId } });
+            for (const [key, reqQtyStr] of Object.entries(reqs)) {
+                  const [matId, thickId] = key.split('_');
+                  const reqQty = parseFloat(reqQtyStr);
+                  let whereClause = { material_id: matId };
+                  if (thickId) whereClause.thickness_id = thickId;
+                  else whereClause.thickness_id = null;
+                  const inv = await tx.inventory.findFirst({ where: whereClause });
                 const currentStock = inv ? parseFloat(inv.quantity) : 0;
                 if (currentStock < reqQty) {
                     isEnough = false;

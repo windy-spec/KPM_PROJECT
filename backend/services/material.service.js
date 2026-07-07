@@ -7,6 +7,7 @@ class MaterialService {
       include: {
         material_types: { select: { type_name: true } },
         material_units: { select: { unit_name: true } },
+        material_thickness: true,
       },
       orderBy: { created_at: "desc" },
     });
@@ -19,6 +20,7 @@ class MaterialService {
       include: {
         material_types: true,
         material_units: true,
+        material_thickness: true,
       },
     });
     if (!material) throw new Error("Không tìm thấy vật tư này!");
@@ -27,7 +29,7 @@ class MaterialService {
 
   // 3. Thêm mới Vật tư
   async createMaterial(data) {
-    const { type_id, unit_id, material_code, material_name, base_price } = data;
+    const { type_id, unit_id, material_code, material_name, base_price, thicknesses } = data;
 
     // Validate dữ liệu trống và số âm
     if (!material_code || !material_name)
@@ -50,20 +52,32 @@ class MaterialService {
     if (!typeExists) throw new Error("Loại vật tư (type_id) không tồn tại!");
     if (!unitExists) throw new Error("Đơn vị tính (unit_id) không tồn tại!");
 
+    const createData = {
+      type_id,
+      unit_id,
+      material_code,
+      material_name,
+      base_price: parseFloat(base_price),
+    };
+
+    if (Array.isArray(thicknesses) && thicknesses.length > 0) {
+      createData.material_thickness = {
+        create: thicknesses.map(t => ({
+          thickness_value: t.thickness_value,
+          price_multiplier: t.price_multiplier !== undefined ? parseFloat(t.price_multiplier) : 1.00
+        }))
+      };
+    }
+
     return await prisma.materials.create({
-      data: {
-        type_id,
-        unit_id,
-        material_code,
-        material_name,
-        base_price: parseFloat(base_price),
-      },
+      data: createData,
+      include: { material_thickness: true }
     });
   }
 
   // 4. Cập nhật Vật tư
   async updateMaterial(id, data) {
-    const { material_code, base_price } = data;
+    const { material_code, base_price, thicknesses, type_id, unit_id, material_name } = data;
 
     // Kiểm tra vật tư có tồn tại không
     await this.getMaterialById(id);
@@ -81,14 +95,44 @@ class MaterialService {
       if (existing) throw new Error("Mã vật tư này bị trùng với vật tư khác!");
     }
 
-    return await prisma.materials.update({
-      where: { id },
-      data: {
-        ...data,
-        base_price:
-          base_price !== undefined ? parseFloat(base_price) : undefined,
-      },
-    });
+    const updateData = {};
+    if (material_code !== undefined) updateData.material_code = material_code;
+    if (material_name !== undefined) updateData.material_name = material_name;
+    if (type_id !== undefined) updateData.type_id = type_id;
+    if (unit_id !== undefined) updateData.unit_id = unit_id;
+    if (base_price !== undefined) updateData.base_price = parseFloat(base_price);
+
+    if (Array.isArray(thicknesses)) {
+      const keepIds = thicknesses.filter(t => t.id).map(t => t.id);
+      
+      updateData.material_thickness = {
+        deleteMany: { id: { notIn: keepIds } },
+        create: thicknesses.filter(t => !t.id).map(t => ({
+          thickness_value: t.thickness_value,
+          price_multiplier: t.price_multiplier !== undefined ? parseFloat(t.price_multiplier) : 1.00
+        })),
+        update: thicknesses.filter(t => t.id).map(t => ({
+          where: { id: t.id },
+          data: {
+            thickness_value: t.thickness_value,
+            price_multiplier: t.price_multiplier !== undefined ? parseFloat(t.price_multiplier) : 1.00
+          }
+        }))
+      };
+    }
+
+    try {
+      return await prisma.materials.update({
+        where: { id },
+        data: updateData,
+        include: { material_thickness: true }
+      });
+    } catch (error) {
+      if (error.code === "P2003") {
+        throw new Error("Không thể cập nhật/xóa độ dày vì nó đang được sử dụng trong hệ thống.");
+      }
+      throw error;
+    }
   }
 
   // 5. Xóa Vật tư

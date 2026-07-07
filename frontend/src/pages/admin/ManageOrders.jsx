@@ -21,9 +21,10 @@ import {
 } from "lucide-react";
 import Portal from "../../components/common/Portal";
 import Pagination from "../../components/common/Pagination";
-import { showSuccess } from "../../utils/notify";
+import { showSuccess, showError } from "../../utils/notify";
 import orderService from "../../services/order.service";
 import { useSocket } from "../../context/SocketContext";
+import html2pdf from "html2pdf.js";
 
 // Hàm helper format hiển thị tiền tệ VNĐ
 const formatMoney = new Intl.NumberFormat("vi-VN", {
@@ -129,6 +130,28 @@ export default function ManageOrders() {
 
   // Xem chi tiết đơn hàng (Modal)
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!selectedOrder) return;
+    setExportingPdf(true);
+    try {
+      const element = document.getElementById("order-content");
+      if (!element) return;
+      const opt = {
+        margin:       10,
+        filename:     `Don_Hang_${selectedOrder.display_id}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      await html2pdf().set(opt).from(element).save();
+    } catch (e) {
+      showError("Xuất PDF thất bại!");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   // Bộ lọc tìm kiếm & trạng thái mượt mà
   const filteredOrders = useMemo(() => {
@@ -494,16 +517,26 @@ export default function ManageOrders() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={exportingPdf}
+                    className="flex h-9 px-3 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all shadow-sm disabled:opacity-50"
+                  >
+                    {exportingPdf ? <Clock className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    <span>{exportingPdf ? "Đang xuất..." : "Tải PDF"}</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedOrder(null)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Nội dung chi tiết đơn */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div id="order-content" className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
                 {/* Thông tin khách hàng & Giao hàng */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-surface-container-low/40 p-4 border border-outline-variant/30">
                   <div className="space-y-2">

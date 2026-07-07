@@ -13,9 +13,16 @@ import {
   AlertCircle,
   Clock,
   DollarSign,
-  Gavel
+  Gavel,
+  Eye,
+  Download,
+  Package,
+  X
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
+import html2canvas from "html2canvas";
+import html2pdf from "html2pdf.js";
+import Portal from "../../components/common/Portal";
 
 export default function QuotationDetail({ quotationIdProp, onBack }) {
   const [id, setId] = useState(
@@ -30,6 +37,12 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
   const [negotiatePrice, setNegotiatePrice] = useState('');
   const [finalStatus, setFinalStatus] = useState('admin_confirmed');
+  
+  const [blueprintPreview, setBlueprintPreview] = useState(null);
+  const [overallDrawingPreview, setOverallDrawingPreview] = useState(false);
+  const [includePartImages, setIncludePartImages] = useState(false);
+  const [packaging, setPackaging] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const socket = useSocket();
 
@@ -182,6 +195,144 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     }
   }
 
+  function renderBlueprint(spec) {
+    if (!spec.blueprint_html_code) return "";
+    let html = spec.blueprint_html_code;
+    html = html.replace(/{{COMPONENT_NAME}}/g, spec.component_name || "");
+    
+    // Xử lý chuỗi Kích thước tổng hợp: {{LENGTH}} x {{WIDTH}} x {{HEIGHT}}
+    html = html.replace(/{{LENGTH}}\s*x\s*{{WIDTH}}\s*x\s*{{HEIGHT}}/g, () => {
+       const dims = [];
+       if (spec.dimensions?.length) dims.push(spec.dimensions.length);
+       if (spec.dimensions?.width) dims.push(spec.dimensions.width);
+       if (spec.dimensions?.height) dims.push(spec.dimensions.height);
+       return dims.length > 0 ? dims.join(" x ") : "-";
+    });
+
+    // Phòng hờ template gọi riêng lẻ từng biến
+    html = html.replace(/{{LENGTH}}/g, spec.dimensions?.length || "-");
+    html = html.replace(/{{WIDTH}}/g, spec.dimensions?.width || "-");
+    html = html.replace(/{{HEIGHT}}/g, spec.dimensions?.height || "-");
+    // Trích xuất độ dày từ tên vật liệu nếu chưa có
+    let materialName = spec.materials?.material_name || "-";
+    let thickness = spec.material_thickness?.thickness_value;
+    
+    if (!thickness && materialName !== "-") {
+       const match = materialName.match(/(?:dày\s*)?(\d+(?:\.\d+)?\s*mm)/i);
+       if (match) {
+          thickness = match[1];
+          // Có thể tuỳ chọn cắt bỏ phần độ dày ra khỏi tên vật liệu để tránh lặp lại
+          materialName = materialName.replace(match[0], "").trim();
+          // Xoá dấu phẩy hoặc dấu gạch nối dư thừa ở cuối nếu có
+          materialName = materialName.replace(/[,\-]\s*$/, "");
+       }
+    }
+    thickness = thickness || "-";
+
+    html = html.replace(/{{MATERIAL_NAME}}/g, materialName);
+    html = html.replace(/{{THICKNESS}}/g, thickness);
+    return html;
+  }
+
+  async function handlePackageBlueprints() {
+    if (!data || !data.quotation_specs) return;
+    
+    const hasGenerated = data?.quotation_attachments?.some(a => 
+      a.file_name?.startsWith("Bản vẽ 2D - ") || 
+      a.file_name?.startsWith("Ảnh 3D - ") || 
+      a.file_name?.startsWith("Ảnh nét đứt - ")
+    );
+    
+    if (hasGenerated) {
+      showError("Hồ sơ bản vẽ đã được đóng gói từ trước!");
+      return;
+    }
+
+    const specsWithBlueprint = data.quotation_specs.filter(s => s.blueprint_html_code);
+    if (specsWithBlueprint.length === 0 && !includePartImages) {
+      showError("Không có dữ liệu bản vẽ nào để đóng gói!");
+      return;
+    }
+
+    setPackaging(true);
+    try {
+      for (const spec of specsWithBlueprint) {
+        const container = document.createElement("div");
+        container.style.position = "absolute";
+        container.style.left = "-9999px";
+        container.style.top = "-9999px";
+        container.innerHTML = renderBlueprint(spec);
+        document.body.appendChild(container);
+
+        await new Promise(r => setTimeout(r, 200));
+
+        const canvas = await html2canvas(container, { backgroundColor: null, useCORS: true, logging: false });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+        document.body.removeChild(container);
+
+        if (blob) {
+          const formData = new FormData();
+          formData.append("image", blob, `blueprint_${Date.now()}.png`);
+          const uploadRes = await apiClient.post("/ai/upload-drawing", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
+          });
+          const fileUrl = uploadRes.data?.data?.imageUrl;
+          if (fileUrl) {
+            await adminService.createQuotationAttachment(id, {
+              file_name: `Bản vẽ 2D - ${spec.component_name}`,
+              file_url: fileUrl,
+            });
+          }
+        }
+      }
+
+      if (includePartImages && data.product_drawings?.drawing_parts) {
+        for (const part of data.product_drawings.drawing_parts) {
+          if (part.part_3d_image_url) {
+            await adminService.createQuotationAttachment(id, {
+              file_name: `Ảnh 3D - ${part.component_name}`,
+              file_url: part.part_3d_image_url,
+            });
+          }
+          if (part.part_image_url) {
+            await adminService.createQuotationAttachment(id, {
+              file_name: `Ảnh nét đứt - ${part.component_name}`,
+              file_url: part.part_image_url,
+            });
+          }
+        }
+      }
+
+      showSuccess("Đóng gói hồ sơ bản vẽ thành công!");
+      await load();
+    } catch (error) {
+      console.error(error);
+      showError("Lỗi khi đóng gói bản vẽ!");
+    } finally {
+      setPackaging(false);
+    }
+  }
+
+  async function handleExportPDF() {
+    setExportingPdf(true);
+    try {
+      const element = document.getElementById("quotation-content");
+      if (!element) return;
+      const opt = {
+        margin:       10,
+        filename:     `Bao_Gia_${id.substring(0,8)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      await html2pdf().set(opt).from(element).save();
+    } catch (e) {
+      showError("Xuất PDF thất bại!");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
   if (!id)
     return (
       <div className="rounded-2xl border border-outline-variant/60 bg-white p-6 text-center text-on-surface-variant/70 font-medium">
@@ -193,7 +344,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
       {/* KHỐI TRÁI: CHI TIẾT CẤU HÌNH HÓA ĐƠN */}
-      <div className="lg:col-span-2 rounded-2xl border border-outline-variant/60 bg-white p-5 md:p-6 shadow-sm flex flex-col gap-6">
+      <div id="quotation-content" className="lg:col-span-2 rounded-2xl border border-outline-variant/60 bg-white p-5 md:p-6 shadow-sm flex flex-col gap-6">
 
         {/* Header chi tiết báo giá */}
         <div className="flex items-center justify-between pb-4 border-b border-outline-variant/40">
@@ -206,16 +357,26 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               <div className="text-xs font-mono text-on-surface-variant/60 mt-0.5">ID: {id}</div>
             </div>
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem("activeQuotationId");
-              onBack?.();
-            }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/60 bg-white px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container/40 hover:text-on-surface transition-all active:scale-95 shadow-2xs"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportPDF}
+              disabled={exportingPdf}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary/10 text-primary px-4 py-2 text-xs font-bold hover:bg-primary/20 transition-all active:scale-95 shadow-2xs"
+            >
+              {exportingPdf ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              <span>{exportingPdf ? "Đang xuất..." : "Xuất PDF"}</span>
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("activeQuotationId");
+                onBack?.();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-outline-variant/60 bg-white px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container/40 hover:text-on-surface transition-all active:scale-95 shadow-2xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Quay lại</span>
+            </button>
+          </div>
         </div>
 
         {loading && (
@@ -354,10 +515,82 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
       {/* KHỐI PHẢI: QUẢN LÝ BẢN VẼ & TRẠNG THÁI */}
       <div className="lg:col-span-1 flex flex-col gap-6">
 
-        {/* 1. Upload bản vẽ kĩ thuật */}
-        <div className="rounded-2xl border border-outline-variant/60 bg-white p-5 shadow-sm">
-          <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/80 mb-3">Quản lý Bản vẽ</h4>
-          <div>
+        <div className="rounded-2xl border border-outline-variant/60 bg-white p-5 shadow-sm flex flex-col gap-4">
+          <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/80">Sinh & Quản lý Hồ sơ Bản vẽ</h4>
+          
+          <div className="space-y-3">
+            <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase">Bản vẽ nét đứt (Tự động)</h5>
+            {data?.quotation_specs?.filter(s => s.blueprint_html_code).length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {data.quotation_specs.filter(s => s.blueprint_html_code).map(spec => (
+                  <div key={spec.id} className="flex items-center justify-between bg-surface-container/10 border border-outline-variant/40 rounded-lg p-2.5">
+                    <span className="text-xs font-semibold truncate max-w-[70%]">{spec.component_name}</span>
+                    <button
+                      onClick={() => setBlueprintPreview(renderBlueprint(spec))}
+                      className="text-primary hover:text-primary/80 flex items-center gap-1 text-[10px] font-bold bg-primary/10 px-2 py-1 rounded"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Xem
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs italic text-on-surface-variant/50">Không có linh kiện nào được gắn mẫu bản vẽ.</div>
+            )}
+            
+            {/* Bản vẽ 3D tổng thể */}
+            <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mt-4">Bản vẽ 3D Tổng thể</h5>
+            {data?.product_drawings?.html_code ? (
+               <div className="flex items-center justify-between bg-surface-container/10 border border-outline-variant/40 rounded-lg p-2.5">
+                  <span className="text-xs font-semibold truncate max-w-[70%]">Mô hình 3D (AI Gen)</span>
+                  <button
+                    onClick={() => setOverallDrawingPreview(true)}
+                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-[10px] font-bold bg-primary/10 px-2 py-1 rounded"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Xem
+                  </button>
+               </div>
+            ) : (
+               <div className="text-xs italic text-on-surface-variant/50">Không có mã HTML bản vẽ tổng thể.</div>
+            )}
+            
+            {data?.product_drawings?.drawing_parts && data.product_drawings.drawing_parts.length > 0 && (
+              <label className="flex items-center gap-2 mt-3 cursor-pointer p-2 bg-surface-container/5 border border-outline-variant/40 rounded-lg">
+                <input 
+                  type="checkbox" 
+                  checked={includePartImages}
+                  onChange={(e) => setIncludePartImages(e.target.checked)}
+                  className="w-4 h-4 text-primary rounded border-outline-variant"
+                />
+                <span className="text-[11px] font-bold text-on-surface-variant">Kèm theo ảnh 3D / ảnh tĩnh của các linh kiện</span>
+              </label>
+            )}
+
+            <button
+              onClick={handlePackageBlueprints}
+              disabled={packaging || (!data?.quotation_specs?.some(s => s.blueprint_html_code) && !includePartImages) || data?.quotation_attachments?.some(a => 
+                a.file_name?.startsWith("Bản vẽ 2D - ") || 
+                a.file_name?.startsWith("Ảnh 3D - ") || 
+                a.file_name?.startsWith("Ảnh nét đứt - ")
+              )}
+              className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 h-10 text-white font-bold text-xs uppercase shadow-md hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {packaging ? <Clock className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
+              <span>
+                {packaging 
+                  ? "Đang đóng gói..." 
+                  : data?.quotation_attachments?.some(a => a.file_name?.startsWith("Bản vẽ 2D - ") || a.file_name?.startsWith("Ảnh 3D - ") || a.file_name?.startsWith("Ảnh nét đứt - "))
+                    ? "Đã đóng gói hồ sơ"
+                    : "Đóng gói Hồ sơ Bản vẽ"
+                }
+              </span>
+            </button>
+          </div>
+
+          <div className="pt-4 border-t border-outline-variant/30">
+            <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mb-3">Tải lên thủ công</h5>
             <label className="relative border-dashed border-2 border-outline-variant hover:border-primary/50 hover:bg-primary/5 rounded-xl p-5 text-center flex flex-col items-center justify-center cursor-pointer transition-all group">
               <input
                 type="file"
@@ -510,6 +743,42 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
           </div>
         </div>
       </div>
+
+      {blueprintPreview && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-outline-variant/40">
+                <h3 className="font-black uppercase tracking-wider text-sm">Xem trước Bản vẽ</h3>
+                <button onClick={() => setBlueprintPreview(null)} className="p-2 hover:bg-surface-container rounded-full text-on-surface-variant">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-50">
+                <div dangerouslySetInnerHTML={{ __html: blueprintPreview }} />
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {overallDrawingPreview && data?.product_drawings?.html_code && (
+        <Portal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between p-5 border-b border-outline-variant/40">
+                <h3 className="font-black uppercase tracking-wider text-sm">Xem trước Mô hình 3D Tổng thể</h3>
+                <button onClick={() => setOverallDrawingPreview(false)} className="p-2 hover:bg-surface-container rounded-full text-on-surface-variant">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-50 min-h-[500px]">
+                <div dangerouslySetInnerHTML={{ __html: data.product_drawings.html_code }} />
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }

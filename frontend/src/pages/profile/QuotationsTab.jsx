@@ -8,10 +8,14 @@ import {
   AlertCircle,
   Eye,
   ChevronRight,
+  Download,
+  ExternalLink,
+  Paperclip,
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import { showError, showSuccess } from "../../utils/notify";
 import apiClient from "../../services/apiClient";
+import html2pdf from "html2pdf.js";
 
 const QuotationsTab = () => {
   const socket = useSocket();
@@ -129,6 +133,23 @@ const QuotationsTab = () => {
     }).format(amount);
   };
 
+  const handleExportPDF = async (id) => {
+    try {
+      const element = document.getElementById(`quote-card-${id}`);
+      if (!element) return;
+      const opt = {
+        margin:       10,
+        filename:     `Bao_Gia_${id.substring(0,8)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      await html2pdf().set(opt).from(element).save();
+    } catch (e) {
+      showError("Lỗi xuất PDF");
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "pending_admin":
@@ -205,6 +226,7 @@ const QuotationsTab = () => {
         quotations.map((q) => (
           <div
             key={q.id}
+            id={`quote-card-${q.id}`}
             className="bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all"
           >
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-outline-variant/30 pb-4 mb-4">
@@ -213,10 +235,18 @@ const QuotationsTab = () => {
                   <FileText className="w-5 h-5 text-primary" />{" "}
                   {q.title || "Yêu cầu báo giá"}
                 </h3>
-                <p className="text-xs text-on-surface-variant mt-1 font-medium">
-                  Mã YC: #{q.id.slice(0, 8).toUpperCase()} • Tạo lúc:{" "}
-                  {new Date(q.created_at).toLocaleString("vi-VN")}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">
+                    Mã YC: #{q.id.slice(0, 8).toUpperCase()} • Tạo lúc:{" "}
+                    {new Date(q.created_at).toLocaleString("vi-VN")}
+                  </p>
+                  <button
+                    onClick={() => handleExportPDF(q.id)}
+                    className="mt-1 flex items-center gap-1 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded font-bold"
+                  >
+                    <Download className="w-3 h-3" /> Tải PDF
+                  </button>
+                </div>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {getStatusBadge(q.status)}
@@ -268,7 +298,33 @@ const QuotationsTab = () => {
               </span>
             </div>
 
-            <div className="flex justify-end gap-3">
+            {/* Hồ sơ bản vẽ (Attachments) */}
+            {q.quotation_attachments && q.quotation_attachments.length > 0 && (
+              <div className="mb-4 bg-surface-container/10 border border-outline-variant/40 rounded-xl p-3">
+                <h4 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mb-2 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5" /> Hồ sơ Bản vẽ đính kèm ({q.quotation_attachments.length})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {q.quotation_attachments.map(att => (
+                    <div key={att.id || att.file_url} className="flex items-center justify-between border border-outline-variant/60 rounded-lg px-3 py-2 bg-white">
+                      <div className="truncate text-xs font-medium text-on-surface-variant max-w-[75%]">
+                        {att.name || att.file_name}
+                      </div>
+                      <a
+                        href={att.file_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline bg-primary/5 px-2 py-1 rounded"
+                      >
+                        Mở <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3" data-html2canvas-ignore>
               {/* Nút hành động */}
               {q.status === "sent_to_customer" && (
                 <>

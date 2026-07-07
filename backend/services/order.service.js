@@ -8,7 +8,7 @@ class OrderService {
         quotations: {
           include: {
             users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
-            quotation_specs: true,
+            quotation_specs: true, quotation_attachments: true, product_drawings: true,
           },
         },
         order_items: {
@@ -32,7 +32,7 @@ class OrderService {
         quotations: {
           include: {
             users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
-            quotation_specs: true,
+            quotation_specs: true, quotation_attachments: true, product_drawings: true,
           },
         },
         order_items: {
@@ -57,7 +57,9 @@ class OrderService {
         users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
         quotations: {
           include: {
-            quotation_specs: true,
+            quotation_specs: true, quotation_attachments: true, product_drawings: true,
+            quotation_attachments: true,
+            product_drawings: true,
           },
         },
         order_items: {
@@ -202,6 +204,8 @@ class OrderService {
 
       for (const comp of components) {
         const matId = comp.material_id;
+          const thickId = comp.thickness_id;
+          const reqKey = thickId ? `${matId}_${thickId}` : matId;
 
         // Lấy định mức tuyệt đối
         let waste = 0;
@@ -214,8 +218,8 @@ class OrderService {
         const consumedQty = waste * productQty;
 
         if (matId && consumedQty > 0) {
-          if (!requiredMaterials[matId]) requiredMaterials[matId] = 0;
-          requiredMaterials[matId] += consumedQty;
+          if (!requiredMaterials[reqKey]) requiredMaterials[reqKey] = 0;
+            requiredMaterials[reqKey] += consumedQty;
         }
       }
     }
@@ -224,6 +228,8 @@ class OrderService {
     if (order.quotations && order.quotations.quotation_specs) {
       for (const spec of order.quotations.quotation_specs) {
         const matId = spec.material_id;
+          const thickId = spec.thickness_id;
+          const reqKey = thickId ? `${matId}_${thickId}` : matId;
         if (!matId) continue;
 
         let consumedQty = 0;
@@ -244,8 +250,8 @@ class OrderService {
         }
 
         if (consumedQty > 0) {
-          if (!requiredMaterials[matId]) requiredMaterials[matId] = 0;
-          requiredMaterials[matId] += consumedQty;
+          if (!requiredMaterials[reqKey]) requiredMaterials[reqKey] = 0;
+            requiredMaterials[reqKey] += consumedQty;
         }
       }
     }
