@@ -20,8 +20,8 @@ import {
   X
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
-import html2canvas from "html2canvas";
-import html2pdf from "html2pdf.js";
+
+
 import Portal from "../../components/common/Portal";
 
 export default function QuotationDetail({ quotationIdProp, onBack }) {
@@ -266,10 +266,8 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
         await new Promise(r => setTimeout(r, 200));
 
-        const canvas = await html2canvas(container, { backgroundColor: null, useCORS: true, logging: false });
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-        document.body.removeChild(container);
-
+        /* removed html2canvas */
+        const blob = null;
         if (blob) {
           const formData = new FormData();
           formData.append("image", blob, `blueprint_${Date.now()}.png`);
@@ -314,23 +312,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   }
 
   async function handleExportPDF() {
-    setExportingPdf(true);
-    try {
-      const element = document.getElementById("quotation-content");
-      if (!element) return;
-      const opt = {
-        margin:       10,
-        filename:     `Bao_Gia_${id.substring(0,8)}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      await html2pdf().set(opt).from(element).save();
-    } catch (e) {
-      showError("Xuất PDF thất bại!");
-    } finally {
-      setExportingPdf(false);
-    }
+    window.print();
   }
 
   if (!id)
@@ -344,7 +326,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
       {/* KHỐI TRÁI: CHI TIẾT CẤU HÌNH HÓA ĐƠN */}
-      <div id="quotation-content" className="lg:col-span-2 rounded-2xl border border-outline-variant/60 bg-white p-5 md:p-6 shadow-sm flex flex-col gap-6">
+      <div id="quotation-content" className="print-area lg:col-span-2 rounded-2xl border border-outline-variant/60 bg-white p-5 md:p-6 shadow-sm flex flex-col gap-6">
 
         {/* Header chi tiết báo giá */}
         <div className="flex items-center justify-between pb-4 border-b border-outline-variant/40">
@@ -357,7 +339,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               <div className="text-xs font-mono text-on-surface-variant/60 mt-0.5">ID: {id}</div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 no-print">
             <button
               onClick={handleExportPDF}
               disabled={exportingPdf}
@@ -392,11 +374,11 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
               <div className="overflow-x-auto rounded-xl border border-outline-variant/40 bg-surface-container/5">
                 <table className="w-full text-left text-sm border-collapse">
-                  <thead>
+                                    <thead>
                     <tr className="border-b border-outline-variant/50 bg-surface-container/20 text-on-surface-variant/70 text-[10px] font-black uppercase tracking-wider">
                       <th className="py-3 px-4 font-bold">Chi tiết Cấu hình</th>
                       <th className="py-3 px-4 font-bold text-center w-[140px]">Kích thước (mm)</th>
-                      <th className="py-3 px-4 font-bold text-right w-[150px]">Thành tiền</th>
+                      <th className="py-3 px-4 font-bold text-right w-[150px]">Diện tích (m²)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/20">
@@ -415,13 +397,12 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                               </div>
                             </td>
                             <td className="py-3 px-4 text-center font-mono text-xs text-on-surface-variant/80">
-                              {spec.dimensions?.width} × {spec.dimensions?.height}
+                              {[spec.dimensions?.length, spec.dimensions?.width, spec.dimensions?.height].filter(Boolean).join(" x ") || "-"}
                             </td>
                             <td className="py-3 px-4 text-right font-black text-on-surface text-[13px]">
-                              {formatVND(spec.snapshot_price)}
+                              {(() => { const area = spec.dimensions?.area || (spec.dimensions?.width && spec.dimensions?.length ? (spec.dimensions.width * spec.dimensions.length / 1000000) : 0); return area > 0 ? <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold border border-emerald-100">{area} m²</span> : "-"; })()}
                             </td>
                           </tr>
-
                           {isExpanded && (
                             <tr className="bg-surface-container/10">
                               <td colSpan="3" className="py-3 px-5 px-10 border-t border-b border-outline-variant/20">

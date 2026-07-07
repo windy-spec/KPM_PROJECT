@@ -15,12 +15,12 @@ import {
 import { useSocket } from "../../context/SocketContext";
 import { showError, showSuccess } from "../../utils/notify";
 import apiClient from "../../services/apiClient";
-import html2pdf from "html2pdf.js";
 
 const QuotationsTab = () => {
   const socket = useSocket();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [printingId, setPrintingId] = useState(null);
 
   const [negotiatePrices, setNegotiatePrices] = useState({});
 
@@ -133,21 +133,12 @@ const QuotationsTab = () => {
     }).format(amount);
   };
 
-  const handleExportPDF = async (id) => {
-    try {
-      const element = document.getElementById(`quote-card-${id}`);
-      if (!element) return;
-      const opt = {
-        margin:       10,
-        filename:     `Bao_Gia_${id.substring(0,8)}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      await html2pdf().set(opt).from(element).save();
-    } catch (e) {
-      showError("Lỗi xuất PDF");
-    }
+  const handleExportPDF = (id) => {
+    setPrintingId(id);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintingId(null), 500);
+    }, 100);
   };
 
   const getStatusBadge = (status) => {
@@ -227,7 +218,7 @@ const QuotationsTab = () => {
           <div
             key={q.id}
             id={`quote-card-${q.id}`}
-            className="bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all"
+            className={`bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all ${printingId === q.id ? 'print-area' : (printingId ? 'no-print' : '')}`}
           >
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-outline-variant/30 pb-4 mb-4">
               <div>
@@ -235,14 +226,14 @@ const QuotationsTab = () => {
                   <FileText className="w-5 h-5 text-primary" />{" "}
                   {q.title || "Yêu cầu báo giá"}
                 </h3>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap gap-3 mt-5 lg:mt-0 no-print">
                   <p className="text-xs text-on-surface-variant mt-1 font-medium">
                     Mã YC: #{q.id.slice(0, 8).toUpperCase()} • Tạo lúc:{" "}
                     {new Date(q.created_at).toLocaleString("vi-VN")}
                   </p>
                   <button
                     onClick={() => handleExportPDF(q.id)}
-                    className="mt-1 flex items-center gap-1 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded font-bold"
+                    className="no-print mt-1 flex items-center gap-1 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded font-bold"
                   >
                     <Download className="w-3 h-3" /> Tải PDF
                   </button>

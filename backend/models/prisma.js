@@ -1,5 +1,9 @@
 const { PrismaClient } = require("@prisma/client");
 
-const prisma = new PrismaClient();
+// Khởi tạo Prisma Client với log cần thiết
+const prisma = new PrismaClient({
+  log: ["error"],
+});
 
 module.exports = prisma;
+

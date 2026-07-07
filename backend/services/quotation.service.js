@@ -44,19 +44,21 @@ class QuotationService {
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
 
     if (quotation.quotation_specs && quotation.quotation_specs.length > 0) {
-      const componentNames = quotation.quotation_specs.map((spec) => spec.component_name).filter(Boolean);
-      
+      const componentNames = quotation.quotation_specs
+        .map((spec) => spec.component_name)
+        .filter(Boolean);
+
       if (componentNames.length > 0) {
         const templates = await prisma.component_templates.findMany({
-          where: { component_name: { in: componentNames } }
+          where: { component_name: { in: componentNames } },
         });
-        
+
         const templateMap = {};
-        templates.forEach(t => {
+        templates.forEach((t) => {
           templateMap[t.component_name] = t.blueprint_html_code;
         });
 
-        quotation.quotation_specs.forEach(spec => {
+        quotation.quotation_specs.forEach((spec) => {
           if (templateMap[spec.component_name]) {
             spec.blueprint_html_code = templateMap[spec.component_name];
           }
@@ -111,24 +113,35 @@ class QuotationService {
     // Nếu Admin xác nhận lên đơn hàng -> Sinh ra Order và gửi email cho Khách hàng
     if (status === "admin_confirmed") {
       try {
-        // Tạo mã đơn hàng ngẫu nhiên
-        const orderCode =
-          "ORD-" +
-          Math.floor(1000 + Math.random() * 9000) +
-          "-" +
-          new Date().getFullYear();
+        // 1. Dùng Date.now() để mã đơn hàng hoàn toàn unique
+        const orderCode = `KPM-ORD-${Date.now()}`;
 
+        // 2. Lấy giá trị tiền và ép kiểu an toàn về Number (tránh lỗi NaN làm sập Prisma)
+        const rawAmount =
+          updatedQuotation.user_proposed_price ||
+          updatedQuotation.admin_proposed_price ||
+          updatedQuotation.total_quoted_price;
+        const totalAmount = Number(rawAmount) || 0;
+
+        // 3. Chuẩn bị Object Data với cú pháp 'connect' của Prisma cho khóa ngoại
+        const orderData = {
+          order_code: orderCode,
+          production_status: "pending_payment",
+          total_amount: totalAmount,
+          quotations: { connect: { id: id } }, // Connect tới báo giá
+        };
+
+        // Chỉ connect user nếu báo giá đó có user_id (tránh lỗi truyền null vào connect)
+        if (updatedQuotation.user_id) {
+          orderData.users = { connect: { id: updatedQuotation.user_id } };
+        }
+
+        // 4. Tạo Order
         const newOrder = await prisma.orders.create({
-          data: {
-            quotation_id: id,
-            order_code: orderCode,
-            production_status: "pending_payment",
-            total_amount: updatedQuotation.user_proposed_price || updatedQuotation.admin_proposed_price || updatedQuotation.total_quoted_price,
-            user_id: updatedQuotation.user_id,
-          },
+          data: orderData,
         });
 
-        // Gửi email báo khách hàng đơn đã được lên thành công
+        // 5. Gửi email xác nhận
         if (updatedQuotation.users && updatedQuotation.users.email) {
           await sendOrderConfirmationEmail(
             updatedQuotation.users.email,
@@ -252,13 +265,13 @@ class QuotationService {
       },
       include: {
         users: {
-          include: { 
-            user_profiles: true 
-          }
+          include: {
+            user_profiles: true,
+          },
         },
         quotation_specs: {
-          include: { materials: true, paint_types: true }
-        }
+          include: { materials: true, paint_types: true },
+        },
       },
     });
     if (updateQuote.users && updateQuote.users.email) {
@@ -282,6 +295,8 @@ class QuotationService {
   // 3.4 User mặc cả lại giá
   async userNegotiate(id, user_id, user_proposed_price) {
     const quotation = await this.getQuotationById(id);
+
+    // 1. Kiểm tra quyền và trạng thái trước
     if (quotation.user_id !== user_id) {
       throw new Error("Bạn không có quyền mặc cả báo giá này!");
     }
@@ -289,15 +304,29 @@ class QuotationService {
       throw new Error("Chỉ có thể mặc cả báo giá khi đã được admin duyệt!");
     }
 
-    const originalPrice = parseFloat(quotation.admin_proposed_price || quotation.total_quoted_price);
-    const minAllowedPrice = originalPrice * 0.9;
-    if (parseFloat(user_proposed_price) < minAllowedPrice) {
-      throw new Error("Giá mặc cả không được thấp hơn 10% so với giá xưởng đề xuất!");
+    // 2. Lấy giá gốc và giá user gửi lên
+    const originalPrice = parseFloat(
+      quotation.admin_proposed_price || quotation.total_quoted_price,
+    );
+    const userPrice = parseFloat(user_proposed_price);
+
+    // 3. Validate logic giá
+    if (userPrice >= originalPrice) {
+      throw new Error("Giá mặc cả phải thấp hơn mức giá xưởng đề xuất!");
     }
+
+    const minAllowedPrice = originalPrice * 0.9;
+    if (userPrice < minAllowedPrice) {
+      throw new Error(
+        "Giá mặc cả không được thấp hơn 10% so với giá xưởng đề xuất!",
+      );
+    }
+
+    // 4. Cập nhật vào Database
     const updateQuote = await prisma.quotations.update({
       where: { id },
       data: {
-        user_proposed_price,
+        user_proposed_price: userPrice, // Lưu luôn giá trị số đã parse cho an toàn
         status: "user_proposed",
       },
     });

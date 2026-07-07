@@ -2,18 +2,24 @@ const prisma = require("../models/prisma");
 
 class OrderService {
   async getAllOrders() {
-    return await prisma.orders.findMany({
+    const orders = await prisma.orders.findMany({
       include: {
-        users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
+        users: { select: { id: true, username: true, email: true } },
         quotations: {
           include: {
-            users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
-            quotation_specs: true, quotation_attachments: true, product_drawings: true,
+            users: { select: { id: true, username: true, email: true } },
+            quotation_specs: true,
+            quotation_attachments: true,
+            // Đã xóa product_drawings lỗi ở đây
           },
         },
         order_items: {
           include: {
-            products: true,
+            products: {
+              include: {
+                product_drawings: true, // Lấy bản vẽ đối với đơn hàng mua trực tiếp
+              },
+            },
           },
         },
         transactions: true,
@@ -21,23 +27,68 @@ class OrderService {
         order_tracking: true,
       },
       orderBy: { created_at: "desc" },
+      take: 50,
     });
+
+    // TỐI ƯU HÓA (Xóa bỏ vòng lặp N+1 query)
+    const allProductIds = [];
+    orders.forEach(order => {
+      if (order.quotations && order.quotations.quotation_specs) {
+        order.quotations.quotation_specs.forEach(spec => {
+          if (spec.dimensions?.product_id) allProductIds.push(spec.dimensions.product_id);
+        });
+      }
+    });
+
+    let drawingsMap = {};
+    if (allProductIds.length > 0) {
+      const allDrawings = await prisma.product_drawings.findMany({
+        where: { product_id: { in: allProductIds }, is_active: true },
+        include: { drawing_parts: true },
+      });
+      drawingsMap = allDrawings.reduce((acc, dwg) => {
+        if (!acc[dwg.product_id]) acc[dwg.product_id] = [];
+        acc[dwg.product_id].push(dwg);
+        return acc;
+      }, {});
+    }
+
+    for (const order of orders) {
+      if (order.quotations && order.quotations.quotation_specs) {
+        const productIds = order.quotations.quotation_specs
+          .map((spec) => spec.dimensions?.product_id)
+          .filter(Boolean);
+
+        if (productIds.length > 0) {
+          order.quotations.product_drawings = productIds.flatMap(id => drawingsMap[id] || []);
+        } else {
+          order.quotations.product_drawings = [];
+        }
+      }
+    }
+
+    return orders;
   }
 
   async getOrderById(id) {
-    return await prisma.orders.findUnique({
-      where: { id: id }, // Đã xóa parseInt(id)
+    const order = await prisma.orders.findUnique({
+      where: { id: id },
       include: {
-        users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
+        users: { select: { id: true, username: true, email: true } },
         quotations: {
           include: {
-            users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
-            quotation_specs: true, quotation_attachments: true, product_drawings: true,
+            users: { select: { id: true, username: true, email: true } },
+            quotation_specs: true,
+            quotation_attachments: true,
           },
         },
         order_items: {
           include: {
-            products: true,
+            products: {
+              include: {
+                product_drawings: true,
+              },
+            },
           },
         },
         transactions: true,
@@ -45,30 +96,71 @@ class OrderService {
         order_tracking: true,
       },
     });
+
+    if (order && order.quotations && order.quotations.quotation_specs) {
+      const productIds = order.quotations.quotation_specs
+        .map((spec) => spec.dimensions?.product_id)
+        .filter(Boolean);
+
+      if (productIds.length > 0) {
+        const drawings = await prisma.product_drawings.findMany({
+          where: { product_id: { in: productIds }, is_active: true },
+          include: { drawing_parts: true },
+        });
+        order.quotations.product_drawings = drawings;
+      } else {
+        order.quotations.product_drawings = [];
+      }
+    }
+
+    return order;
   }
 
   async getMyOrders(userId) {
-    return await prisma.orders.findMany({
+    const orders = await prisma.orders.findMany({
       where: {
         OR: [{ user_id: userId }, { quotations: { user_id: userId } }],
       },
       orderBy: { created_at: "desc" },
       include: {
-        users: { select: { id: true, username: true, email: true } }, // Đã xóa phone
+        users: { select: { id: true, username: true, email: true } },
         quotations: {
           include: {
-            quotation_specs: true, quotation_attachments: true, product_drawings: true,
+            quotation_specs: true,
             quotation_attachments: true,
-            product_drawings: true,
           },
         },
         order_items: {
           include: {
-            products: true,
+            products: {
+              include: {
+                product_drawings: true,
+              },
+            },
           },
         },
       },
     });
+
+    for (const order of orders) {
+      if (order.quotations && order.quotations.quotation_specs) {
+        const productIds = order.quotations.quotation_specs
+          .map((spec) => spec.dimensions?.product_id)
+          .filter(Boolean);
+
+        if (productIds.length > 0) {
+          const drawings = await prisma.product_drawings.findMany({
+            where: { product_id: { in: productIds }, is_active: true },
+            include: { drawing_parts: true },
+          });
+          order.quotations.product_drawings = drawings;
+        } else {
+          order.quotations.product_drawings = [];
+        }
+      }
+    }
+
+    return orders;
   }
   async createDirectOrder(userId, payload) {
     const { product_id, quantity, price } = payload;
@@ -113,9 +205,13 @@ class OrderService {
 
     if (!order) throw new Error("Không tìm thấy đơn hàng để thanh toán!");
 
-    const materialAmount = final_total - (shipping_fee || 0) - (installation_fee || 0);
+    const materialAmount =
+      final_total - (shipping_fee || 0) - (installation_fee || 0);
     // Ưu tiên dùng cờ is_deposit từ client truyền lên, nếu không có thì fallback
-    const isDepositRequired = payload.is_deposit !== undefined ? payload.is_deposit : materialAmount >= 10000000;
+    const isDepositRequired =
+      payload.is_deposit !== undefined
+        ? payload.is_deposit
+        : materialAmount >= 10000000;
     const depositAmount = isDepositRequired ? materialAmount * 0.1 : 0;
 
     // Cập nhật thông tin Snapshot vào DB
@@ -143,8 +239,13 @@ class OrderService {
 
     // VALIDATE CHUYỂN TRẠNG THÁI
     // Ví dụ: chỉ cho phép chuyển từ out_of_stock sang import_approved
-    if (order.production_status === "out_of_stock" && status !== "import_approved") {
-      throw new Error("Đơn hàng đang hết vật tư, chỉ có thể chuyển sang trạng thái import_approved!");
+    if (
+      order.production_status === "out_of_stock" &&
+      status !== "import_approved"
+    ) {
+      throw new Error(
+        "Đơn hàng đang hết vật tư, chỉ có thể chuyển sang trạng thái import_approved!",
+      );
     }
 
     // Transaction lỗi sẽ không bị thừa
@@ -154,7 +255,7 @@ class OrderService {
       const updatedOrder = await tx.orders.update({
         where: { id: orderId },
         data: { production_status: status },
-        include: { quotations: true }
+        include: { quotations: true },
       });
 
       // Ghi log trạng thái
@@ -184,12 +285,12 @@ class OrderService {
       where: { id: orderId },
       include: {
         order_items: {
-          include: { products: true }
+          include: { products: true },
         },
         quotations: {
-          include: { quotation_specs: true }
-        }
-      }
+          include: { quotation_specs: true },
+        },
+      },
     });
 
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
@@ -204,22 +305,28 @@ class OrderService {
 
       for (const comp of components) {
         const matId = comp.material_id;
-          const thickId = comp.thickness_id;
-          const reqKey = thickId ? `${matId}_${thickId}` : matId;
+        const thickId = comp.thickness_id;
+        const reqKey = thickId ? `${matId}_${thickId}` : matId;
 
         // Lấy định mức tuyệt đối
         let waste = 0;
-        if (matId && comp.waste_configs && comp.waste_configs[matId] && comp.waste_configs[matId].rate !== undefined) {
+        if (
+          matId &&
+          comp.waste_configs &&
+          comp.waste_configs[matId] &&
+          comp.waste_configs[matId].rate !== undefined
+        ) {
           waste = parseFloat(comp.waste_configs[matId].rate);
         } else {
-          waste = parseFloat(comp.default_waste) || parseFloat(comp.waste_rate) || 0;
+          waste =
+            parseFloat(comp.default_waste) || parseFloat(comp.waste_rate) || 0;
         }
 
         const consumedQty = waste * productQty;
 
         if (matId && consumedQty > 0) {
           if (!requiredMaterials[reqKey]) requiredMaterials[reqKey] = 0;
-            requiredMaterials[reqKey] += consumedQty;
+          requiredMaterials[reqKey] += consumedQty;
         }
       }
     }
@@ -228,16 +335,21 @@ class OrderService {
     if (order.quotations && order.quotations.quotation_specs) {
       for (const spec of order.quotations.quotation_specs) {
         const matId = spec.material_id;
-          const thickId = spec.thickness_id;
-          const reqKey = thickId ? `${matId}_${thickId}` : matId;
+        const thickId = spec.thickness_id;
+        const reqKey = thickId ? `${matId}_${thickId}` : matId;
         if (!matId) continue;
 
         let consumedQty = 0;
         if (spec.dimensions) {
           const area = parseFloat(spec.dimensions.area) || 0;
           const qty = parseFloat(spec.dimensions.quantity) || 1;
-          
-          if (matId && spec.dimensions.waste_configs && spec.dimensions.waste_configs[matId] && spec.dimensions.waste_configs[matId].rate !== undefined) {
+
+          if (
+            matId &&
+            spec.dimensions.waste_configs &&
+            spec.dimensions.waste_configs[matId] &&
+            spec.dimensions.waste_configs[matId].rate !== undefined
+          ) {
             const waste = parseFloat(spec.dimensions.waste_configs[matId].rate);
             consumedQty = waste * qty;
           } else if (spec.dimensions.waste_rate) {
@@ -245,13 +357,13 @@ class OrderService {
             consumedQty = waste * qty;
           } else {
             // Mặc định hao hụt 5% (1.05) giống như tính toán báo giá cũ
-            consumedQty = area * qty * 1.05; 
+            consumedQty = area * qty * 1.05;
           }
         }
 
         if (consumedQty > 0) {
           if (!requiredMaterials[reqKey]) requiredMaterials[reqKey] = 0;
-            requiredMaterials[reqKey] += consumedQty;
+          requiredMaterials[reqKey] += consumedQty;
         }
       }
     }
@@ -261,8 +373,8 @@ class OrderService {
       where: { id: orderId },
       data: {
         production_status: "WAITING_WAREHOUSE",
-        material_requirements: requiredMaterials
-      }
+        material_requirements: requiredMaterials,
+      },
     });
 
     if (global.io) {

@@ -15,8 +15,9 @@ class WarehouseService {
     // 2. KHO KIỂM TRA TỒN DỰA TRÊN SNAPSHOT
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
-      const inv = await prisma.inventory.findUnique({
-        where: { material_id: matId },
+      const [actualMatId, actualThickId] = matId.split('_');
+      const inv = await prisma.inventory.findFirst({
+        where: { material_id: actualMatId, thickness_id: actualThickId || null },
         include: { materials: true },
       });
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
@@ -44,14 +45,15 @@ class WarehouseService {
     await prisma.$transaction(async (tx) => {
       for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
         const requiredQty = parseFloat(requiredQtyStr);
-        await tx.inventory.update({
-          where: { material_id: matId },
+        const [actualMatId, actualThickId] = matId.split('_');
+        await tx.inventory.updateMany({
+          where: { material_id: actualMatId, thickness_id: actualThickId || null },
           data: { quantity: { decrement: requiredQty } },
         });
 
         await tx.inventory_logs.create({
           data: {
-            material_id: matId,
+            material_id: actualMatId || matId,
             action_type: "EXPORT",
             quantity_change: -requiredQty,
             reference_code: `ORDER_${orderId}`,
@@ -124,8 +126,9 @@ class WarehouseService {
     // Kiểm tra tồn
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
-      const inv = await prisma.inventory.findUnique({
-        where: { material_id: matId },
+      const [actualMatId, actualThickId] = matId.split('_');
+      const inv = await prisma.inventory.findFirst({
+        where: { material_id: actualMatId, thickness_id: actualThickId || null },
         include: { materials: true },
       });
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
@@ -154,14 +157,15 @@ class WarehouseService {
     await prisma.$transaction(async (tx) => {
       for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
         const requiredQty = parseFloat(requiredQtyStr);
-        await tx.inventory.update({
-          where: { material_id: matId },
+        const [actualMatId, actualThickId] = matId.split('_');
+        await tx.inventory.updateMany({
+          where: { material_id: actualMatId, thickness_id: actualThickId || null },
           data: { quantity: { decrement: requiredQty } },
         });
 
         await tx.inventory_logs.create({
           data: {
-            material_id: matId,
+            material_id: actualMatId || matId,
             action_type: "EXPORT",
             quantity_change: -requiredQty,
             reference_code: `ORDER_${orderId}`,
@@ -201,8 +205,9 @@ class WarehouseService {
     // Tính toán lượng thiếu cho từng loại vật tư để kiểm chứng
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
-      const inv = await prisma.inventory.findUnique({
-        where: { material_id: matId },
+      const [actualMatId, actualThickId] = matId.split('_');
+      const inv = await prisma.inventory.findFirst({
+        where: { material_id: actualMatId, thickness_id: actualThickId || null },
       });
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
 
@@ -247,14 +252,15 @@ class WarehouseService {
       // Trừ tồn kho như confirmSufficientStock
       for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
         const requiredQty = parseFloat(requiredQtyStr);
-        await tx.inventory.update({
-          where: { material_id: matId },
+        const [actualMatId, actualThickId] = matId.split('_');
+        await tx.inventory.updateMany({
+          where: { material_id: actualMatId, thickness_id: actualThickId || null },
           data: { quantity: { decrement: requiredQty } },
         });
 
         await tx.inventory_logs.create({
           data: {
-            material_id: matId,
+            material_id: actualMatId || matId,
             action_type: "EXPORT",
             quantity_change: -requiredQty,
             reference_code: `ORDER_${orderId}`,
@@ -669,8 +675,9 @@ class WarehouseService {
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
       // Cần include thêm bảng materials và material_units để lấy tên và đơn vị tính
-      const inv = await prisma.inventory.findUnique({
-        where: { material_id: matId },
+      const [actualMatId, actualThickId] = matId.split('_');
+      const inv = await prisma.inventory.findFirst({
+        where: { material_id: actualMatId, thickness_id: actualThickId || null },
         include: {
           materials: {
             include: {

@@ -33,8 +33,17 @@ const keepDatabaseAlive = async () => {
   }
 };
 
-// Giữ DB sống tự động mỗi 10 phút để tránh Supabase sleep
-setInterval(keepDatabaseAlive, 1000 * 60 * 10);
+// Giữ DB sống tự động mỗi 4 phút để tránh Supabase free tier idle timeout (5 phút)
+setInterval(keepDatabaseAlive, 1000 * 60 * 4);
+
+// Log rõ ràng các lỗi Prisma không được catch để debug nhanh hơn
+process.on("unhandledRejection", (reason) => {
+  if (reason?.code === "P1017" || reason?.code === "P1001") {
+    console.warn(`[DB] Prisma mất kết nối (${reason?.code}). Server tự recover ở lần request tiếp theo.`);
+  } else {
+    console.error("[Server] Unhandled Rejection:", reason);
+  }
+});
 
 io.on("connection", (socket) => {
   // Gọi DB dậy ngay khi có client (frontend) truy cập
@@ -121,3 +130,20 @@ app.get("/", (req, res) => {
 server.listen(Port, () => {
   console.log(` Server is running on port ${Port}`);
 });
+
+// Graceful shutdown: đảm bảo Prisma disconnect đúng cách khi server dừng
+// Tránh leak idle connection trên Supabase (60 connection limit)
+const gracefulShutdown = async (signal) => {
+  console.log(`\n[Server] Nhận tín hiệu ${signal}, đang tắt...`);
+  try {
+    await prisma.$disconnect();
+    console.log("[Server] Prisma đã disconnect thành công.");
+  } catch (e) {
+    console.error("[Server] Lỗi khi disconnect Prisma:", e.message);
+  }
+  process.exit(0);
+};
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+

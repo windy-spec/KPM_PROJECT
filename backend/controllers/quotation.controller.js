@@ -1,5 +1,5 @@
 const quotationService = require("../services/quotation.service");
-
+const pdfService = require("../services/pdf.service");
 class QuotationController {
   async getAll(req, res) {
     try {
@@ -110,14 +110,12 @@ class QuotationController {
       });
     } catch (e) {
       if (e.message === "PROFILE_INCOMPLETE") {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            code: "PROFILE_INCOMPLETE",
-            message:
-              "Vui lòng cập nhật Số điện thoại và Địa chỉ trước khi gửi yêu cầu.",
-          });
+        return res.status(400).json({
+          success: false,
+          code: "PROFILE_INCOMPLETE",
+          message:
+            "Vui lòng cập nhật Số điện thoại và Địa chỉ trước khi gửi yêu cầu.",
+        });
       }
       res.status(400).json({ success: false, message: e.message });
     }
@@ -188,6 +186,22 @@ class QuotationController {
       });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
+    }
+  }
+  async exportPdf(req, res) {
+    try {
+      const quotation = await quotationService.getQuotationById(req.params.id);
+      const pdfBuffer = await pdfService.generateQuotationPDF(quotation);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=bao-gia-${req.params.id}.pdf`,
+      );
+      res.status(200).send(pdfBuffer);
+    } catch (e) {
+      console.error("Lỗi xuất PDF:", e);
+      res.status(500).json({ success: false, message: e.message });
     }
   }
 }

@@ -24,7 +24,7 @@ import Pagination from "../../components/common/Pagination";
 import { showSuccess, showError } from "../../utils/notify";
 import orderService from "../../services/order.service";
 import { useSocket } from "../../context/SocketContext";
-import html2pdf from "html2pdf.js";
+
 
 // Hàm helper format hiển thị tiền tệ VNĐ
 const formatMoney = new Intl.NumberFormat("vi-VN", {
@@ -78,21 +78,25 @@ export default function ManageOrders() {
             status: o.production_status || "pending",
             shipping_address: o.shipping_address || o.quotations?.address || "Liên hệ nhận hàng",
             notes: o.order_notes || o.quotations?.notes || "",
-            items: o.order_items?.length > 0
-              ? o.order_items.map((i) => ({
-                id: i.id,
-                product_name: i.products?.product_name || "Sản phẩm",
-                quantity: i.quantity,
-                price: parseFloat(i.price) || 0,
-                unit: "Cái",
-              }))
-              : o.quotations?.quotation_specs?.map((spec) => ({
-                id: spec.id,
-                product_name: spec.component_name || "Linh kiện",
-                quantity: 1,
-                price: parseFloat(spec.snapshot_price) || 0,
-                unit: "Hệ",
-              })) || [],
+            items: o.quotation_id 
+              ? [{
+                  id: o.quotations?.id || "custom-quote",
+                  product_name: o.quotations?.title || o.quotations?.nick_name || "Sản phẩm gia công theo yêu cầu",
+                  quantity: 1,
+                  area: 0,
+                  price: (parseFloat(o.total_amount) || 0) - (parseFloat(o.shipping_fee) || 0) - (parseFloat(o.installation_fee) || 0),
+                  unit: "Gói",
+                  isCustom: false,
+                }]
+              : (o.order_items?.length > 0 
+                ? o.order_items.map((i) => ({
+                    id: i.id,
+                    product_name: i.products?.product_name || "Sản phẩm",
+                    quantity: i.quantity,
+                    price: parseFloat(i.price) || 0,
+                    unit: "Cái",
+                  }))
+                : []),
             total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
             shipping_fee: parseFloat(o.shipping_fee) || 0,
             installation_fee: parseFloat(o.installation_fee) || 0,
@@ -132,25 +136,13 @@ export default function ManageOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [exportingPdf, setExportingPdf] = useState(false);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!selectedOrder) return;
     setExportingPdf(true);
-    try {
-      const element = document.getElementById("order-content");
-      if (!element) return;
-      const opt = {
-        margin:       10,
-        filename:     `Don_Hang_${selectedOrder.display_id}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      await html2pdf().set(opt).from(element).save();
-    } catch (e) {
-      showError("Xuất PDF thất bại!");
-    } finally {
-      setExportingPdf(false);
-    }
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setExportingPdf(false), 500);
+    }, 100);
   };
 
   // Bộ lọc tìm kiếm & trạng thái mượt mà
@@ -496,14 +488,13 @@ export default function ManageOrders() {
           </div>
         )}
       </div>
-
-      {/* 5. PORTAL MODAL CHI TIẾT ĐƠN HÀNG VÀ XỬ LÝ DUYỆT NHANH */}
+{/* 5. PORTAL MODAL CHI TIẾT ĐƠN HÀNG VÀ XỬ LÝ DUYỆT NHANH */}
       {selectedOrder && (
         <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-[32px] border border-outline-variant/60 bg-surface shadow-2xl overflow-hidden animate-scale-up">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in print:bg-white print:p-0 print:block">
+            <div className="flex w-full max-w-4xl flex-col max-h-[90vh] overflow-hidden rounded-[32px] border border-outline-variant/60 bg-surface shadow-2xl animate-scale-up print:max-w-full print:max-h-full print:border-none print:rounded-none print:shadow-none print-area">
               {/* Header Modal */}
-              <div className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container-low px-6 py-4">
+              <div className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container-low px-6 py-4 print:hidden">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                     <FileText className="h-5 w-5" />
@@ -519,16 +510,15 @@ export default function ManageOrders() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleExportPDF}
-                    disabled={exportingPdf}
-                    className="flex h-9 px-3 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all shadow-sm disabled:opacity-50"
+                    onClick={() => window.print()}
+                    className="flex h-9 px-3 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-all shadow-sm"
                   >
-                    {exportingPdf ? <Clock className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                    <span>{exportingPdf ? "Đang xuất..." : "Tải PDF"}</span>
+                    <FileText className="w-4 h-4" />
+                    <span>In Đơn Hàng</span>
                   </button>
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-surface hover:bg-surface-variant text-on-surface-variant transition-colors no-print"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -536,7 +526,7 @@ export default function ManageOrders() {
               </div>
 
               {/* Nội dung chi tiết đơn */}
-              <div id="order-content" className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+              <div id="order-content" className="flex-1 overflow-y-auto p-6 space-y-6 bg-white print:p-0">
                 {/* Thông tin khách hàng & Giao hàng */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl bg-surface-container-low/40 p-4 border border-outline-variant/30">
                   <div className="space-y-2">
@@ -574,7 +564,7 @@ export default function ManageOrders() {
                         <tr className="border-b border-outline-variant/40 bg-surface-container-low/60 text-[11px] font-black text-on-surface-variant uppercase tracking-wider">
                           <th className="p-3">Tên sản phẩm vật tư</th>
                           <th className="p-3 text-center w-24">Số lượng</th>
-                          <th className="p-3 text-right w-32">Đơn giá</th>
+                          <th className="p-3 text-right w-32">Đơn giá / Diện tích</th>
                           <th className="p-3 text-right w-32">Thành tiền</th>
                         </tr>
                       </thead>
@@ -591,10 +581,18 @@ export default function ManageOrders() {
                               {item.quantity} {item.unit}
                             </td>
                             <td className="p-3 text-right font-mono text-on-surface-variant">
-                              {formatMoney.format(item.price)}
+                              {item.isCustom && item.area > 0 ? (
+                                <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded font-bold border border-emerald-100">{item.area} m²</span>
+                              ) : (
+                                formatMoney.format(item.price)
+                              )}
                             </td>
                             <td className="p-3 text-right font-mono font-black text-primary">
-                              {formatMoney.format(item.quantity * item.price)}
+                              {item.isCustom && item.area > 0 ? (
+                                "-" 
+                              ) : (
+                                formatMoney.format(item.quantity * item.price)
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -714,7 +712,7 @@ export default function ManageOrders() {
               </div>
 
               {/* Footer điều phối trạng thái hoặc đóng đơn */}
-              <div className="flex flex-wrap items-center justify-between border-t border-outline-variant/40 bg-surface-container-low/60 px-6 py-4 gap-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-outline-variant/40 bg-surface-container-lowest px-6 py-5 no-print">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-xs font-bold text-on-surface-variant">
                     Cập nhật tiến độ:
