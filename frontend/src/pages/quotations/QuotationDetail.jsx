@@ -20,7 +20,7 @@ import {
   X
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
-
+import html2canvas from "html2canvas";
 
 import Portal from "../../components/common/Portal";
 
@@ -37,7 +37,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
   const [negotiatePrice, setNegotiatePrice] = useState('');
   const [finalStatus, setFinalStatus] = useState('admin_confirmed');
-  
+
   const [blueprintPreview, setBlueprintPreview] = useState(null);
   const [overallDrawingPreview, setOverallDrawingPreview] = useState(false);
   const [includePartImages, setIncludePartImages] = useState(false);
@@ -199,14 +199,14 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     if (!spec.blueprint_html_code) return "";
     let html = spec.blueprint_html_code;
     html = html.replace(/{{COMPONENT_NAME}}/g, spec.component_name || "");
-    
+
     // Xử lý chuỗi Kích thước tổng hợp: {{LENGTH}} x {{WIDTH}} x {{HEIGHT}}
     html = html.replace(/{{LENGTH}}\s*x\s*{{WIDTH}}\s*x\s*{{HEIGHT}}/g, () => {
-       const dims = [];
-       if (spec.dimensions?.length) dims.push(spec.dimensions.length);
-       if (spec.dimensions?.width) dims.push(spec.dimensions.width);
-       if (spec.dimensions?.height) dims.push(spec.dimensions.height);
-       return dims.length > 0 ? dims.join(" x ") : "-";
+      const dims = [];
+      if (spec.dimensions?.length) dims.push(spec.dimensions.length);
+      if (spec.dimensions?.width) dims.push(spec.dimensions.width);
+      if (spec.dimensions?.height) dims.push(spec.dimensions.height);
+      return dims.length > 0 ? dims.join(" x ") : "-";
     });
 
     // Phòng hờ template gọi riêng lẻ từng biến
@@ -216,16 +216,16 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     // Trích xuất độ dày từ tên vật liệu nếu chưa có
     let materialName = spec.materials?.material_name || "-";
     let thickness = spec.material_thickness?.thickness_value;
-    
+
     if (!thickness && materialName !== "-") {
-       const match = materialName.match(/(?:dày\s*)?(\d+(?:\.\d+)?\s*mm)/i);
-       if (match) {
-          thickness = match[1];
-          // Có thể tuỳ chọn cắt bỏ phần độ dày ra khỏi tên vật liệu để tránh lặp lại
-          materialName = materialName.replace(match[0], "").trim();
-          // Xoá dấu phẩy hoặc dấu gạch nối dư thừa ở cuối nếu có
-          materialName = materialName.replace(/[,\-]\s*$/, "");
-       }
+      const match = materialName.match(/(?:dày\s*)?(\d+(?:\.\d+)?\s*mm)/i);
+      if (match) {
+        thickness = match[1];
+        // Có thể tuỳ chọn cắt bỏ phần độ dày ra khỏi tên vật liệu để tránh lặp lại
+        materialName = materialName.replace(match[0], "").trim();
+        // Xoá dấu phẩy hoặc dấu gạch nối dư thừa ở cuối nếu có
+        materialName = materialName.replace(/[,\-]\s*$/, "");
+      }
     }
     thickness = thickness || "-";
 
@@ -236,13 +236,13 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
   async function handlePackageBlueprints() {
     if (!data || !data.quotation_specs) return;
-    
-    const hasGenerated = data?.quotation_attachments?.some(a => 
-      a.file_name?.startsWith("Bản vẽ 2D - ") || 
-      a.file_name?.startsWith("Ảnh 3D - ") || 
+
+    const hasGenerated = data?.quotation_attachments?.some(a =>
+      a.file_name?.startsWith("Bản vẽ 2D - ") ||
+      a.file_name?.startsWith("Ảnh 3D - ") ||
       a.file_name?.startsWith("Ảnh nét đứt - ")
     );
-    
+
     if (hasGenerated) {
       showError("Hồ sơ bản vẽ đã được đóng gói từ trước!");
       return;
@@ -258,29 +258,40 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     try {
       for (const spec of specsWithBlueprint) {
         const container = document.createElement("div");
-        container.style.position = "absolute";
-        container.style.left = "-9999px";
-        container.style.top = "-9999px";
+        container.style.position = "fixed";
+        container.style.left = "-10000px";
+        container.style.top = "-10000px";
+        container.style.width = "1000px";
+        container.style.background = "#fff";
         container.innerHTML = renderBlueprint(spec);
         document.body.appendChild(container);
 
         await new Promise(r => setTimeout(r, 200));
 
-        /* removed html2canvas */
-        const blob = null;
-        if (blob) {
-          const formData = new FormData();
-          formData.append("image", blob, `blueprint_${Date.now()}.png`);
-          const uploadRes = await apiClient.post("/ai/upload-drawing", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
+        try {
+          const canvas = await html2canvas(container, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: "#ffffff"
           });
-          const fileUrl = uploadRes.data?.data?.imageUrl;
-          if (fileUrl) {
-            await adminService.createQuotationAttachment(id, {
-              file_name: `Bản vẽ 2D - ${spec.component_name}`,
-              file_url: fileUrl,
+
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (blob) {
+            const formData = new FormData();
+            formData.append("image", blob, `blueprint_${Date.now()}.png`);
+            const uploadRes = await apiClient.post("/ai/upload-drawing", formData, {
+              headers: { "Content-Type": "multipart/form-data" }
             });
+            const fileUrl = uploadRes.data?.data?.imageUrl;
+            if (fileUrl) {
+              await adminService.createQuotationAttachment(id, {
+                file_name: `Bản vẽ 2D - ${spec.component_name}`,
+                file_url: fileUrl,
+              });
+            }
           }
+        } finally {
+          document.body.removeChild(container);
         }
       }
 
@@ -314,6 +325,11 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   async function handleExportPDF() {
     window.print();
   }
+
+  const isImageFile = (url) => {
+    if (!url) return false;
+    return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(url);
+  };
 
   if (!id)
     return (
@@ -374,10 +390,10 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
               <div className="overflow-x-auto rounded-xl border border-outline-variant/40 bg-surface-container/5">
                 <table className="w-full text-left text-sm border-collapse">
-                                    <thead>
+                  <thead>
                     <tr className="border-b border-outline-variant/50 bg-surface-container/20 text-on-surface-variant/70 text-[10px] font-black uppercase tracking-wider">
                       <th className="py-3 px-4 font-bold">Chi tiết Cấu hình</th>
-                      <th className="py-3 px-4 font-bold text-center w-[140px]">Kích thước (mm)</th>
+                      <th className="py-3 px-4 font-bold text-center w-[160px]">Kích thước (mm)</th>
                       <th className="py-3 px-4 font-bold text-right w-[150px]">Diện tích (m²)</th>
                     </tr>
                   </thead>
@@ -488,6 +504,41 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   </div>
                 )}
               </div>
+              {/* ================= THÊM KHỐI HIỂN THỊ HÌNH ẢNH TRỰC TIẾP Ở ĐÂY ================= */}
+              {[...(data.attachments || []), ...(data.quotation_attachments || [])].filter(att => isImageFile(att.file_url)).length > 0 && (
+                <div className="mt-5 pt-4 border-t border-dashed border-outline-variant/40">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-primary/80 mb-3">
+                    Xem trước hình ảnh & Bản vẽ kỹ thuật:
+                  </p>
+
+                  {/* Lưới hiển thị hình ảnh, tự động chia 2 cột nếu không gian đủ rộng */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[...(data.attachments || []), ...(data.quotation_attachments || [])]
+                      .filter(att => isImageFile(att.file_url))
+                      .map((att) => (
+                        <div
+                          key={`img-${att.id || att.file_url}`}
+                          className="border border-outline-variant/40 rounded-xl p-2.5 bg-white flex flex-col gap-2 items-center shadow-sm"
+                        >
+                          {/* Khung chứa ảnh cố định chiều cao giúp form không bị xô lệch */}
+                          <div className="w-full h-44 bg-slate-50 rounded-lg flex items-center justify-center p-1.5 overflow-hidden">
+                            <img
+                              src={att.file_url}
+                              alt={att.name || att.file_name}
+                              crossOrigin="anonymous" // Cần thiết để xuất PDF không bị mất ảnh lỗi CORS
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                          {/* Hiển thị tên file nhỏ phía dưới ảnh */}
+                          <span className="text-[10px] font-mono text-on-surface-variant/70 truncate w-full text-center px-1">
+                            {att.name || att.file_name}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+              {/* ============================================================================== */}
             </div>
           </div>
         )}
@@ -498,7 +549,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
         <div className="rounded-2xl border border-outline-variant/60 bg-white p-5 shadow-sm flex flex-col gap-4">
           <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/80">Sinh & Quản lý Hồ sơ Bản vẽ</h4>
-          
+
           <div className="space-y-3">
             <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase">Bản vẽ nét đứt (Tự động)</h5>
             {data?.quotation_specs?.filter(s => s.blueprint_html_code).length > 0 ? (
@@ -519,28 +570,28 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             ) : (
               <div className="text-xs italic text-on-surface-variant/50">Không có linh kiện nào được gắn mẫu bản vẽ.</div>
             )}
-            
+
             {/* Bản vẽ 3D tổng thể */}
             <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mt-4">Bản vẽ 3D Tổng thể</h5>
             {data?.product_drawings?.html_code ? (
-               <div className="flex items-center justify-between bg-surface-container/10 border border-outline-variant/40 rounded-lg p-2.5">
-                  <span className="text-xs font-semibold truncate max-w-[70%]">Mô hình 3D (AI Gen)</span>
-                  <button
-                    onClick={() => setOverallDrawingPreview(true)}
-                    className="text-primary hover:text-primary/80 flex items-center gap-1 text-[10px] font-bold bg-primary/10 px-2 py-1 rounded"
-                  >
-                    <Eye className="w-3 h-3" />
-                    Xem
-                  </button>
-               </div>
+              <div className="flex items-center justify-between bg-surface-container/10 border border-outline-variant/40 rounded-lg p-2.5">
+                <span className="text-xs font-semibold truncate max-w-[70%]">Mô hình 3D (AI Gen)</span>
+                <button
+                  onClick={() => setOverallDrawingPreview(true)}
+                  className="text-primary hover:text-primary/80 flex items-center gap-1 text-[10px] font-bold bg-primary/10 px-2 py-1 rounded"
+                >
+                  <Eye className="w-3 h-3" />
+                  Xem
+                </button>
+              </div>
             ) : (
-               <div className="text-xs italic text-on-surface-variant/50">Không có mã HTML bản vẽ tổng thể.</div>
+              <div className="text-xs italic text-on-surface-variant/50">Không có mã HTML bản vẽ tổng thể.</div>
             )}
-            
+
             {data?.product_drawings?.drawing_parts && data.product_drawings.drawing_parts.length > 0 && (
               <label className="flex items-center gap-2 mt-3 cursor-pointer p-2 bg-surface-container/5 border border-outline-variant/40 rounded-lg">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={includePartImages}
                   onChange={(e) => setIncludePartImages(e.target.checked)}
                   className="w-4 h-4 text-primary rounded border-outline-variant"
@@ -551,17 +602,17 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
             <button
               onClick={handlePackageBlueprints}
-              disabled={packaging || (!data?.quotation_specs?.some(s => s.blueprint_html_code) && !includePartImages) || data?.quotation_attachments?.some(a => 
-                a.file_name?.startsWith("Bản vẽ 2D - ") || 
-                a.file_name?.startsWith("Ảnh 3D - ") || 
+              disabled={packaging || (!data?.quotation_specs?.some(s => s.blueprint_html_code) && !includePartImages) || data?.quotation_attachments?.some(a =>
+                a.file_name?.startsWith("Bản vẽ 2D - ") ||
+                a.file_name?.startsWith("Ảnh 3D - ") ||
                 a.file_name?.startsWith("Ảnh nét đứt - ")
               )}
               className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 h-10 text-white font-bold text-xs uppercase shadow-md hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {packaging ? <Clock className="w-4 h-4 animate-spin" /> : <Package className="w-4 h-4" />}
               <span>
-                {packaging 
-                  ? "Đang đóng gói..." 
+                {packaging
+                  ? "Đang đóng gói..."
                   : data?.quotation_attachments?.some(a => a.file_name?.startsWith("Bản vẽ 2D - ") || a.file_name?.startsWith("Ảnh 3D - ") || a.file_name?.startsWith("Ảnh nét đứt - "))
                     ? "Đã đóng gói hồ sơ"
                     : "Đóng gói Hồ sơ Bản vẽ"
