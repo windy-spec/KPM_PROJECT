@@ -257,27 +257,38 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     setPackaging(true);
     try {
       for (const spec of specsWithBlueprint) {
-        const container = document.createElement("div");
-        container.style.position = "absolute";
-        container.style.left = "-9999px";
-        container.style.top = "0px";
-        container.style.zIndex = "-9999";
-        container.style.pointerEvents = "none";
-        container.style.width = "1000px";
-        container.style.background = "#fff";
-        container.innerHTML = renderBlueprint(spec);
-        document.body.appendChild(container);
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.top = "0px";
+        iframe.style.zIndex = "-9999";
+        iframe.style.pointerEvents = "none";
+        iframe.style.width = "1000px";
+        iframe.style.height = "1200px"; // Need enough height to avoid scroll clipping
+        iframe.style.background = "#fff";
+        iframe.style.border = "none";
+        document.body.appendChild(iframe);
 
-        await new Promise(r => setTimeout(r, 200));
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+          <html>
+            <head><style>body { margin: 0; background: #fff; }</style></head>
+            <body>${renderBlueprint(spec)}</body>
+          </html>
+        `);
+        doc.close();
+
+        // Wait for iframe content to render
+        await new Promise(r => setTimeout(r, 300));
 
         try {
-          const canvas = await html2canvas(container, {
+          const canvas = await html2canvas(doc.body, {
             useCORS: true,
             scale: 2,
             backgroundColor: "#ffffff",
             windowWidth: 1000,
-            scrollY: -window.scrollY,
-            scrollX: 0
+            logging: false,
           });
 
           const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -296,7 +307,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             }
           }
         } finally {
-          document.body.removeChild(container);
+          document.body.removeChild(iframe);
         }
       }
 
