@@ -258,9 +258,11 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     try {
       for (const spec of specsWithBlueprint) {
         const container = document.createElement("div");
-        container.style.position = "fixed";
-        container.style.left = "-10000px";
-        container.style.top = "-10000px";
+        container.style.position = "absolute";
+        container.style.left = "-9999px";
+        container.style.top = "0px";
+        container.style.zIndex = "-9999";
+        container.style.pointerEvents = "none";
         container.style.width = "1000px";
         container.style.background = "#fff";
         container.innerHTML = renderBlueprint(spec);
@@ -272,13 +274,12 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
           const canvas = await html2canvas(container, {
             useCORS: true,
             scale: 2,
-            backgroundColor: "#ffffff"
+            backgroundColor: "#ffffff",
+            windowWidth: 1000,
+            scrollY: -window.scrollY,
+            scrollX: 0
           });
-<<<<<<< HEAD
-          
-=======
 
->>>>>>> 0d738ca467ab2e1fc5fc7878545d1cd6f0a4c81e
           const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
           if (blob) {
             const formData = new FormData();

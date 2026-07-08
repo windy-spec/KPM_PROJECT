@@ -255,8 +255,13 @@ class QuotationService {
     // 1. Lấy báo giá hiện tại từ DB
     const quotation = await this.getQuotationById(id);
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
-if (!quotation.quotation_attachments || quotation.quotation_attachments.length === 0) {
-      throw new Error("Vui lòng tải lên ít nhất 1 ảnh Bản vẽ 3D trước khi duyệt gửi báo giá cho khách!");
+    if (
+      !quotation.quotation_attachments ||
+      quotation.quotation_attachments.length === 0
+    ) {
+      throw new Error(
+        "Vui lòng tải lên ít nhất 1 ảnh Bản vẽ 3D trước khi duyệt gửi báo giá cho khách!",
+      );
     }
     // 2. CHECK GIÁ TRƯỚC KHI UPDATE VÀO DB
     if (!quotation.quotation_specs || quotation.quotation_specs.length === 0) {
@@ -289,10 +294,10 @@ if (!quotation.quotation_attachments || quotation.quotation_attachments.length =
           ? admin_proposed_price
           : quotation.total_quoted_price;
 
-      // 3. NẾU GIÁ THẤP HƠN -> BẮN LỖI CHẶN LẠI NGAY LẬP TỨC!
-      if (adminPrice < calculated.total_amount) {
+      // 3. So sánh giá admin nhập vào với giá vốn hệ thống tự tính (tối thiểu 90% giá vốn)
+      if (adminPrice < calculated.total_amount * 0.9) {
         throw new Error(
-          `Giá bạn nhập (${adminPrice.toLocaleString()} đ) đang thấp hơn giá vốn hệ thống tự tính (${calculated.total_amount.toLocaleString()} đ). Vui lòng nhập giá hợp lệ!`,
+          `Giá admin đề xuất (${adminPrice}) thấp hơn 90% giá vốn hệ thống tính toán (${calculated.total_amount * 0.9}). Vui lòng kiểm tra lại!`,
         );
       }
     }
@@ -414,12 +419,12 @@ if (!quotation.quotation_attachments || quotation.quotation_attachments.length =
       throw new Error("Không thể thêm file đính kèm!");
     }
     return await prisma.quotation_attachments.create({
-        data: {
-          quotation_id,
-          file_name,
-          file_url,
-        },
-      });
+      data: {
+        quotation_id,
+        file_name,
+        file_url,
+      },
+    });
   }
   // 5. XÓA BÁO GIÁ (Cẩn thận khóa ngoại Restrict từ bảng Orders)
   async deleteQuotation(id) {
