@@ -251,9 +251,53 @@ class QuotationService {
   // 3.3 ADMIN DUYỆT BÁO GIÁ & GỬI EMAIL
   async approveQuoteRequest(id, data) {
     const { admin_proposed_price } = data;
+
+    // 1. Lấy báo giá hiện tại từ DB
     const quotation = await this.getQuotationById(id);
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
-    // Cập nhật giá bán do Admin đề xuất và đổi status
+if (!quotation.quotation_attachments || quotation.quotation_attachments.length === 0) {
+      throw new Error("Vui lòng tải lên ít nhất 1 ảnh Bản vẽ 3D trước khi duyệt gửi báo giá cho khách!");
+    }
+    // 2. CHECK GIÁ TRƯỚC KHI UPDATE VÀO DB
+    if (!quotation.quotation_specs || quotation.quotation_specs.length === 0) {
+      console.warn(
+        `Báo giá ${id} không có cấu hình linh kiện (quotation_specs rỗng).`,
+      );
+    } else {
+      const firstSpecDims = quotation.quotation_specs[0]?.dimensions || {};
+
+      const calculated = await this.calculateRealtime({
+        product_id: firstSpecDims.product_id,
+        labor_category_id: firstSpecDims.labor_category_id,
+        labor_model_id: firstSpecDims.labor_model_id,
+        components: quotation.quotation_specs.map((spec) => ({
+          component_name: spec.component_name,
+          length: spec.dimensions?.length,
+          width: spec.dimensions?.width,
+          height: spec.dimensions?.height,
+          material_id: spec.material_id,
+          thickness_id: spec.thickness_id,
+          paint_id: spec.paint_id,
+          waste_configs: spec.dimensions?.waste_configs,
+          waste_rate: spec.dimensions?.waste_rate,
+        })),
+      });
+
+      // Lấy giá admin vừa nhập vào (nếu admin không nhập gì thì lấy total_quoted_price)
+      const adminPrice =
+        admin_proposed_price !== undefined
+          ? admin_proposed_price
+          : quotation.total_quoted_price;
+
+      // 3. NẾU GIÁ THẤP HƠN -> BẮN LỖI CHẶN LẠI NGAY LẬP TỨC!
+      if (adminPrice < calculated.total_amount) {
+        throw new Error(
+          `Giá bạn nhập (${adminPrice.toLocaleString()} đ) đang thấp hơn giá vốn hệ thống tự tính (${calculated.total_amount.toLocaleString()} đ). Vui lòng nhập giá hợp lệ!`,
+        );
+      }
+    }
+
+    // 4. QUA ĐƯỢC BƯỚC CHECK Ở TRÊN THÌ MỚI UPDATE DB
     const updateQuote = await prisma.quotations.update({
       where: { id },
       data: {
@@ -264,16 +308,12 @@ class QuotationService {
         status: "admin_quoted",
       },
       include: {
-        users: {
-          include: {
-            user_profiles: true,
-          },
-        },
-        quotation_specs: {
-          include: { materials: true, paint_types: true },
-        },
+        users: { include: { user_profiles: true } },
+        quotation_specs: { include: { materials: true, paint_types: true } },
       },
     });
+
+    // 5. GỬI EMAIL VÀ SOCKET
     if (updateQuote.users && updateQuote.users.email) {
       try {
         await sendQuotationEmail(updateQuote.users.email, updateQuote);
@@ -367,18 +407,20 @@ class QuotationService {
     const { file_name, file_url } = data;
     if (!file_name || !file_url)
       throw new Error("Tên file và URL không được trống!");
-
-    await this.getQuotationById(quotation_id); // Đảm bảo báo giá có thật
-
+    const quotation = await this.getQuotationById(quotation_id);
+    if (!quotation) throw new Error("Báo giá không tồn tại!");
+    // chỉ cho phép gửi file ảnh qua nếu đang ở trạng thái "draft" hoặc "pending_admin" (chưa gửi cho khách)
+    if (quotation.status !== "draft" && quotation.status !== "pending_admin") {
+      throw new Error("Không thể thêm file đính kèm!");
+    }
     return await prisma.quotation_attachments.create({
-      data: {
-        quotation_id,
-        file_name,
-        file_url,
-      },
-    });
+        data: {
+          quotation_id,
+          file_name,
+          file_url,
+        },
+      });
   }
-
   // 5. XÓA BÁO GIÁ (Cẩn thận khóa ngoại Restrict từ bảng Orders)
   async deleteQuotation(id) {
     await this.getQuotationById(id);

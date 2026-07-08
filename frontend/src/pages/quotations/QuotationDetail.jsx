@@ -20,7 +20,7 @@ import {
   X
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
-
+import html2canvas from "html2canvas";
 
 import Portal from "../../components/common/Portal";
 
@@ -258,29 +258,40 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     try {
       for (const spec of specsWithBlueprint) {
         const container = document.createElement("div");
-        container.style.position = "absolute";
-        container.style.left = "-9999px";
-        container.style.top = "-9999px";
+        container.style.position = "fixed";
+        container.style.left = "-10000px";
+        container.style.top = "-10000px";
+        container.style.width = "1000px";
+        container.style.background = "#fff";
         container.innerHTML = renderBlueprint(spec);
         document.body.appendChild(container);
 
         await new Promise(r => setTimeout(r, 200));
 
-        /* removed html2canvas */
-        const blob = null;
-        if (blob) {
-          const formData = new FormData();
-          formData.append("image", blob, `blueprint_${Date.now()}.png`);
-          const uploadRes = await apiClient.post("/ai/upload-drawing", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
+        try {
+          const canvas = await html2canvas(container, {
+            useCORS: true,
+            scale: 2,
+            backgroundColor: "#ffffff"
           });
-          const fileUrl = uploadRes.data?.data?.imageUrl;
-          if (fileUrl) {
-            await adminService.createQuotationAttachment(id, {
-              file_name: `Bản vẽ 2D - ${spec.component_name}`,
-              file_url: fileUrl,
+          
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+          if (blob) {
+            const formData = new FormData();
+            formData.append("image", blob, `blueprint_${Date.now()}.png`);
+            const uploadRes = await apiClient.post("/ai/upload-drawing", formData, {
+              headers: { "Content-Type": "multipart/form-data" }
             });
+            const fileUrl = uploadRes.data?.data?.imageUrl;
+            if (fileUrl) {
+              await adminService.createQuotationAttachment(id, {
+                file_name: `Bản vẽ 2D - ${spec.component_name}`,
+                file_url: fileUrl,
+              });
+            }
           }
+        } finally {
+          document.body.removeChild(container);
         }
       }
 
