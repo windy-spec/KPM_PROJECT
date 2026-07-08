@@ -198,10 +198,15 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   function renderBlueprint(spec) {
     if (!spec.blueprint_html_code) return "";
     let html = spec.blueprint_html_code;
-    html = html.replace(/{{COMPONENT_NAME}}/g, spec.component_name || "");
+    html = html.replace(/\{\{\s*COMPONENT_NAME\s*\}\}/g, spec.component_name || "");
+    
+    // Xóa màu oklab/oklch để tránh lỗi html2canvas
+    html = html.replace(/oklab\([^)]+\)/gi, "rgba(0,0,0,0)")
+               .replace(/oklch\([^)]+\)/gi, "rgba(0,0,0,0)")
+               .replace(/color\([^)]+\)/gi, "rgba(0,0,0,0)");
 
     // Xử lý chuỗi Kích thước tổng hợp: {{LENGTH}} x {{WIDTH}} x {{HEIGHT}}
-    html = html.replace(/{{LENGTH}}\s*x\s*{{WIDTH}}\s*x\s*{{HEIGHT}}/g, () => {
+    html = html.replace(/\{\{\s*LENGTH\s*\}\}\s*x\s*\{\{\s*WIDTH\s*\}\}\s*x\s*\{\{\s*HEIGHT\s*\}\}/g, () => {
       const dims = [];
       if (spec.dimensions?.length) dims.push(spec.dimensions.length);
       if (spec.dimensions?.width) dims.push(spec.dimensions.width);
@@ -210,9 +215,9 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     });
 
     // Phòng hờ template gọi riêng lẻ từng biến
-    html = html.replace(/{{LENGTH}}/g, spec.dimensions?.length || "-");
-    html = html.replace(/{{WIDTH}}/g, spec.dimensions?.width || "-");
-    html = html.replace(/{{HEIGHT}}/g, spec.dimensions?.height || "-");
+    html = html.replace(/\{\{\s*LENGTH\s*\}\}/g, spec.dimensions?.length || "-");
+    html = html.replace(/\{\{\s*WIDTH\s*\}\}/g, spec.dimensions?.width || "-");
+    html = html.replace(/\{\{\s*HEIGHT\s*\}\}/g, spec.dimensions?.height || "-");
     // Trích xuất độ dày từ tên vật liệu nếu chưa có
     let materialName = spec.materials?.material_name || "-";
     let thickness = spec.material_thickness?.thickness_value;
@@ -229,8 +234,8 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     }
     thickness = thickness || "-";
 
-    html = html.replace(/{{MATERIAL_NAME}}/g, materialName);
-    html = html.replace(/{{THICKNESS}}/g, thickness);
+    html = html.replace(/\{\{\s*MATERIAL_NAME\s*\}\}/g, materialName);
+    html = html.replace(/\{\{\s*THICKNESS\s*\}\}/g, thickness);
     return html;
   }
 
@@ -261,24 +266,23 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
         container.style.position = "absolute";
         container.style.left = "-9999px";
         container.style.top = "0px";
-        container.style.zIndex = "-9999";
-        container.style.pointerEvents = "none";
-        container.style.width = "1000px";
-        container.style.background = "#fff";
         container.innerHTML = renderBlueprint(spec);
         document.body.appendChild(container);
 
         await new Promise(r => setTimeout(r, 200));
 
         try {
-          const canvas = await html2canvas(container, {
-            useCORS: true,
-            scale: 2,
-            backgroundColor: "#ffffff",
-            windowWidth: 1000,
-            scrollY: -window.scrollY,
-            scrollX: 0
-          });
+          const canvas = await Promise.race([
+            html2canvas(container, {
+              useCORS: true,
+              scale: 2,
+              backgroundColor: "#ffffff",
+              windowWidth: 1000,
+              scrollY: -window.scrollY,
+              scrollX: 0
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("html2canvas timeout")), 15000))
+          ]);
 
           const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
           if (blob) {
@@ -299,18 +303,28 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
           document.body.removeChild(container);
         }
       }
+      
+      if (data.product_drawings?.html_code) {
+        // Tạo link tương tác 3D thay vì chụp ảnh tĩnh
+        const drawingId = data.product_drawings.id;
+        const viewerLink = `${window.location.origin}/viewer/3d/${drawingId}`;
+        
+        // Chỉ thêm link vào đính kèm nếu chưa có
+        const hasViewerLink = data.quotation_attachments?.some(a => a.file_url === viewerLink);
+        
+        if (!hasViewerLink) {
+          await adminService.createQuotationAttachment(id, {
+            file_name: `🔗 [Tương tác 3D] Mô hình ${data.product_drawings.drawing_name || 'Sản phẩm'}`,
+            file_url: viewerLink,
+          });
+        }
+      }
 
       if (includePartImages && data.product_drawings?.drawing_parts) {
         for (const part of data.product_drawings.drawing_parts) {
-          if (part.part_3d_image_url) {
-            await adminService.createQuotationAttachment(id, {
-              file_name: `Ảnh 3D - ${part.component_name}`,
-              file_url: part.part_3d_image_url,
-            });
-          }
           if (part.part_image_url) {
             await adminService.createQuotationAttachment(id, {
-              file_name: `Ảnh nét đứt - ${part.component_name}`,
+              file_name: `Ảnh 3D - ${part.component_name}`,
               file_url: part.part_image_url,
             });
           }
@@ -580,7 +594,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             <h5 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mt-4">Bản vẽ 3D Tổng thể</h5>
             {data?.product_drawings?.html_code ? (
               <div className="flex items-center justify-between bg-surface-container/10 border border-outline-variant/40 rounded-lg p-2.5">
-                <span className="text-xs font-semibold truncate max-w-[70%]">Mô hình 3D (AI Gen)</span>
+                <span className="text-xs font-semibold truncate max-w-[70%]">Mô hình bảng vẽ tổng thể 3D</span>
                 <button
                   onClick={() => setOverallDrawingPreview(true)}
                   className="text-primary hover:text-primary/80 flex items-center gap-1 text-[10px] font-bold bg-primary/10 px-2 py-1 rounded"
@@ -791,8 +805,12 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-50">
-                <div dangerouslySetInnerHTML={{ __html: blueprintPreview }} />
+              <div className="p-0 overflow-hidden flex-1 flex bg-slate-50 relative min-h-[500px]">
+                <iframe
+                  srcDoc={blueprintPreview}
+                  className="absolute inset-0 w-full h-full border-none"
+                  title="Xem trước Bản vẽ"
+                />
               </div>
             </div>
           </div>
@@ -809,8 +827,12 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-6 overflow-auto flex-1 flex items-center justify-center bg-slate-50 min-h-[500px]">
-                <div dangerouslySetInnerHTML={{ __html: data.product_drawings.html_code }} />
+              <div className="p-0 overflow-hidden flex-1 flex bg-slate-50 relative min-h-[500px]">
+                <iframe
+                  srcDoc={data.product_drawings.html_code.replace(/bottom:\s*40px;?/g, "bottom: 15px;")}
+                  className="absolute inset-0 w-full h-full border-none"
+                  title="Xem trước Mô hình 3D"
+                />
               </div>
             </div>
           </div>

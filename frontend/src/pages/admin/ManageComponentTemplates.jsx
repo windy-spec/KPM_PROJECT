@@ -289,11 +289,12 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
                   <div className="sticky top-0 left-0 w-max bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity mb-4">
                     Live Preview 3D
                   </div>
-                  <div className="w-full min-h-full">
-                    <div
+                  <div className="w-full h-full min-h-[400px] relative">
+                    <iframe
                       ref={previewRef}
-                      className="bg-transparent inline-block min-w-full origin-top-left"
-                      dangerouslySetInnerHTML={{ __html: form.html_code }}
+                      className="absolute inset-0 w-full h-full border-none bg-transparent"
+                      srcDoc={form.html_code}
+                      title="Live Preview 3D"
                     />
                   </div>
                 </div>
@@ -326,11 +327,18 @@ function TemplateModal({ initial, categories, materials, loading, onCancel, onSa
                   <div className="sticky top-0 left-0 w-max bg-black/60 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm opacity-50 group-hover:opacity-100 transition-opacity mb-4">
                     Live Preview Blueprint
                   </div>
-                  <div className="w-full min-h-full">
-                    <div
+                  <div className="w-full h-full min-h-[400px] relative">
+                    <iframe
                       ref={blueprintPreviewRef}
-                      className="bg-transparent inline-block min-w-full origin-top-left"
-                      dangerouslySetInnerHTML={{ __html: form.blueprint_html_code }}
+                      className="absolute inset-0 w-full h-full border-none bg-transparent"
+                      srcDoc={form.blueprint_html_code
+                        .replace(/\{\{\s*COMPONENT_NAME\s*\}\}/g, "Tên Linh Kiện Mẫu")
+                        .replace(/\{\{\s*LENGTH\s*\}\}/g, "1200")
+                        .replace(/\{\{\s*WIDTH\s*\}\}/g, "800")
+                        .replace(/\{\{\s*HEIGHT\s*\}\}/g, "500")
+                        .replace(/\{\{\s*MATERIAL_NAME\s*\}\}/g, "Thép Hộp Mạ Kẽm")
+                        .replace(/\{\{\s*THICKNESS\s*\}\}/g, "1.8mm")}
+                      title="Live Preview Blueprint"
                     />
                   </div>
                 </div>

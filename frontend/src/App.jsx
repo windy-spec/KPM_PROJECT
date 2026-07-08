@@ -44,9 +44,13 @@ import CustomQuoteForm from './components/quotation/CustomQuoteForm';
 import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
 import ScrollToTop from "./components/common/ScrollToTop";
 import ChatWindow from "./components/chat/ChatWindow";
-
+import Viewer3D from "./pages/shared/Viewer3D";
 
 const routeMap = [
+  {
+    path: "/viewer/3d/:id",
+    element: <Viewer3D />
+  },
   {
     path: "/",
     element: (

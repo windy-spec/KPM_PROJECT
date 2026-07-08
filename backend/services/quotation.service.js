@@ -39,9 +39,34 @@ class QuotationService {
         },
         quotation_attachments: true, // Lôi danh sách file/bản vẽ đính kèm
         orders: true, // Check xem báo giá này đã biến thành đơn hàng xưởng chưa
+        product_drawings: {
+          include: {
+            drawing_parts: true
+          }
+        },
       },
     });
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
+
+    // Nếu báo giá chưa có bản vẽ tổng thể, tự động lấy bản vẽ mặc định của Sản phẩm (dựa vào product_id trong specs)
+    if (!quotation.product_drawings && quotation.quotation_specs && quotation.quotation_specs.length > 0) {
+      const firstSpec = quotation.quotation_specs[0];
+      const productId = firstSpec.dimensions?.product_id;
+      if (productId) {
+        const activeDrawing = await prisma.product_drawings.findFirst({
+          where: { product_id: productId, is_active: true },
+          include: { drawing_parts: true }
+        });
+        if (activeDrawing) {
+          quotation.product_drawings = activeDrawing;
+          // Tự động cập nhật luôn vào DB để lần sau khỏi query
+          await prisma.quotations.update({
+            where: { id: quotation.id },
+            data: { drawing_id: activeDrawing.id }
+          });
+        }
+      }
+    }
 
     if (quotation.quotation_specs && quotation.quotation_specs.length > 0) {
       const componentNames = quotation.quotation_specs
@@ -180,9 +205,16 @@ class QuotationService {
 
     // Tạo mảng specs dựa theo từng component
     const specsData = components.map((comp, idx) => {
-      const l = parseFloat(comp.length || comp.height || 0);
-      const w = parseFloat(comp.width || 0);
-      const area = (l / 1000) * (w / 1000);
+      const l = parseFloat(comp.length || 0) / 1000;
+      const w = parseFloat(comp.width || 0) / 1000;
+      const h = parseFloat(comp.height || 0) / 1000;
+      
+      let area = 0;
+      if (l > 0 && w > 0 && h > 0) area = l * w * h;
+      else if (l > 0 && w > 0) area = l * w;
+      else if (l > 0 && h > 0) area = l * h;
+      else if (w > 0 && h > 0) area = w * h;
+      else area = l || w || h || 0;
       const detail = priceData.component_details[idx];
       return {
         component_name: comp.component_name,
@@ -638,10 +670,16 @@ class QuotationService {
         paint_id,
       } = comp;
 
-      // Dùng length x width, nếu length không có thì lấy height (trường hợp UI truyền height)
-      const l = parseFloat(length || height || 0);
-      const w = parseFloat(width || 0);
-      const area = (l / 1000) * (w / 1000);
+      const l = parseFloat(length || 0) / 1000;
+      const w = parseFloat(width || 0) / 1000;
+      const h = parseFloat(height || 0) / 1000;
+      
+      let area = 0;
+      if (l > 0 && w > 0 && h > 0) area = l * w * h;
+      else if (l > 0 && w > 0) area = l * w;
+      else if (l > 0 && h > 0) area = l * h;
+      else if (w > 0 && h > 0) area = w * h;
+      else area = l || w || h || 0;
 
       total_area += area;
 

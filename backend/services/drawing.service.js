@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 class DrawingService {
   // 1. Lấy danh sách bản vẽ theo Product ID
   async getDrawingsByProduct(productId) {
+    if (!productId || productId === "undefined") return [];
     return await prisma.product_drawings.findMany({
       where: { product_id: productId, is_active: true },
       include: { drawing_parts: true },
@@ -13,6 +14,7 @@ class DrawingService {
 
   // 2. Lấy chi tiết 1 bản vẽ
   async getDrawingById(drawingId) {
+    if (!drawingId || drawingId === "undefined") return null;
     return await prisma.product_drawings.findUnique({
       where: { id: drawingId },
       include: { 

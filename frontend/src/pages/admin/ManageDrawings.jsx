@@ -22,7 +22,17 @@ const ManageDrawings = () => {
   const [parts, setParts] = useState([]);
 
   const [capturing, setCapturing] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState({ current: 0, total: 0 });
   const previewRef = useRef(null);
+
+  const cleanHtmlCode = (html) => {
+    if (!html) return "";
+    return html
+      .replace(/bottom:\s*40px;?/g, "bottom: 15px;")
+      .replace(/oklab\([^)]+\)/gi, "rgba(0,0,0,0)")
+      .replace(/oklch\([^)]+\)/gi, "rgba(0,0,0,0)")
+      .replace(/color\([^)]+\)/gi, "rgba(0,0,0,0)");
+  };
 
   useEffect(() => {
     loadProducts();
@@ -68,8 +78,9 @@ const ManageDrawings = () => {
     }
   };
 
-  const handleOpenAddForm = () => {
-    const product = products.find((p) => p.id === selectedProduct);
+  const handleOpenAddForm = (productParam) => {
+    const product = productParam || products.find((p) => p.id === selectedProduct);
+    if (product) setSelectedProduct(product.id);
     setEditingDrawingId(null);
     setMainImageUrl("");
     setHtmlCode("");
@@ -105,19 +116,55 @@ const ManageDrawings = () => {
     setShowForm(true);
   };
 
-  const handleEditDrawing = (drawing) => {
+  const handleEditDrawing = async (drawing, productId) => {
+    if (productId) setSelectedProduct(productId);
     setEditingDrawingId(drawing.id);
     setDrawingName(drawing.drawing_name || "");
     setScaleRatio(drawing.scale_ratio || "1:100");
     setMainImageUrl(drawing.main_image_url || "");
     setHtmlCode(drawing.html_code || "");
     
-    const loadedParts = drawing.drawing_parts?.map(part => ({
-      ...part,
-      part_image_url: part.part_image_url || "",
-      part_blueprint_image_url: part.part_blueprint_image_url || ""
-    })) || [];
-    setParts(loadedParts);
+    // Gọi API để lấy đầy đủ chi tiết bản vẽ (bao gồm drawing_parts)
+    try {
+      const res = await adminService.getDrawingsByProduct(productId);
+      const fullDrawing = res.data?.data?.find(d => d.id === drawing.id) || drawing;
+      
+      let loadedParts = fullDrawing.drawing_parts?.map(part => ({
+        ...part,
+        part_image_url: part.part_image_url || "",
+        part_blueprint_image_url: part.part_blueprint_image_url || ""
+      })) || [];
+
+      // Auto-recover parts from product.components if DB parts were accidentally wiped
+      if (loadedParts.length === 0) {
+        const product = products.find((p) => p.id === productId);
+        if (product && product.components) {
+          let compArray = [];
+          try {
+            compArray = typeof product.components === "string" ? JSON.parse(product.components) : product.components;
+          } catch (error) {
+            console.error("Lỗi parse components:", error);
+          }
+          if (Array.isArray(compArray)) {
+            loadedParts = compArray.map((comp) => {
+              const tmpl = templates.find(t => t.component_name === (comp.component_name || comp.name));
+              return {
+                component_name: comp.component_name || comp.name || "",
+                material_category: tmpl?.category_code || comp.category_code || comp.component_name || comp.name || "Khung/Vỏ",
+                part_image_url: comp.drawing_image_url || tmpl?.drawing_image_url || "", 
+                part_blueprint_image_url: comp.blueprint_image_url || tmpl?.blueprint_image_url || "",
+              };
+            });
+          }
+        }
+      }
+
+      setParts(loadedParts);
+    } catch (e) {
+      console.error(e);
+      setParts([]);
+    }
+    
     setShowForm(true);
   };
 
@@ -127,6 +174,7 @@ const ManageDrawings = () => {
         await adminService.deleteDrawing(drawingId);
         toast.success("Xoá bản vẽ thành công!");
         loadDrawings(selectedProduct);
+        loadProducts();
       } catch (e) {
         toast.error("Lỗi khi xoá bản vẽ.");
       }
@@ -182,65 +230,41 @@ const ManageDrawings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedProduct) return toast.warning("Vui lòng chọn sản phẩm trước");
-    if (!drawingName) return toast.warning("Vui lòng nhập tên bản vẽ");
-    if (!htmlCode) return toast.warning("Vui lòng tải lên Code HTML 3D tổng thể");
-    
+    if (!selectedProduct) return toast.error("Vui lòng chọn sản phẩm");
+    if (!drawingName.trim()) return toast.error("Vui lòng nhập tên bản vẽ");
+    if (!htmlCode.trim() && !mainImageUrl) return toast.error("Vui lòng cung cấp ảnh 3D tĩnh hoặc mã HTML bản vẽ tổng thể");
+
     setCapturing(true);
 
-    setTimeout(async () => {
-      try {
-        let finalMainImageUrl = mainImageUrl;
-        
-        // Auto capture HTML preview if no static image uploaded
-        if (previewRef.current && !finalMainImageUrl) {
-          const canvas = await html2canvas(previewRef.current, { backgroundColor: null });
-          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-          const file = new File([blob], 'master_drawing.png', { type: 'image/png' });
-          const formData = new FormData();
-          formData.append("image", file);
+    try {
+      let finalMainImageUrl = mainImageUrl;
+      
+      const payload = {
+        product_id: selectedProduct,
+        drawing_name: drawingName,
+        scale_ratio: scaleRatio,
+        main_image_url: finalMainImageUrl,
+        html_code: htmlCode,
+        parts,
+      };
 
-          const res = await apiClient.post("/ai/upload-drawing", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-          const url = res.data?.data?.imageUrl || res.data?.imageUrl || res.data;
-          if (url && typeof url === 'string') {
-            finalMainImageUrl = url;
-          }
-        }
-
-        if (!finalMainImageUrl) {
-           toast.error("Không thể tạo ảnh đại diện tĩnh từ Code HTML. Vui lòng kiểm tra lại Code HTML.");
-           setCapturing(false);
-           return;
-        }
-
-        const payload = {
-          product_id: selectedProduct,
-          drawing_name: drawingName,
-          scale_ratio: scaleRatio,
-          main_image_url: finalMainImageUrl,
-          html_code: htmlCode,
-          parts,
-        };
-
-        if (editingDrawingId) {
-          await adminService.updateDrawing(editingDrawingId, payload);
-          toast.success("Cập nhật bản vẽ thành công!");
-        } else {
-          await adminService.createDrawing(payload);
-          toast.success("Tạo bản vẽ thành công!");
-        }
-
-        setShowForm(false);
-        resetForm();
-        loadDrawings(selectedProduct);
-      } catch (error) {
-        toast.error("Lỗi lưu bản vẽ: " + error.message);
-      } finally {
-        setCapturing(false);
+      if (editingDrawingId) {
+        await adminService.updateDrawing(editingDrawingId, payload);
+        toast.success("Cập nhật bản vẽ thành công!");
+      } else {
+        await adminService.createDrawing(payload);
+        toast.success("Tạo bản vẽ thành công!");
       }
-    }, 500);
+
+      setShowForm(false);
+      resetForm();
+      loadDrawings(selectedProduct);
+      loadProducts();
+    } catch (error) {
+      toast.error("Lỗi lưu bản vẽ: " + error.message);
+    } finally {
+      setCapturing(false);
+    }
   };
 
   const resetForm = () => {
@@ -255,123 +279,87 @@ const ManageDrawings = () => {
   return (
     <div className="p-6 bg-surface-container/10 min-h-screen">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-black text-on-surface">
+        <h3 className="text-xl font-black text-on-surface flex items-center gap-4">
           Quản lý Bản Vẽ Sản Phẩm
         </h3>
-        {selectedProduct && !showForm && (
-          <button
-            onClick={handleOpenAddForm}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm"
-          >
-            <Plus className="w-5 h-5" /> Thêm Bản Vẽ
-          </button>
-        )}
       </div>
 
       {!showForm && (
-        <div className="bg-white rounded-xl shadow-sm border border-outline-variant/60 p-5 mb-6">
-          <label className="block text-sm font-bold text-on-surface mb-2">
-            Chọn sản phẩm để quản lý bản vẽ:
-          </label>
-          <select
-            className="w-full md:w-1/2 p-3 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary font-medium"
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-          >
-            <option value="">-- Chọn Sản Phẩm --</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.product_code} - {p.name || p.product_name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {!showForm && selectedProduct && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {drawings.length === 0 ? (
-            <div className="col-span-full p-8 text-center bg-white rounded-xl border border-dashed border-outline-variant">
-              <p className="text-on-surface-variant font-semibold">
-                Chưa có bản vẽ nào cho sản phẩm này.
-              </p>
-            </div>
-          ) : (
-            drawings.map((d) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+          {products.map((p) => {
+            const drawing = p.product_drawings?.[0];
+            return (
               <div
-                key={d.id}
+                key={p.id}
                 className="bg-white rounded-xl shadow-sm border border-outline-variant/60 overflow-hidden flex flex-col group relative"
               >
-                <div className="absolute top-3 right-3 hidden group-hover:flex gap-2">
-                  <button onClick={() => handleEditDrawing(d)} className="p-2 bg-white rounded-lg shadow border border-outline-variant hover:text-primary transition-colors">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDeleteDrawing(d.id)} className="p-2 bg-white rounded-lg shadow border border-outline-variant hover:text-rose-500 transition-colors">
-                    <Trash className="w-4 h-4" />
-                  </button>
+                <div className="p-4 border-b bg-surface-container/10 flex justify-between items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-[15px] text-primary truncate" title={`${p.product_code} - ${p.product_name}`}>
+                      {p.product_code} - {p.product_name}
+                    </h4>
+                    {drawing && (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 mt-1 inline-block">
+                        Tỷ lệ: {drawing.scale_ratio || "1:100"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {drawing ? (
+                      <>
+                        <button onClick={() => handleEditDrawing(drawing, p.id)} className="p-2 bg-white rounded-lg border border-outline-variant hover:bg-surface-container hover:text-primary transition-colors flex items-center gap-1 text-xs font-bold shadow-sm" title="Sửa bản vẽ">
+                          <Edit className="w-3.5 h-3.5" /> Sửa
+                        </button>
+                        <button onClick={() => handleDeleteDrawing(drawing.id)} className="p-2 bg-white rounded-lg border border-outline-variant hover:bg-rose-50 hover:text-rose-600 transition-colors shadow-sm" title="Xóa">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => handleOpenAddForm(p)} className="p-2 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-colors flex items-center gap-1 text-xs font-bold shadow-sm" title="Tạo bản vẽ">
+                        <Plus className="w-3.5 h-3.5" /> Tạo mới
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                <div className="p-4 border-b bg-surface-container/20 flex justify-between items-center">
-                  <h4 className="font-black text-lg text-primary pr-20">
-                    {d.drawing_name}
-                  </h4>
-                  <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded border border-primary/20">
-                    Tỷ lệ: {d.scale_ratio}
-                  </span>
-                </div>
-                <div className="p-4 flex flex-col xl:flex-row gap-4 h-full">
-                  <div className="w-full xl:w-2/5 flex flex-col gap-2">
-                     <div className="flex-1 flex items-center justify-center bg-[#f8f9fa] border border-dashed border-outline-variant/60 rounded-lg p-2 min-h-[200px]">
+                <div className="p-4 flex flex-col h-full bg-[#f8f9fa]">
+                  <div className="w-full aspect-[5/4] flex items-center justify-center border-2 border-dashed border-outline-variant/60 rounded-xl bg-white relative overflow-hidden group-hover:border-primary/50 transition-colors shadow-2xs">
+                    {drawing && drawing.main_image_url ? (
                        <img
-                         src={d.main_image_url}
+                         src={drawing.main_image_url}
                          alt="Main"
-                         className="w-full h-full object-contain max-h-[250px] rounded"
+                         className="absolute inset-0 w-full h-full object-contain p-2 mix-blend-multiply transition-transform duration-500 group-hover:scale-105"
                        />
-                     </div>
+                    ) : drawing && drawing.html_code ? (
+                       <div className="w-[800px] h-[600px] absolute origin-center transform scale-[0.4] flex items-center justify-center pointer-events-none transition-transform duration-500 group-hover:scale-[0.45]">
+                         <iframe
+                           srcDoc={cleanHtmlCode(drawing.html_code)}
+                           className="w-full h-full border-none bg-transparent"
+                           title="Preview 3D"
+                         />
+                       </div>
+                    ) : (
+                       <div className="flex flex-col items-center justify-center text-outline-variant">
+                          <ImageIcon className="w-12 h-12 mb-3 text-outline-variant/40" />
+                          <p className="font-bold text-sm text-on-surface-variant/50">Chưa có bản vẽ tổng thể</p>
+                       </div>
+                    )}
                   </div>
-                  <div className="w-full xl:w-3/5">
-                    <h5 className="font-bold text-sm mb-3 text-on-surface flex items-center gap-2 border-b pb-2">
-                      <ImageIcon className="w-4 h-4 text-primary" /> Ảnh tĩnh/Bản vẽ linh kiện ({d.drawing_parts?.length || 0})
-                    </h5>
-                    <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-                      {d.drawing_parts?.map((part) => (
-                        <div
-                          key={part.id}
-                          className="flex items-center gap-3 p-2 bg-surface-container/20 rounded-lg border border-outline-variant/40 hover:border-primary/50 transition-colors"
-                        >
-                          <div className="flex gap-2 shrink-0">
-                            {part.part_blueprint_image_url && (
-                              <div className="w-12 h-12 rounded overflow-hidden border bg-white flex items-center justify-center" title="Ảnh nét đứt">
-                                <img
-                                  src={part.part_blueprint_image_url}
-                                  className="w-full h-full object-contain"
-                                  alt="nét đứt"
-                                />
-                              </div>
-                            )}
-                            <div className="w-12 h-12 rounded overflow-hidden border bg-slate-100 flex items-center justify-center" title="Ảnh 3D">
-                              <img
-                                src={part.part_image_url || "/placeholder.png"}
-                                className="w-full h-full object-contain"
-                                alt="3d"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[13px] font-bold text-on-surface">
-                              {part.component_name}
-                            </p>
-                            <span className="inline-block mt-1 bg-white border border-primary/20 text-[10px] text-primary font-bold px-2 py-0.5 rounded shadow-sm">
-                              {part.material_category}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                  {drawing && drawing.drawing_parts && drawing.drawing_parts.length > 0 && (
+                    <div className="mt-4 text-xs font-bold text-on-surface-variant/70 border-t border-outline-variant/40 pt-3 flex items-center justify-between">
+                      <span>Bao gồm linh kiện chi tiết:</span>
+                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">{drawing.drawing_parts.length} mục</span>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
-            ))
+            );
+          })}
+          {products.length === 0 && (
+             <div className="col-span-full p-8 text-center bg-white rounded-xl border border-dashed border-outline-variant">
+               <p className="text-on-surface-variant font-semibold">
+                 Không tìm thấy sản phẩm nào.
+               </p>
+             </div>
           )}
         </div>
       )}
@@ -574,10 +562,11 @@ const ManageDrawings = () => {
                <div className="flex-1 overflow-auto bg-slate-100 p-4 flex justify-center min-h-[500px]">
                   {htmlCode ? (
                     <div className="w-full h-full flex items-center justify-center bg-transparent min-w-fit">
-                      <div
+                      <iframe
                         ref={previewRef}
-                        dangerouslySetInnerHTML={{ __html: htmlCode }}
-                        className="pointer-events-auto bg-transparent relative rounded-xl border border-outline-variant/20 shadow-sm"
+                        srcDoc={cleanHtmlCode(htmlCode)}
+                        className="pointer-events-auto bg-transparent relative rounded-xl border border-outline-variant/20 shadow-sm w-full h-full border-none min-h-[500px]"
+                        title="Live Preview 3D"
                       />
                     </div>
                   ) : (

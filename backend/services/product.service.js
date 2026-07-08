@@ -92,6 +92,11 @@ class ProductService {
             select: { id: true, image_url: true, is_primary: true },
             orderBy: { is_primary: "desc" },
           },
+          product_drawings: {
+            include: {
+              drawing_parts: true
+            }
+          },
         },
       }),
       prisma.products.count({ where: whereCondition }),
