@@ -609,7 +609,17 @@ class WarehouseService {
           let isEnough = true;
           for (const [matId, reqQtyStr] of Object.entries(reqs)) {
             const reqQty = parseFloat(reqQtyStr);
-            const matInv = await tx.inventory.findFirst({ where: { material_id: matId } });
+            
+            let actualMatId = matId;
+            let actualThickId = null;
+            if (matId.includes('_')) {
+              [actualMatId, actualThickId] = matId.split('_');
+            }
+            
+            const whereClause = { material_id: actualMatId };
+            if (actualThickId) whereClause.thickness_id = actualThickId;
+            
+            const matInv = await tx.inventory.findFirst({ where: whereClause });
             const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
             if (currentStock < reqQty) {
               isEnough = false;

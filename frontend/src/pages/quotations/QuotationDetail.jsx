@@ -244,7 +244,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
     const hasGenerated = data?.quotation_attachments?.some(a =>
       a.file_name?.startsWith("Bản vẽ 2D - ") ||
-      a.file_name?.startsWith("Ảnh 3D - ") ||
+      a.file_name?.startsWith("Ảnh mô tả linh kiện - ") ||
       a.file_name?.startsWith("Ảnh nét đứt - ")
     );
 
@@ -322,10 +322,11 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
       if (includePartImages && data.product_drawings?.drawing_parts) {
         for (const part of data.product_drawings.drawing_parts) {
-          if (part.part_image_url) {
+          const imgUrl = part.part_image_url;
+          if (imgUrl) {
             await adminService.createQuotationAttachment(id, {
-              file_name: `Ảnh 3D - ${part.component_name}`,
-              file_url: part.part_image_url,
+              file_name: `Ảnh mô tả linh kiện - ${part.component_name}`,
+              file_url: imgUrl,
             });
           }
         }
@@ -623,7 +624,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               onClick={handlePackageBlueprints}
               disabled={packaging || (!data?.quotation_specs?.some(s => s.blueprint_html_code) && !includePartImages) || data?.quotation_attachments?.some(a =>
                 a.file_name?.startsWith("Bản vẽ 2D - ") ||
-                a.file_name?.startsWith("Ảnh 3D - ") ||
+                a.file_name?.startsWith("Ảnh mô tả linh kiện - ") ||
                 a.file_name?.startsWith("Ảnh nét đứt - ")
               )}
               className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 h-10 text-white font-bold text-xs uppercase shadow-md hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -632,7 +633,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
               <span>
                 {packaging
                   ? "Đang đóng gói..."
-                  : data?.quotation_attachments?.some(a => a.file_name?.startsWith("Bản vẽ 2D - ") || a.file_name?.startsWith("Ảnh 3D - ") || a.file_name?.startsWith("Ảnh nét đứt - "))
+                  : data?.quotation_attachments?.some(a => a.file_name?.startsWith("Bản vẽ 2D - ") || a.file_name?.startsWith("Ảnh mô tả linh kiện - ") || a.file_name?.startsWith("Ảnh nét đứt - "))
                     ? "Đã đóng gói hồ sơ"
                     : "Đóng gói Hồ sơ Bản vẽ"
                 }

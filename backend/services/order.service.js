@@ -8,7 +8,12 @@ class OrderService {
         quotations: {
           include: {
             users: { select: { id: true, username: true, email: true } },
-            quotation_specs: true,
+            quotation_specs: {
+              include: {
+                materials: true,
+                material_thickness: true
+              }
+            },
             quotation_attachments: true,
             // Đã xóa product_drawings lỗi ở đây
           },
@@ -17,7 +22,11 @@ class OrderService {
           include: {
             products: {
               include: {
-                product_drawings: true, // Lấy bản vẽ đối với đơn hàng mua trực tiếp
+                product_drawings: {
+                  include: {
+                    drawing_parts: true,
+                  }
+                },
               },
             },
           },
@@ -86,7 +95,11 @@ class OrderService {
           include: {
             products: {
               include: {
-                product_drawings: true,
+                product_drawings: {
+                  include: {
+                    drawing_parts: true,
+                  }
+                },
               },
             },
           },
@@ -126,7 +139,12 @@ class OrderService {
         users: { select: { id: true, username: true, email: true } },
         quotations: {
           include: {
-            quotation_specs: true,
+            quotation_specs: {
+              include: {
+                materials: true,
+                material_thickness: true
+              }
+            },
             quotation_attachments: true,
           },
         },
@@ -134,12 +152,25 @@ class OrderService {
           include: {
             products: {
               include: {
-                product_drawings: true,
+                product_drawings: {
+                  include: {
+                    drawing_parts: true,
+                  }
+                },
               },
             },
           },
         },
       },
+    });
+
+    // Lấy thông tin vật tư để map vào components
+    const materials = await prisma.materials.findMany({
+      include: { material_thickness: true }
+    });
+    const materialMap = {};
+    materials.forEach(m => {
+      materialMap[m.id] = m;
     });
 
     for (const order of orders) {
@@ -157,6 +188,25 @@ class OrderService {
         } else {
           order.quotations.product_drawings = [];
         }
+      }
+
+      // Map material_name vào components của products
+      if (order.order_items) {
+        order.order_items.forEach(item => {
+          if (item.products && item.products.components) {
+            item.products.components = item.products.components.map(comp => {
+              const mat = materialMap[comp.material_id];
+              if (mat) {
+                comp.material_name = mat.material_name;
+                if (comp.thickness_id) {
+                  const thk = mat.material_thickness.find(t => t.id === comp.thickness_id);
+                  if (thk) comp.thickness_value = thk.thickness_value;
+                }
+              }
+              return comp;
+            });
+          }
+        });
       }
     }
 

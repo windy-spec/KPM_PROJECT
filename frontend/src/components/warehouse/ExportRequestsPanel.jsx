@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ClipboardList, Loader2, Boxes, Calendar, User, CheckCircle2, AlertCircle, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import orderService from '../../services/order.service';
 import warehouseService from '../../services/warehouse.service';
+import { materialService } from '../../services/material.service';
 
 const ExportRequestsPanel = ({
     onReceiveOrder,
@@ -16,31 +17,43 @@ const ExportRequestsPanel = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [inventoryMap, setInventoryMap] = useState({});
+    const [materialNameMap, setMaterialNameMap] = useState({});
     const [expandedOrderId, setExpandedOrderId] = useState(null);
 
     const fetchOrders = async () => {
         setLoading(true);
         setError("");
         try {
-            const [ordersRes, invRes] = await Promise.all([
+            const [ordersRes, invRes, matRes] = await Promise.all([
                 orderService.getAllOrders(),
-                warehouseService.getAllInventory()
+                warehouseService.getAllInventory(),
+                materialService.getMaterials()
             ]);
 
             const allOrders = ordersRes?.data?.orders || ordersRes?.orders || ordersRes?.data || [];
 
             if (Array.isArray(allOrders)) {
                 // Theo yêu cầu: hiển thị danh sách đơn hàng đang chờ kiểm kho và đang sản xuất
-                const validStatuses = ['WAITING_WAREHOUSE', 'warehouse_received', 'production_ready', 'producing'];
+                const validStatuses = ['WAITING_WAREHOUSE', 'warehouse_received', 'out_of_stock', 'import_approved', 'production_ready', 'producing'];
                 setOrders(allOrders.filter(o => validStatuses.includes(o.production_status)));
             }
+
+            // Xây dựng map tên vật tư gốc để dự phòng nếu trong kho chưa có
+            const matData = matRes?.data?.data || matRes?.data || matRes || [];
+            const mNameMap = {};
+            if (Array.isArray(matData)) {
+                matData.forEach(m => {
+                    mNameMap[m.id] = m.material_name;
+                });
+            }
+            setMaterialNameMap(mNameMap);
 
             const invData = invRes?.data?.data || invRes?.data || invRes || [];
             const map = {};
             if (Array.isArray(invData)) {
                 invData.forEach(item => {
                     const reqKey = item.thickness_id ? `${item.material_id}_${item.thickness_id}` : item.material_id;
-                    let name = item.materials?.material_name || 'Vật tư chưa xác định';
+                    let name = item.materials?.material_name || mNameMap[item.material_id] || 'Vật tư chưa xác định';
                     if (item.material_thickness?.thickness_value) name += ` (${item.material_thickness.thickness_value})`;
                     map[reqKey] = {
                         name: name,
@@ -149,7 +162,7 @@ const ExportRequestsPanel = ({
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-on-surface-variant font-medium">
                                                     <p className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(order.createdAt || order.created_at)}</p>
-                                                    <p className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> {order.user_id || order.userId || "Khách vãng lai"}</p>
+                                                    <p className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> {order.users?.username || order.user_id || order.userId || "Khách vãng lai"}</p>
                                                     <p className="flex items-center gap-1.5 sm:col-span-2 mt-1 font-semibold text-slate-700">
                                                         <Boxes className="w-3.5 h-3.5 text-teal-600" />
                                                         <span className="text-teal-700 font-bold px-1.5 bg-teal-50 rounded border border-teal-100">
@@ -183,7 +196,14 @@ const ExportRequestsPanel = ({
                                                         <tbody className="divide-y divide-outline-variant/40 font-medium">
                                                             {Object.entries(order.material_requirements || {}).map(([matId, qty]) => {
                                                                 const requiredQty = parseFloat(qty);
-                                                                const invData = inventoryMap[matId] || { name: 'Vật tư chưa xác định', stock: 0 };
+                                                                let invData = inventoryMap[matId];
+                                                                if (!invData) {
+                                                                    const baseMatId = matId.split('_')[0];
+                                                                    invData = { 
+                                                                        name: materialNameMap[baseMatId] || 'Vật tư chưa xác định', 
+                                                                        stock: 0 
+                                                                    };
+                                                                }
                                                                 const isEnough = invData.stock >= requiredQty;
                                                                 return (
                                                                     <tr key={matId} className="hover:bg-slate-50/50 transition-colors">
@@ -222,16 +242,18 @@ const ExportRequestsPanel = ({
                                                             });
                                                         }
 
-                                                        if (['WAITING_WAREHOUSE', 'warehouse_received'].includes(order.production_status)) {
+                                                        if (['WAITING_WAREHOUSE', 'warehouse_received', 'out_of_stock', 'import_approved'].includes(order.production_status)) {
                                                             return (
                                                                 <>
-                                                                    <button
-                                                                        onClick={() => onReportOutOfStock(order.id, fetchOrders)}
-                                                                        disabled={isWarehouseActionLoading}
-                                                                        className="px-5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
-                                                                    >
-                                                                        <AlertCircle className="w-4 h-4" /> Thiếu hàng - Yêu cầu nhập
-                                                                    </button>
+                                                                    {!['out_of_stock', 'import_approved'].includes(order.production_status) && (
+                                                                        <button
+                                                                            onClick={() => onReportOutOfStock(order.id, fetchOrders)}
+                                                                            disabled={isWarehouseActionLoading}
+                                                                            className="px-5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
+                                                                        >
+                                                                            <AlertCircle className="w-4 h-4" /> Thiếu hàng - Yêu cầu nhập
+                                                                        </button>
+                                                                    )}
 
                                                                     <button
                                                                         onClick={() => onConfirmSufficientStock(order.id, fetchOrders)}
