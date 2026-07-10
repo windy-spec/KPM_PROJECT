@@ -39,6 +39,7 @@ import Phase2Checkout from "./pages/checkout/Phase2Checkout";
 import About from "./pages/about/About"
 import TechnicalTerms from "./pages/legal/TechnicalTerms";
 import FAQ from "./pages/info/FAQ";
+import Contact from "./pages/info/Contact";
 import WarrantyPolicy from "./pages/legal/WarrantyPolicy";
 import CustomQuoteForm from './components/quotation/CustomQuoteForm';
 import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
@@ -225,6 +226,16 @@ const routeMap = [
       <UserGuard>
         <MainLayout>
           <FAQ />
+        </MainLayout>
+      </UserGuard>
+    ),
+  },
+  {
+    path: "/contact",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <Contact />
         </MainLayout>
       </UserGuard>
     ),

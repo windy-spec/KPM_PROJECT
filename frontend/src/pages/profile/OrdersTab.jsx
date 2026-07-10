@@ -105,17 +105,17 @@ const OrdersTab = () => {
           shipping_address: o.shipping_address || o.quotations?.address || "Liên hệ nhận hàng",
           items: o.quotation_id
             ? [{
-                name: o.quotations?.title || "Báo giá tùy chỉnh (Đã chốt)",
-                specs: "Đơn hàng gia công theo yêu cầu",
-                quantity: 1,
-                unit_price: parseFloat(o.total_amount) || 0
-              }]
+              name: o.quotations?.title || "Báo giá tùy chỉnh (Đã chốt)",
+              specs: "Đơn hàng gia công theo yêu cầu",
+              quantity: 1,
+              unit_price: parseFloat(o.total_amount) || 0
+            }]
             : (o.order_items || []).map((i) => ({
-                name: i.products?.product_name || "Sản phẩm",
-                specs: i.products?.product_code || "N/A",
-                quantity: i.quantity,
-                unit_price: parseFloat(i.unit_price) || 0
-              })),
+              name: i.products?.product_name || "Sản phẩm",
+              specs: i.products?.product_code || "N/A",
+              quantity: i.quantity,
+              unit_price: parseFloat(i.unit_price) || 0
+            })),
           raw_items: o.order_items,
           raw_quotation_specs: o.quotations?.quotation_specs,
           quotations: o.quotations,
@@ -227,7 +227,7 @@ const OrdersTab = () => {
 
   // Hàm xác nhận đã nhận hàng (delivering -> completed)
   const [confirmingOrderId, setConfirmingOrderId] = useState(null);
-  
+
   const handleConfirmReceived = (orderId) => {
     setConfirmModal({ isOpen: true, orderId });
   };
@@ -413,14 +413,14 @@ const OrdersTab = () => {
                       if (isFromQuote) {
                         formattedCheckoutItems = [
                           {
-                             id: order.id,
-                             product_id: null,
-                             product_name: order.quotations?.nick_name || order.quotations?.title || "Sản phẩm gia công theo yêu cầu",
-                             product_code: order.order_code || "KPM-CUSTOM",
-                             image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
-                             material_name: "Báo giá tùy chỉnh (Đã chốt)",
-                             quantity: 1,
-                             price: order.total_amount - (order.shipping_fee || 0) - (order.installation_fee || 0),
+                            id: order.id,
+                            product_id: null,
+                            product_name: order.quotations?.nick_name || order.quotations?.title || "Sản phẩm gia công theo yêu cầu",
+                            product_code: order.order_code || "KPM-CUSTOM",
+                            image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                            material_name: "Báo giá tùy chỉnh (Đã chốt)",
+                            quantity: 1,
+                            price: order.total_amount - (order.shipping_fee || 0) - (order.installation_fee || 0),
                           }
                         ];
                       } else {
@@ -778,7 +778,7 @@ const OrdersTab = () => {
                     <p className="text-sm font-medium text-slate-800">(Ký & ghi rõ họ tên)</p>
                   </div>
                 </div>
-                
+
                 <div className="mt-16 text-center text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                   Cảm ơn quý khách đã tin tưởng và sử dụng dịch vụ của KPM!
                 </div>
