@@ -74,12 +74,16 @@
   html {
     zoom: 1 !important;
   }
+
   body * {
     visibility: hidden;
   }
-  .print-area, .print-area * {
+
+  .print-area,
+  .print-area * {
     visibility: visible;
   }
+
   .print-area {
     position: absolute;
     left: 0;
@@ -90,7 +94,9 @@
     box-shadow: none !important;
     border: none !important;
   }
-  .no-print, .no-print * {
+
+  .no-print,
+  .no-print * {
     display: none !important;
   }
 }

@@ -73,6 +73,7 @@ const NavigationMenu = () => {
         { title: "Điều khoản dịch vụ", to: "/terms-of-service" },
         { title: "Chính sách bảo mật", to: "/privacy-policy" },
         { title: "Các câu hỏi thường gặp", to: "/faq" },
+        { title: "Liên hệ", to: "/contact" },
       ]
     },
   ];

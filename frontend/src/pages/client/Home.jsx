@@ -6,6 +6,7 @@ import FeaturedProducts from '../../components/home/FeaturedProducts';
 import CoreValues from '../../components/home/CoreValues';
 import HowItWorks from '../../components/home/HowItWorks';
 import HeroStats from '../../components/home/HeroStats'
+import Testimonials from '../../components/home/Testimonials';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
@@ -112,6 +113,12 @@ const Home = () => {
         <section id="how-it-works" className="scroll-mt-24">
           <HowItWorks />
         </section>
+
+        {/* Đường cắt mờ phân tách */}
+        <div className="border-t border-outline-variant/40 w-full"></div>
+
+        {/* TESTIMONIALS */}
+        <Testimonials />
 
         {/* 8. SẴN SÀNG NHẬN BÁO GIÁ (Banner chốt sale) */}
         <section className="relative rounded-[32px] overflow-hidden bg-primary px-8 py-20 text-center flex flex-col items-center justify-center shadow-lg shadow-primary/10">
