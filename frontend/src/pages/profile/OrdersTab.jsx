@@ -6,10 +6,15 @@ import {
   Clock,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Download,
   CreditCard,
   Loader2,
   X,
+  Box,
+  Settings,
+  Layers
 } from "lucide-react";
 import orderService from "../../services/order.service";
 import Portal from "../../components/common/Portal";
@@ -65,6 +70,10 @@ const OrdersTab = () => {
   const [trackingData, setTrackingData] = useState([]);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(null);
+  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
+  const [selectedBreakdownOrder, setSelectedBreakdownOrder] = useState(null);
+  const [expandedProducts, setExpandedProducts] = useState({});
+  const [expandedParts, setExpandedParts] = useState({});
 
   const navigate = useNavigate();
 
@@ -366,21 +375,6 @@ const OrdersTab = () => {
                 )}
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4 bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/50">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-2">
-                  <ChevronRight className="w-4 h-4 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-bold text-on-surface">{item.name}</p>
-                    <p className="text-xs text-on-surface-variant">
-                      {item.specs}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {order.quotations?.quotation_attachments && order.quotations.quotation_attachments.length > 0 && (
               <div className="mb-4">
                 <h4 className="text-xs font-bold text-on-surface-variant uppercase mb-2">Tài liệu đính kèm (Bản vẽ)</h4>
@@ -501,10 +495,19 @@ const OrdersTab = () => {
                       </button>
                     )}
                     <button
+                      onClick={() => {
+                        setSelectedBreakdownOrder(order);
+                        setBreakdownModalOpen(true);
+                      }}
+                      className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors shadow-sm"
+                    >
+                      Bóc tách
+                    </button>
+                    <button
                       onClick={() => handleTrackOrder(order)}
                       className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary/10 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors shadow-sm"
                     >
-                      Theo dõi đơn hàng
+                      Theo dõi
                     </button>
                   </div>
                 )}
@@ -792,6 +795,173 @@ const OrdersTab = () => {
         onConfirm={executeConfirmReceived}
         onCancel={() => setConfirmModal({ isOpen: false, orderId: null })}
       />
+      {/* Breakdown Modal */}
+      {breakdownModalOpen && selectedBreakdownOrder && (
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in">
+            <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-[32px] border border-outline-variant/60 bg-surface shadow-2xl overflow-hidden animate-scale-up">
+              {/* Header Modal */}
+              <div className="flex items-center justify-between border-b border-outline-variant/40 bg-surface-container-low px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600/10 text-teal-600">
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-on-surface">
+                      Bóc tách Vật tư
+                    </h3>
+                    <p className="text-xs font-bold text-on-surface-variant/70">
+                      Đơn hàng {selectedBreakdownOrder.order_code}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setBreakdownModalOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Nội dung Breakdown */}
+              <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-4">
+                {selectedBreakdownOrder.raw_items?.length > 0 ? (
+                  selectedBreakdownOrder.raw_items.map((item, idx) => {
+                    const isExpandedProduct = expandedProducts[item.id];
+                    const drawings = item.products?.product_drawings || [];
+                    const hasDrawings = drawings.length > 0;
+
+                    return (
+                      <div key={item.id} className="bg-white rounded-2xl border border-outline-variant/60 shadow-sm overflow-hidden transition-all">
+                        {/* Cấp 1: Sản phẩm */}
+                        <div 
+                          className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${isExpandedProduct ? 'bg-slate-50' : 'hover:bg-slate-50/50'}`}
+                          onClick={() => setExpandedProducts(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Package className="w-5 h-5 text-primary" />
+                            <div>
+                              <p className="text-sm font-black text-slate-800">{item.products?.product_name}</p>
+                              <p className="text-xs font-bold text-slate-500">Mã SP: {item.products?.product_code}</p>
+                            </div>
+                          </div>
+                          <div className="text-slate-400">
+                            {isExpandedProduct ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                          </div>
+                        </div>
+
+                        {/* Cấp 2: Bản vẽ & Linh kiện */}
+                        {isExpandedProduct && (
+                          <div className="p-4 pt-2 border-t border-outline-variant/40 bg-white">
+                            {!hasDrawings ? (
+                              <p className="text-xs text-slate-500 italic px-4">Sản phẩm này chưa có chi tiết linh kiện.</p>
+                            ) : (
+                              drawings.map(dwg => {
+                                const parts = dwg.drawing_parts || [];
+                                return parts.map((part, pIdx) => {
+                                  const partKey = `${item.id}-${part.id}`;
+                                  const isExpandedPart = expandedParts[partKey];
+                                  return (
+                                    <div key={partKey} className="ml-4 mb-2 border border-outline-variant/50 rounded-xl overflow-hidden">
+                                      {/* Cấp 2 Header */}
+                                      <div 
+                                        className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${isExpandedPart ? 'bg-teal-50/50' : 'hover:bg-slate-50'}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setExpandedParts(prev => ({ ...prev, [partKey]: !prev[partKey] }));
+                                        }}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <Settings className="w-4 h-4 text-teal-600" />
+                                          <span className="text-xs font-bold text-slate-700">{part.component_name}</span>
+                                        </div>
+                                        <div className="text-slate-400">
+                                          {isExpandedPart ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                        </div>
+                                      </div>
+
+                                      {/* Cấp 3: Vật tư (Mock) */}
+                                      {isExpandedPart && (
+                                        <div className="p-3 bg-slate-50 border-t border-outline-variant/40">
+                                            {/* Hiển thị vật tư lấy từ bản vẽ */}
+                                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 pl-2">
+                                              <Box className="w-3.5 h-3.5 text-slate-400" />
+                                              {(() => {
+                                                const comp = (item.products?.components || []).find(c => c.component_name === part.component_name);
+                                                const matName = comp?.material_name ? `${comp.material_name} ${comp.thickness_value ? `(${comp.thickness_value})` : ''}` : part.material_category;
+                                                return <span className="bg-white px-2 py-1 rounded border border-slate-200">Vật liệu: {matName || "Đang cập nhật..."}</span>;
+                                              })()}
+                                            </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                });
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="bg-white rounded-2xl border border-outline-variant/60 p-6 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-3">
+                      <Package className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-black text-slate-800">{selectedBreakdownOrder.quotations?.title || "Báo giá tùy chỉnh"}</p>
+                        <p className="text-xs font-bold text-slate-500">Đơn hàng gia công theo yêu cầu</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 border-t border-outline-variant/40 pt-4">
+                      {selectedBreakdownOrder.raw_quotation_specs?.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-700 uppercase mb-2">Chi tiết Bóc tách Vật tư:</p>
+                          {selectedBreakdownOrder.raw_quotation_specs.map((spec, sIdx) => {
+                            const specKey = `spec-${sIdx}`;
+                            const isExpandedSpec = expandedParts[specKey];
+                            return (
+                              <div key={specKey} className="border border-outline-variant/50 rounded-xl overflow-hidden mb-2">
+                                <div 
+                                  className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${isExpandedSpec ? 'bg-teal-50/50' : 'hover:bg-slate-50'}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedParts(prev => ({ ...prev, [specKey]: !prev[specKey] }));
+                                  }}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Settings className="w-4 h-4 text-teal-600" />
+                                    <span className="text-xs font-bold text-slate-700">{spec.component_name || `Linh kiện ${sIdx + 1}`}</span>
+                                  </div>
+                                  <div className="text-slate-400">
+                                    {isExpandedSpec ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </div>
+                                </div>
+                                
+                                {isExpandedSpec && (
+                                  <div className="p-3 bg-slate-50 border-t border-outline-variant/40">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 pl-2">
+                                      <Box className="w-3.5 h-3.5 text-slate-400" />
+                                      <span className="bg-white px-2 py-1 rounded border border-slate-200">Vật liệu: {spec.materials?.material_name || "Vật tư tùy chỉnh"} {spec.material_thickness?.thickness_value ? `(${spec.material_thickness.thickness_value})` : ""}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">Chưa có chi tiết vật tư cụ thể.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
     </div>
   );
 };
