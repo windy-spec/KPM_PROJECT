@@ -29,8 +29,7 @@ const keepDatabaseAlive = async () => {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
-  } catch (e) {
-  }
+  } catch (e) {}
 };
 
 // Giữ DB sống tự động mỗi 4 phút để tránh Supabase free tier idle timeout (5 phút)
@@ -39,7 +38,9 @@ setInterval(keepDatabaseAlive, 1000 * 60 * 4);
 // Log rõ ràng các lỗi Prisma không được catch để debug nhanh hơn
 process.on("unhandledRejection", (reason) => {
   if (reason?.code === "P1017" || reason?.code === "P1001") {
-    console.warn(`[DB] Prisma mất kết nối (${reason?.code}). Server tự recover ở lần request tiếp theo.`);
+    console.warn(
+      `[DB] Prisma mất kết nối (${reason?.code}). Server tự recover ở lần request tiếp theo.`,
+    );
   } else {
     console.error("[Server] Unhandled Rejection:", reason);
   }
@@ -61,8 +62,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
-  });
+  socket.on("disconnect", () => {});
 });
 
 // Gắn io vào biến toàn cục để truy cập từ các Service
@@ -95,6 +95,7 @@ const aiRoutes = require("./routes/ai.routes.js");
 const materialRequestRoutes = require("./routes/material_request.routes.js");
 const drawingRoutes = require("./routes/drawing.routes.js");
 const favoriteRoutes = require("./routes/favorite.routes.js");
+const feedbackRoutes = require("./routes/feedback.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -122,6 +123,7 @@ app.use("/api/favorites", favoriteRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
 app.use("/api/drawings", drawingRoutes);
+app.use("/api/feedbacks", feedbackRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");
@@ -146,4 +148,3 @@ const gracefulShutdown = async (signal) => {
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-

@@ -18,17 +18,33 @@ const formatCurrency = (amount) => {
 // ============================================================================
 // 1. EMAIL MÃ XÁC THỰC (OTP) & HÓA ĐƠN CHI TIẾT
 // ============================================================================
-const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null, quotationData = null, isDepositPayment = false) => {
-  
+const sendVerifyEmail = async (
+  email,
+  code,
+  type = "REGISTER",
+  orderData = null,
+  quotationData = null,
+  isDepositPayment = false,
+) => {
   // ---------------------------------------------------------
   // KỊCH BẢN 1: NẾU LÀ HÓA ĐƠN (INVOICE)
   // ---------------------------------------------------------
-  if (type === "INVOICE" || type === "DEPOSIT_INVOICE" || type === "PHASE2_INVOICE" || type === "TOTAL_INVOICE") {
+  if (
+    type === "INVOICE" ||
+    type === "DEPOSIT_INVOICE" ||
+    type === "PHASE2_INVOICE" ||
+    type === "TOTAL_INVOICE"
+  ) {
     let itemsHtml = "";
-    if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
+    if (
+      quotationData &&
+      quotationData.quotation_specs &&
+      quotationData.quotation_specs.length > 0
+    ) {
       // DÀNH CHO ĐƠN CÓ BÓC TÁCH BÁO GIÁ
-      itemsHtml = quotationData.quotation_specs.map((spec, index) => {
-        return `
+      itemsHtml = quotationData.quotation_specs
+        .map((spec, index) => {
+          return `
         <tr>
           <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; vertical-align: top;">
             <strong style="color: #1e3a8a; font-size: 14px;">${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
@@ -41,21 +57,31 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
             ${spec.dimensions?.quantity || 1}
           </td>
         </tr>
-      `}).join("");
-    } else if (orderData && orderData.order_items && orderData.order_items.length > 0) {
+      `;
+        })
+        .join("");
+    } else if (
+      orderData &&
+      orderData.order_items &&
+      orderData.order_items.length > 0
+    ) {
       // DÀNH CHO ĐƠN MUA HÀNG TRỰC TIẾP (BÁN LẺ) CÓ HIỂN THỊ CẤU THÀNH LINH KIỆN
-      itemsHtml = orderData.order_items.map((item, index) => {
-        // Trích xuất mảng JSON components của product (nếu có)
-        const components = item.products?.components || [];
-        let componentDetails = "";
-        
-        if (components.length > 0) {
-          componentDetails = components.map(comp => 
-            `&nbsp;&nbsp;+ ${comp.component_name || 'Linh kiện'}: ${comp.width || '-'} x ${comp.length || comp.height || '-'} (mm)`
-          ).join("<br>");
-        }
+      itemsHtml = orderData.order_items
+        .map((item, index) => {
+          // Trích xuất mảng JSON components của product (nếu có)
+          const components = item.products?.components || [];
+          let componentDetails = "";
 
-        return `
+          if (components.length > 0) {
+            componentDetails = components
+              .map(
+                (comp) =>
+                  `&nbsp;&nbsp;+ ${comp.component_name || "Linh kiện"}: ${comp.width || "-"} x ${comp.length || comp.height || "-"} (mm)`,
+              )
+              .join("<br>");
+          }
+
+          return `
         <tr>
           <td style="padding: 15px 12px; border-bottom: 1px solid #bfdbfe; vertical-align: top;">
             <strong style="color: #1e3a8a; font-size: 14px;">${index + 1}. ${item.products?.product_name || "Sản phẩm KPM"}</strong>
@@ -68,7 +94,9 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
             ${item.quantity}
           </td>
         </tr>
-      `}).join("");
+      `;
+        })
+        .join("");
     } else {
       itemsHtml = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: #64748b; font-style: italic;">Hóa đơn bán lẻ sản phẩm tiêu chuẩn.</td></tr>`;
     }
@@ -77,7 +105,7 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
     const shippingFee = orderData?.shipping_fee || 0;
     const installFee = orderData?.installation_fee || 0;
     const subTotal = finalTotal - shippingFee - installFee;
-    
+
     let invoiceTitle = "Hóa Đơn Điện Tử Đã Thanh Toán";
     let invoiceNote = "ĐÃ THANH TOÁN:";
     let paidAmount = finalTotal;
@@ -97,9 +125,9 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
     }
 
     // Lấy tên khách hàng từ orderData hoặc quotationData, ưu tiên trường first_name
-    let invoiceCustomerName = orderData?.customer_name || 'Khách hàng';
-    let invoiceCustomerPhone = orderData?.customer_phone || 'Chưa cập nhật';
-    let invoiceShippingAddress = orderData?.shipping_address || 'Chưa cập nhật';
+    let invoiceCustomerName = orderData?.customer_name || "Khách hàng";
+    let invoiceCustomerPhone = orderData?.customer_phone || "Chưa cập nhật";
+    let invoiceShippingAddress = orderData?.shipping_address || "Chưa cập nhật";
 
     // Thử lấy first_name nếu được cung cấp qua data
     if (orderData?.users?.user_profiles?.first_name) {
@@ -162,7 +190,9 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
                           ${formatCurrency(paidAmount)}
                         </td>
                       </tr>
-                      ${type === "DEPOSIT_INVOICE" ? `
+                      ${
+                        type === "DEPOSIT_INVOICE"
+                          ? `
                       <tr>
                         <td style="padding: 12px; font-size: 14px; color: #ef4444; text-align: right; font-weight: bold; border-top: 1px dashed #bfdbfe;">
                           CÒN LẠI PHẢI THANH TOÁN ĐỢT 2:
@@ -171,7 +201,9 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
                           ${formatCurrency(finalTotal - paidAmount)}
                         </td>
                       </tr>
-                      ` : ""}
+                      `
+                          : ""
+                      }
                     </table>
                   </td>
                 </tr>
@@ -239,9 +271,14 @@ const sendVerifyEmail = async (email, code, type = "REGISTER", orderData = null,
 // ============================================================================
 const sendQuotationEmail = async (email, quotationData) => {
   let itemsHtml = "";
-  if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
-    itemsHtml = quotationData.quotation_specs.map((spec, index) => {
-      return `
+  if (
+    quotationData &&
+    quotationData.quotation_specs &&
+    quotationData.quotation_specs.length > 0
+  ) {
+    itemsHtml = quotationData.quotation_specs
+      .map((spec, index) => {
+        return `
       <tr>
         <td style="padding: 15px 12px; border-bottom: 1px solid #e2e8f0; vertical-align: top;">
           <strong style="color: #0f172a; font-size: 14px;">${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
@@ -255,7 +292,9 @@ const sendQuotationEmail = async (email, quotationData) => {
           ${spec.dimensions?.quantity || 1}
         </td>
       </tr>
-    `}).join("");
+    `;
+      })
+      .join("");
   } else {
     itemsHtml = `<tr><td colspan="2" style="padding: 15px; text-align: center; color: #64748b; font-style: italic;">Chi tiết bóc tách vật tư được đính kèm trong hệ thống.</td></tr>`;
   }
@@ -265,11 +304,14 @@ const sendQuotationEmail = async (email, quotationData) => {
   const finalDisplayPrice = adminProposedPrice || originalPrice;
   const hasDiscount = adminProposedPrice && adminProposedPrice < originalPrice;
 
-  const customerName = quotationData?.users?.user_profiles?.first_name 
+  const customerName = quotationData?.users?.user_profiles?.first_name
     ? `${quotationData.users.user_profiles.first_name}`.trim()
-    : (quotationData?.users?.username || 'Quý khách');
-  const customerPhone = quotationData?.users?.user_profiles?.phone_number || 'Đã cập nhật trên hệ thống';
-const customerEmail = quotationData?.users?.user_profiles?.email || 'Đã cập nhật trên hệ thống';
+    : quotationData?.users?.username || "Quý khách";
+  const customerPhone =
+    quotationData?.users?.user_profiles?.phone_number ||
+    "Đã cập nhật trên hệ thống";
+  const customerEmail =
+    quotationData?.users?.user_profiles?.email || "Đã cập nhật trên hệ thống";
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
     to: email,
@@ -311,7 +353,9 @@ const customerEmail = quotationData?.users?.user_profiles?.email || 'Đã cập 
 
             <div style="background: #1e293b; color: white; padding: 25px; border-radius: 12px; margin-top: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
               <table width="100%" cellpadding="0" cellspacing="0">
-                ${hasDiscount ? `
+                ${
+                  hasDiscount
+                    ? `
                 <tr>
                   <td style="padding-bottom: 10px; color: #94a3b8; font-size: 14px;">Giá gốc hệ thống tính:</td>
                   <td style="padding-bottom: 10px; color: #94a3b8; font-size: 14px; text-align: right; text-decoration: line-through;">${formatCurrency(originalPrice)}</td>
@@ -321,7 +365,9 @@ const customerEmail = quotationData?.users?.user_profiles?.email || 'Đã cập 
                     * Đã áp dụng mức giá ưu đãi/đề xuất từ Admin KPM
                   </td>
                 </tr>
-                ` : ""}
+                `
+                    : ""
+                }
                 <tr>
                   <td style="padding-top: 15px; border-top: 1px solid #334155; color: #cbd5e1; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">Tổng Chi Phí Đề Xuất:</td>
                   <td style="padding-top: 15px; border-top: 1px solid #334155; color: #fbbf24; font-size: 26px; font-weight: 900; text-align: right;">
@@ -357,8 +403,14 @@ const customerEmail = quotationData?.users?.user_profiles?.email || 'Đã cập 
 // ============================================================================
 const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
   let itemsHtml = "";
-  if (quotationData && quotationData.quotation_specs && quotationData.quotation_specs.length > 0) {
-    itemsHtml = quotationData.quotation_specs.map((spec, index) => `
+  if (
+    quotationData &&
+    quotationData.quotation_specs &&
+    quotationData.quotation_specs.length > 0
+  ) {
+    itemsHtml = quotationData.quotation_specs
+      .map(
+        (spec, index) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; font-size: 14px;">
           <strong>${index + 1}. ${spec.component_name || "Linh kiện"}</strong>
@@ -370,24 +422,40 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; text-align: center; font-size: 14px;">${spec.dimensions?.quantity || 1}</td>
       </tr>
-    `).join("");
-  } else if (orderData && orderData.order_items && orderData.order_items.length > 0) {
-    itemsHtml = orderData.order_items.map((item, index) => `
+    `,
+      )
+      .join("");
+  } else if (
+    orderData &&
+    orderData.order_items &&
+    orderData.order_items.length > 0
+  ) {
+    itemsHtml = orderData.order_items
+      .map(
+        (item, index) => `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; font-size: 14px;">
           <strong>${index + 1}. ${item.products?.product_name || "Sản phẩm KPM"}</strong>
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #374151; text-align: center; font-size: 14px;">${item.quantity}</td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   } else {
     itemsHtml = `<tr><td colspan="2" style="padding: 12px; text-align: center; color: #6b7280; font-style: italic;">Chi tiết gia công đính kèm trong hệ thống</td></tr>`;
   }
 
-  const subTotal = quotationData?.total_quoted_price || (orderData?.total_amount - (orderData?.shipping_fee || 0) - (orderData?.installation_fee || 0)) || orderData?.total_amount;
+  const subTotal =
+    quotationData?.total_quoted_price ||
+    orderData?.total_amount -
+      (orderData?.shipping_fee || 0) -
+      (orderData?.installation_fee || 0) ||
+    orderData?.total_amount;
   const shippingFee = orderData?.shipping_fee || 0;
   const installFee = orderData?.installation_fee || 0;
-  const finalTotal = orderData?.total_amount || quotationData?.total_quoted_price || 0;
+  const finalTotal =
+    orderData?.total_amount || quotationData?.total_quoted_price || 0;
 
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
@@ -415,13 +483,13 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
               <tr>
                 <td width="50%" style="padding: 20px; vertical-align: top; border-right: 1px solid #e5e7eb;">
                   <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Thông tin khách hàng</h3>
-                  <p style="margin: 0 0 5px 0; font-size: 15px; color: #111827;"><strong>${orderData?.customer_name || 'Khách hàng KPM'}</strong></p>
-                  <p style="margin: 0; font-size: 14px; color: #4b5563;">SĐT: ${orderData?.customer_phone || 'Đã cập nhật trên hệ thống'}</p>
+                  <p style="margin: 0 0 5px 0; font-size: 15px; color: #111827;"><strong>${orderData?.customer_name || "Khách hàng KPM"}</strong></p>
+                  <p style="margin: 0; font-size: 14px; color: #4b5563;">SĐT: ${orderData?.customer_phone || "Đã cập nhật trên hệ thống"}</p>
                 </td>
                 <td width="50%" style="padding: 20px; vertical-align: top;">
                   <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Địa chỉ giao hàng</h3>
                   <p style="margin: 0; font-size: 14px; color: #4b5563; line-height: 1.5;">
-                    ${orderData?.shipping_address || 'Nhận tại xưởng KPM / Theo thỏa thuận'}
+                    ${orderData?.shipping_address || "Nhận tại xưởng KPM / Theo thỏa thuận"}
                   </p>
                 </td>
               </tr>
@@ -450,18 +518,26 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
                       <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Tạm tính:</td>
                       <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(subTotal)}</td>
                     </tr>
-                    ${shippingFee > 0 ? `
+                    ${
+                      shippingFee > 0
+                        ? `
                     <tr>
                       <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Phí vận chuyển:</td>
                       <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(shippingFee)}</td>
                     </tr>
-                    ` : ""}
-                    ${installFee > 0 ? `
+                    `
+                        : ""
+                    }
+                    ${
+                      installFee > 0
+                        ? `
                     <tr>
                       <td style="padding: 8px 12px; font-size: 14px; color: #4b5563; text-align: right;">Phí lắp đặt:</td>
                       <td style="padding: 8px 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 500;">${formatCurrency(installFee)}</td>
                     </tr>
-                    ` : ""}
+                    `
+                        : ""
+                    }
                     <tr>
                       <td style="padding: 15px 12px; font-size: 16px; color: #111827; text-align: right; font-weight: bold; border-top: 1px solid #e5e7eb;">TỔNG THANH TOÁN:</td>
                       <td style="padding: 15px 12px; font-size: 20px; color: #dc2626; text-align: right; font-weight: 900; border-top: 1px solid #e5e7eb;">${formatCurrency(finalTotal)}</td>
@@ -494,7 +570,7 @@ const sendOrderConfirmationEmail = async (email, orderData, quotationData) => {
 const sendDepositRequestEmail = async (email, orderData) => {
   const depositAmount = orderData?.deposit_amount || 0;
   const finalTotal = orderData?.total_amount || 0;
-  const customerName = orderData?.customer_name || 'Khách hàng KPM';
+  const customerName = orderData?.customer_name || "Khách hàng KPM";
 
   const mailOptions = {
     from: `"KPM Materials" <${process.env.MAIL_USER}>`,
@@ -532,10 +608,28 @@ const sendDepositRequestEmail = async (email, orderData) => {
   };
   return transporter.sendMail(mailOptions);
 };
+const sendFeedbackThanksEmail = async (email, userName = "Quý khách") => {
+  const mailOptions = {
+    from: `"KPM Materials" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: "[KPM] Cám ơn bạn đã gửi góp ý",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
+        <h2 style="color: #1e3a8a;">Xin chào ${userName},</h2>
+        <p>Chúng tôi cám ơn vì góp ý của bạn. Đội ngũ KPM Materials luôn trân trọng những đóng góp để cải thiện dịch vụ tốt hơn mỗi ngày.</p>
+        <p>Chúng tôi sẽ liên hệ sớm nhất cho bạn qua email hoặc số điện thoại để phản hồi trong thời gian sớm nhất.</p>
+        <br/>
+        <p>Trân trọng,<br/><strong>KPM Materials Team</strong></p>
+      </div>
+    `,
+  };
+  return transporter.sendMail(mailOptions);
+};
 
 module.exports = {
   sendVerifyEmail,
   sendQuotationEmail,
   sendOrderConfirmationEmail,
-  sendDepositRequestEmail
+  sendDepositRequestEmail,
+  sendFeedbackThanksEmail,
 };
