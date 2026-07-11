@@ -199,10 +199,14 @@ const ExportRequestsPanel = ({
                                                                 let invData = inventoryMap[matId];
                                                                 if (!invData) {
                                                                     const baseMatId = matId.split('_')[0];
-                                                                    invData = { 
-                                                                        name: materialNameMap[baseMatId] || 'Vật tư chưa xác định', 
-                                                                        stock: 0 
-                                                                    };
+                                                                    if (inventoryMap[baseMatId]) {
+                                                                        invData = inventoryMap[baseMatId];
+                                                                    } else {
+                                                                        invData = { 
+                                                                            name: materialNameMap[baseMatId] || 'Vật tư chưa xác định', 
+                                                                            stock: 0 
+                                                                        };
+                                                                    }
                                                                 }
                                                                 const isEnough = invData.stock >= requiredQty;
                                                                 return (
@@ -237,7 +241,11 @@ const ExportRequestsPanel = ({
                                                         if (reqs.length > 0) {
                                                             hasEnoughStock = reqs.every(([matId, qty]) => {
                                                                 const reqQty = parseFloat(qty);
-                                                                const stock = inventoryMap[matId]?.stock || 0;
+                                                                let stock = inventoryMap[matId]?.stock;
+                                                                if (stock === undefined) {
+                                                                    const baseMatId = matId.split('_')[0];
+                                                                    stock = inventoryMap[baseMatId]?.stock || 0;
+                                                                }
                                                                 return stock >= reqQty;
                                                             });
                                                         }

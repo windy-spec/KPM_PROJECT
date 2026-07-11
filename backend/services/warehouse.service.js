@@ -127,10 +127,16 @@ class WarehouseService {
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
       const [actualMatId, actualThickId] = matId.split('_');
-      const inv = await prisma.inventory.findFirst({
+      let inv = await prisma.inventory.findFirst({
         where: { material_id: actualMatId, thickness_id: actualThickId || null },
         include: { materials: true },
       });
+      if (!inv && actualThickId) {
+        inv = await prisma.inventory.findFirst({
+          where: { material_id: actualMatId, thickness_id: null },
+          include: { materials: true },
+        });
+      }
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
 
       if (currentStock < requiredQty) {
@@ -158,10 +164,20 @@ class WarehouseService {
       for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
         const requiredQty = parseFloat(requiredQtyStr);
         const [actualMatId, actualThickId] = matId.split('_');
-        await tx.inventory.updateMany({
+        let inv = await tx.inventory.findFirst({
           where: { material_id: actualMatId, thickness_id: actualThickId || null },
-          data: { quantity: { decrement: requiredQty } },
         });
+        if (!inv && actualThickId) {
+          inv = await tx.inventory.findFirst({
+            where: { material_id: actualMatId, thickness_id: null },
+          });
+        }
+        if (inv) {
+          await tx.inventory.update({
+            where: { id: inv.id },
+            data: { quantity: { decrement: requiredQty } },
+          });
+        }
 
         await tx.inventory_logs.create({
           data: {
@@ -206,9 +222,14 @@ class WarehouseService {
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
       const [actualMatId, actualThickId] = matId.split('_');
-      const inv = await prisma.inventory.findFirst({
+      let inv = await prisma.inventory.findFirst({
         where: { material_id: actualMatId, thickness_id: actualThickId || null },
       });
+      if (!inv && actualThickId) {
+        inv = await prisma.inventory.findFirst({
+          where: { material_id: actualMatId, thickness_id: null },
+        });
+      }
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
 
       if (currentStock < requiredQty) {
@@ -253,10 +274,20 @@ class WarehouseService {
       for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
         const requiredQty = parseFloat(requiredQtyStr);
         const [actualMatId, actualThickId] = matId.split('_');
-        await tx.inventory.updateMany({
+        let inv = await tx.inventory.findFirst({
           where: { material_id: actualMatId, thickness_id: actualThickId || null },
-          data: { quantity: { decrement: requiredQty } },
         });
+        if (!inv && actualThickId) {
+          inv = await tx.inventory.findFirst({
+            where: { material_id: actualMatId, thickness_id: null },
+          });
+        }
+        if (inv) {
+          await tx.inventory.update({
+            where: { id: inv.id },
+            data: { quantity: { decrement: requiredQty } },
+          });
+        }
 
         await tx.inventory_logs.create({
           data: {
@@ -686,7 +717,7 @@ class WarehouseService {
       const requiredQty = parseFloat(requiredQtyStr);
       // Cần include thêm bảng materials và material_units để lấy tên và đơn vị tính
       const [actualMatId, actualThickId] = matId.split('_');
-      const inv = await prisma.inventory.findFirst({
+      let inv = await prisma.inventory.findFirst({
         where: { material_id: actualMatId, thickness_id: actualThickId || null },
         include: {
           materials: {
@@ -696,6 +727,18 @@ class WarehouseService {
           }
         }
       });
+      if (!inv && actualThickId) {
+        inv = await prisma.inventory.findFirst({
+          where: { material_id: actualMatId, thickness_id: null },
+          include: {
+            materials: {
+              include: {
+                material_units: true
+              }
+            }
+          }
+        });
+      }
       
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
       
