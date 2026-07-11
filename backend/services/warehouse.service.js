@@ -341,7 +341,7 @@ class WarehouseService {
       order: order,
     };
   }
-  
+
   // Lấy tất cả thông tin tồn kho
   async getAllInventory() {
     return await prisma.inventory.findMany({
@@ -506,8 +506,8 @@ class WarehouseService {
       await tx.inventory_logs.create({
         data: {
           material_id: inventory.material_id,
-            thickness_id: inventory.thickness_id || null,
-            action_type: "MANUAL_ADJUST",
+          thickness_id: inventory.thickness_id || null,
+          action_type: "MANUAL_ADJUST",
           quantity_change: quantityChange,
           note: note || "Điều chỉnh tồn kho thủ công",
           reference_code: `INVENTORY_${id}`,
@@ -526,7 +526,7 @@ class WarehouseService {
     const dataToInsert = items.map((item) => ({
       order_id: item.order_id || null,
       material_id: item.material_id,
-        thickness_id: item.thickness_id || null,
+      thickness_id: item.thickness_id || null,
       requested_quantity: parseFloat(item.requested_quantity),
       note: note || "Yêu cầu cấp vật tư bổ sung từ kho",
       status: "PENDING",
@@ -551,9 +551,9 @@ class WarehouseService {
     return await prisma.$transaction(async (tx) => {
       // 1. Get current inventory
       let whereClause = { material_id: request.material_id };
-        if (request.thickness_id) whereClause.thickness_id = request.thickness_id;
-        else whereClause.thickness_id = null;
-        const inv = await tx.inventory.findFirst({ where: whereClause });
+      if (request.thickness_id) whereClause.thickness_id = request.thickness_id;
+      else whereClause.thickness_id = null;
+      const inv = await tx.inventory.findFirst({ where: whereClause });
       const inventory_before = inv ? parseFloat(inv.quantity) : 0;
       const inventory_after = inventory_before + actualQuantity;
 
@@ -589,8 +589,8 @@ class WarehouseService {
       await tx.inventory_logs.create({
         data: {
           material_id: request.material_id,
-            thickness_id: request.thickness_id || null,
-            action_type: "IMPORT",
+          thickness_id: request.thickness_id || null,
+          action_type: "IMPORT",
           quantity_change: actualQuantity,
           reference_code: `REQ_${requestId}`,
           note: request.order_id
@@ -609,16 +609,16 @@ class WarehouseService {
           let isEnough = true;
           for (const [matId, reqQtyStr] of Object.entries(reqs)) {
             const reqQty = parseFloat(reqQtyStr);
-            
+
             let actualMatId = matId;
             let actualThickId = null;
             if (matId.includes('_')) {
               [actualMatId, actualThickId] = matId.split('_');
             }
-            
+
             const whereClause = { material_id: actualMatId };
             if (actualThickId) whereClause.thickness_id = actualThickId;
-            
+
             const matInv = await tx.inventory.findFirst({ where: whereClause });
             const currentStock = matInv ? parseFloat(matInv.quantity) : 0;
             if (currentStock < reqQty) {
@@ -658,8 +658,8 @@ class WarehouseService {
       await tx.inventory_logs.create({
         data: {
           material_id: inventory.material_id,
-            thickness_id: inventory.thickness_id || null,
-            action_type: "DELETE",
+          thickness_id: inventory.thickness_id || null,
+          action_type: "DELETE",
           quantity_change: -parseFloat(inventory.quantity), // Trừ sạch số lượng hiện tại
           note: "Xoá hoàn toàn mã tồn kho khỏi hệ thống",
         },
@@ -677,10 +677,10 @@ class WarehouseService {
   async getMissingMaterialsForPDF(orderId) {
     const order = await prisma.orders.findUnique({ where: { id: orderId } });
     if (!order) throw new Error("Không tìm thấy đơn hàng!");
-    
+
     const requiredMaterials = order.material_requirements || {};
     const missingMaterials = [];
-    
+
     // Kiểm tra tồn kho
     for (const [matId, requiredQtyStr] of Object.entries(requiredMaterials)) {
       const requiredQty = parseFloat(requiredQtyStr);
@@ -696,9 +696,9 @@ class WarehouseService {
           }
         }
       });
-      
+
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
-      
+
       if (currentStock < requiredQty) {
         missingMaterials.push({
           material_code: inv?.materials?.material_code || matId,
