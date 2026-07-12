@@ -64,8 +64,9 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
         { label: 'Quản Lý Đơn Hàng', icon: ShoppingCart, panel: 'orders' },
         { label: 'Quản Lý User', icon: User, panel: 'users' },
         { label: 'Mẫu Linh Kiện', icon: Layers, panel: 'component_templates' },
-        { label: 'Phê duyệt sản xuất', icon: ClipboardList, panel: 'production_requests' },
+        { label: 'Phê Duyệt Sản Xuất', icon: ClipboardList, panel: 'production_requests' },
         { label: 'Yêu Cầu Nhập Vật Tư', icon: ClipboardList, panel: 'material_requests' },
+        { label: 'Quản Lý Feedbacks', icon: ClipboardList, panel: 'feedbacks' }
       ],
     },
     {

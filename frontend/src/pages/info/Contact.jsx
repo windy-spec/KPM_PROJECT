@@ -1,7 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import feedbackService from '../../services/feedback.service'
+import { toast } from 'react-toastify';
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    category: '',
+    title: '',
+    content: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await feedbackService.createFeedback(formData);
+      toast.success('Gửi góp ý thành công! Chúng tôi sẽ phản hồi sớm nhất có thể.');
+      setFormData({ category: '', title: '', content: '' });
+    } catch (error) {
+      toast.error('Có lỗi xảy ra khi gửi góp ý. Vui lòng thử lại sau.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface flex flex-col pb-16 md:pb-24">
       {/* Header Banner */}
@@ -22,14 +41,14 @@ const Contact = () => {
 
       <div className="max-w-[1280px] mx-auto w-full px-5 mt-[-40px] relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Contact Information */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-3xl p-8 shadow-xl shadow-black/5 border border-outline-variant/30 h-full">
               <h2 className="text-xl font-black text-on-surface uppercase tracking-tight mb-6">
                 Thông tin liên hệ
               </h2>
-              
+
               <div className="space-y-6">
                 <div className="flex gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -50,7 +69,7 @@ const Contact = () => {
                   <div>
                     <h3 className="text-sm font-bold text-on-surface mb-1">Điện thoại</h3>
                     <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
-                      Hotline: 1900 1234<br/>
+                      Hotline: 1900 1234<br />
                       Hỗ trợ kỹ thuật: 090 123 4567
                     </p>
                   </div>
@@ -63,7 +82,7 @@ const Contact = () => {
                   <div>
                     <h3 className="text-sm font-bold text-on-surface mb-1">Email</h3>
                     <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
-                      contact@kpm-system.vn<br/>
+                      contact@kpm-system.vn<br />
                       support@kpm-system.vn
                     </p>
                   </div>
@@ -76,7 +95,7 @@ const Contact = () => {
                   <div>
                     <h3 className="text-sm font-bold text-on-surface mb-1">Giờ làm việc</h3>
                     <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
-                      Thứ 2 - Thứ 6: 08:00 - 17:30<br/>
+                      Thứ 2 - Thứ 6: 08:00 - 17:30<br />
                       Thứ 7: 08:00 - 12:00
                     </p>
                   </div>
@@ -111,75 +130,54 @@ const Contact = () => {
                 Điền vào biểu mẫu dưới đây, đội ngũ hỗ trợ của KPM sẽ phản hồi bạn trong thời gian sớm nhất.
               </p>
 
-              <form className="space-y-5" onSubmit={(e) => {
-                e.preventDefault();
-                alert('Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.');
-              }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                      Họ và tên <span className="text-error">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      placeholder="Nhập họ tên của bạn" 
-                      required
-                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                      Số điện thoại <span className="text-error">*</span>
-                    </label>
-                    <input 
-                      type="tel" 
-                      placeholder="Nhập số điện thoại" 
-                      required
-                      className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium"
-                    />
-                  </div>
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
+                    Chủ đề <span className="text-error">*</span>
+                  </label>
+                  <select
+                    required
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium text-on-surface"
+                  >
+                    <option value="" disabled>Chọn chủ đề bạn cần hỗ trợ</option>
+                    <option value="Hỗ trợ kỹ thuật">Hỗ trợ kỹ thuật</option>
+                    <option value="Tư vấn dịch vụ & Báo giá">Tư vấn dịch vụ & Báo giá</option>
+                    <option value="Thanh toán & Hóa đơn">Thanh toán & Hóa đơn</option>
+                    <option value="Vấn đề khác">Vấn đề khác</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                    Email liên hệ
+                    Tiêu đề <span className="text-error">*</span>
                   </label>
-                  <input 
-                    type="email" 
-                    placeholder="Nhập địa chỉ email" 
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Nhập tiêu đề góp ý"
                     className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                    Chủ đề <span className="text-error">*</span>
-                  </label>
-                  <select 
-                    required
-                    className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium text-on-surface"
-                  >
-                    <option value="" disabled selected>Chọn chủ đề bạn cần hỗ trợ</option>
-                    <option value="support">Hỗ trợ kỹ thuật</option>
-                    <option value="sales">Tư vấn dịch vụ & Báo giá</option>
-                    <option value="billing">Thanh toán & Hóa đơn</option>
-                    <option value="other">Vấn đề khác</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
                     Nội dung tin nhắn <span className="text-error">*</span>
                   </label>
-                  <textarea 
-                    placeholder="Chi tiết vấn đề bạn đang gặp phải..." 
+                  <textarea
+                    placeholder="Chi tiết vấn đề bạn đang gặp phải..."
                     required
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                     rows="5"
                     className="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all text-sm font-medium resize-none"
                   ></textarea>
                 </div>
 
-                <button 
+                <button
                   type="submit"
                   className="bg-primary text-white text-xs font-black uppercase tracking-widest px-8 py-4 rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2 w-full md:w-auto mt-2"
                 >
@@ -188,22 +186,22 @@ const Contact = () => {
               </form>
             </div>
           </div>
-          
+
         </div>
       </div>
-      
+
       {/* Map Placeholder */}
       <div className="max-w-[1280px] mx-auto w-full px-5 mt-12">
-         <div className="w-full h-[400px] bg-surface-container-low rounded-3xl border border-outline-variant/30 overflow-hidden relative group">
-           {/* Giả lập bản đồ, trong thực tế sẽ nhúng iframe Google Maps vào đây */}
-           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2074')] opacity-40 bg-cover bg-center grayscale mix-blend-multiply group-hover:grayscale-0 transition-all duration-700"></div>
-           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <div className="bg-white/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-xl shadow-black/10 flex items-center gap-3 border border-outline-variant/50">
-                <MapPin className="w-5 h-5 text-primary" />
-                <span className="text-sm font-bold text-on-surface">KPM System - Trụ sở chính</span>
-             </div>
-           </div>
-         </div>
+        <div className="w-full h-[400px] bg-surface-container-low rounded-3xl border border-outline-variant/30 overflow-hidden relative group">
+          {/* Giả lập bản đồ, trong thực tế sẽ nhúng iframe Google Maps vào đây */}
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2074')] opacity-40 bg-cover bg-center grayscale mix-blend-multiply group-hover:grayscale-0 transition-all duration-700"></div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-xl shadow-black/10 flex items-center gap-3 border border-outline-variant/50">
+              <MapPin className="w-5 h-5 text-primary" />
+              <span className="text-sm font-bold text-on-surface">KPM System - Trụ sở chính</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

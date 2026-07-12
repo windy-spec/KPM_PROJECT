@@ -73,15 +73,6 @@ const ExportRequestsPanel = ({
 
     useEffect(() => {
         fetchOrders();
-        
-        const handleRefresh = () => {
-            fetchOrders();
-        };
-        window.addEventListener('warehouse-refresh', handleRefresh);
-        
-        return () => {
-            window.removeEventListener('warehouse-refresh', handleRefresh);
-        };
     }, []);
 
     const formatDate = (dateString) => {
@@ -211,9 +202,9 @@ const ExportRequestsPanel = ({
                                                                     if (inventoryMap[baseMatId]) {
                                                                         invData = inventoryMap[baseMatId];
                                                                     } else {
-                                                                        invData = { 
-                                                                            name: materialNameMap[baseMatId] || 'Vật tư chưa xác định', 
-                                                                            stock: 0 
+                                                                        invData = {
+                                                                            name: materialNameMap[baseMatId] || 'Vật tư chưa xác định',
+                                                                            stock: 0
                                                                         };
                                                                     }
                                                                 }

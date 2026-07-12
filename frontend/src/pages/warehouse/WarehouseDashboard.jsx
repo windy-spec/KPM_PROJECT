@@ -217,9 +217,9 @@ const WarehouseDashboard = () => {
                             activePanel === 'export_requests' ? 'Yêu Cầu Xuất Kho' :
                                 activePanel === 'export_history' ? 'Lịch Sử Phiếu Xuất' :
                                     activePanel === 'request' ? 'Lập Phiếu Đề Xuất Nhập' :
-                                    activePanel === 'material_requests' ? 'Quản Lý Đề Xuất Nhập' :
-                                        activePanel === 'materials' ? "Quản lý mã vật tư" :
-                                            activePanel === 'inventory' ? "Quản lý Tồn Kho Thực" : "Danh mục phân loại"
+                                        activePanel === 'material_requests' ? 'Quản Lý Đề Xuất Nhập' :
+                                            activePanel === 'materials' ? "Quản lý mã vật tư" :
+                                                activePanel === 'inventory' ? "Quản lý Tồn Kho Thực" : "Danh mục phân loại"
                     }
                     subTitle="Phân hệ Thủ Kho KPM"
                 />
@@ -369,7 +369,7 @@ const WarehouseDashboard = () => {
                     {activePanel === "material_units" && <ManageMaterialUnits />}
                 </main>
             </div>
-            
+
             <ConfirmModal
                 open={confirmModal.isOpen}
                 title="Báo cáo thiếu hàng"
