@@ -40,6 +40,7 @@ import ManageUsers from "./ManageUsers";
 import ManageComponentTemplates from "./ManageComponentTemplates";
 import ManageProductionRequests from "./ManageProductionRequests";
 import AdminMaterialRequestApproval from "../../components/admin/AdminMaterialRequestApproval";
+import ManageFeedbacks from "./ManageFeedbacks";
 import adminService from "../../services/admin.service";
 
 
@@ -486,6 +487,13 @@ const Dashboard = () => {
                 <ManageUsers />
               </section>
             )}
+
+            {activePanel === "feedbacks" && (
+              <section>
+                <ManageFeedbacks />
+              </section>
+            )}
+
           </main>
         </div>
       </div>

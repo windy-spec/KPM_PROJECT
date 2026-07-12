@@ -202,9 +202,9 @@ const ExportRequestsPanel = ({
                                                                     if (inventoryMap[baseMatId]) {
                                                                         invData = inventoryMap[baseMatId];
                                                                     } else {
-                                                                        invData = { 
-                                                                            name: materialNameMap[baseMatId] || 'Vật tư chưa xác định', 
-                                                                            stock: 0 
+                                                                        invData = {
+                                                                            name: materialNameMap[baseMatId] || 'Vật tư chưa xác định',
+                                                                            stock: 0
                                                                         };
                                                                     }
                                                                 }
