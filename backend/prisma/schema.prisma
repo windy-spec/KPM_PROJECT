@@ -293,6 +293,7 @@ model users {
   orders            orders[]
   quotations        quotations[]
   shopping_carts    shopping_carts[]
+  feedbacks         feedbacks[]
   user_profiles     user_profiles?
   roles             roles?              @relation(fields: [role_id], references: [id], onUpdate: NoAction)
 }

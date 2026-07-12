@@ -618,6 +618,7 @@ const sendFeedbackThanksEmail = async (email, userName = "Quý khách") => {
         <h2 style="color: #1e3a8a;">Xin chào ${userName},</h2>
         <p>Chúng tôi cám ơn vì góp ý của bạn. Đội ngũ KPM Materials luôn trân trọng những đóng góp để cải thiện dịch vụ tốt hơn mỗi ngày.</p>
         <p>Chúng tôi sẽ liên hệ sớm nhất cho bạn qua email hoặc số điện thoại để phản hồi trong thời gian sớm nhất.</p>
+        <p>Chúc bạn một ngày mới thật tốt lành. Một lần nữa, xin cám ơn bạn!</p>
         <br/>
         <p>Trân trọng,<br/><strong>KPM Materials Team</strong></p>
       </div>
