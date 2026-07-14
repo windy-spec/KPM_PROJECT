@@ -40,8 +40,16 @@ const Cart = () => {
             : item.quotations?.title || "Báo giá tùy chỉnh",
           product_code: item.products ? item.products.product_code : "CUSTOM",
           image:
-            item.products?.product_images?.[0]?.image_url ||
-            "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+            item.type === "quote"
+              ? item.quotations?.product_images?.[0]?.image_url ||
+                item.quotations?.quotation_attachments?.find(a => 
+                  !a.file_name?.startsWith("Bản vẽ 2D") && 
+                  !a.file_name?.startsWith("Ảnh mô tả") && 
+                  !a.file_name?.startsWith("Ảnh nét đứt") &&
+                  a.file_url?.match(/\.(jpeg|jpg|png|webp)$/i)
+                )?.file_url || item.quotations?.quotation_attachments?.[0]?.file_url
+              : item.products?.product_images?.[0]?.image_url ||
+                "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
           material_name:
             item.products?.materials?.material_name || "Vật liệu tùy chỉnh",
           quantity: item.quantity,

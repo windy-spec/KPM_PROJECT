@@ -416,7 +416,16 @@ const OrdersTab = () => {
                             product_id: null,
                             product_name: order.quotations?.nick_name || order.quotations?.title || "Sản phẩm gia công theo yêu cầu",
                             product_code: order.order_code || "KPM-CUSTOM",
-                            image: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
+                            image:
+                              order.quotations?.product_images?.[0]?.image_url ||
+                              order.quotations?.quotation_attachments?.find(a => 
+                                !a.file_name?.startsWith("Bản vẽ 2D") && 
+                                !a.file_name?.startsWith("Ảnh mô tả") && 
+                                !a.file_name?.startsWith("Ảnh nét đứt") &&
+                                a.file_url?.match(/\.(jpeg|jpg|png|webp)$/i)
+                              )?.file_url ||
+                              order.quotations?.quotation_attachments?.[0]?.file_url ||
+                              "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?q=80&w=200",
                             material_name: "Báo giá tùy chỉnh (Đã chốt)",
                             quantity: 1,
                             price: order.total_amount - (order.shipping_fee || 0) - (order.installation_fee || 0),

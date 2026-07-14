@@ -75,6 +75,26 @@ class OrderService {
         }
       }
     }
+    
+    // FETCH IMAGES FOR ALL PRODUCT IDS
+    if (allProductIds.length > 0) {
+      const allImages = await prisma.product_images.findMany({
+        where: { product_id: { in: allProductIds }, is_primary: true },
+      });
+      const imagesMap = allImages.reduce((acc, img) => {
+        if (!acc[img.product_id]) acc[img.product_id] = [];
+        acc[img.product_id].push(img);
+        return acc;
+      }, {});
+      for (const order of orders) {
+        if (order.quotations && order.quotations.quotation_specs) {
+          const productIds = order.quotations.quotation_specs
+            .map((spec) => spec.dimensions?.product_id)
+            .filter(Boolean);
+          order.quotations.product_images = productIds.flatMap(id => imagesMap[id] || []);
+        }
+      }
+    }
 
     return orders;
   }
@@ -116,13 +136,20 @@ class OrderService {
         .filter(Boolean);
 
       if (productIds.length > 0) {
-        const drawings = await prisma.product_drawings.findMany({
-          where: { product_id: { in: productIds }, is_active: true },
-          include: { drawing_parts: true },
-        });
+        const [drawings, images] = await Promise.all([
+          prisma.product_drawings.findMany({
+            where: { product_id: { in: productIds }, is_active: true },
+            include: { drawing_parts: true },
+          }),
+          prisma.product_images.findMany({
+            where: { product_id: { in: productIds }, is_primary: true },
+          })
+        ]);
         order.quotations.product_drawings = drawings;
+        order.quotations.product_images = images;
       } else {
         order.quotations.product_drawings = [];
+        order.quotations.product_images = [];
       }
     }
 
@@ -152,6 +179,7 @@ class OrderService {
           include: {
             products: {
               include: {
+                product_images: true,
                 product_drawings: {
                   include: {
                     drawing_parts: true,
@@ -180,13 +208,20 @@ class OrderService {
           .filter(Boolean);
 
         if (productIds.length > 0) {
-          const drawings = await prisma.product_drawings.findMany({
-            where: { product_id: { in: productIds }, is_active: true },
-            include: { drawing_parts: true },
-          });
+          const [drawings, images] = await Promise.all([
+            prisma.product_drawings.findMany({
+              where: { product_id: { in: productIds }, is_active: true },
+              include: { drawing_parts: true },
+            }),
+            prisma.product_images.findMany({
+              where: { product_id: { in: productIds }, is_primary: true },
+            })
+          ]);
           order.quotations.product_drawings = drawings;
+          order.quotations.product_images = images;
         } else {
           order.quotations.product_drawings = [];
+          order.quotations.product_images = [];
         }
       }
 

@@ -16,7 +16,7 @@ class CartService {
               },
             },
             quotations: {
-              select: { title: true, status: true, quotation_specs: true },
+              select: { title: true, status: true, quotation_specs: true, quotation_attachments: true, nick_name: true },
             },
           },
           orderBy: { created_at: "desc" },
@@ -30,7 +30,41 @@ class CartService {
         data: { user_id: userId },
         include: { cart_items: true },
       });
+      return cart;
     }
+
+    // MAP base product images cho hàng Custom
+    const customProductIds = [];
+    cart.cart_items.forEach(item => {
+      if (item.quotations && item.quotations.quotation_specs) {
+        item.quotations.quotation_specs.forEach(spec => {
+          if (spec.dimensions?.product_id) {
+            customProductIds.push(spec.dimensions.product_id);
+          }
+        });
+      }
+    });
+
+    if (customProductIds.length > 0) {
+      const allImages = await prisma.product_images.findMany({
+        where: { product_id: { in: customProductIds }, is_primary: true }
+      });
+      const imgMap = {};
+      allImages.forEach(img => {
+        if (!imgMap[img.product_id]) imgMap[img.product_id] = [];
+        imgMap[img.product_id].push(img);
+      });
+
+      cart.cart_items.forEach(item => {
+        if (item.quotations && item.quotations.quotation_specs) {
+          const ids = item.quotations.quotation_specs
+            .map(s => s.dimensions?.product_id)
+            .filter(Boolean);
+          item.quotations.product_images = ids.flatMap(id => imgMap[id] || []);
+        }
+      });
+    }
+
     return cart;
   }
 
