@@ -359,9 +359,15 @@ class QuotationService {
       }
     }
 
-    if (global.io && updateQuote.user_id) {
-      global.io.to(`room_user_${updateQuote.user_id}`).emit("quote_updated", {
-        message: "Admin đã cập nhật giá cho yêu cầu báo giá của bạn!",
+    if (global.io) {
+      if (updateQuote.user_id) {
+        global.io.to(`room_user_${updateQuote.user_id}`).emit("quote_updated", {
+          message: "Admin đã cập nhật giá cho yêu cầu báo giá của bạn!",
+          data: updateQuote,
+        });
+      }
+      global.io.to("room_admin").emit("quote_updated", {
+        message: "Một báo giá vừa được duyệt giá thành công!",
         data: updateQuote,
       });
     }
@@ -450,13 +456,26 @@ class QuotationService {
     if (quotation.status !== "draft" && quotation.status !== "pending_admin") {
       throw new Error("Không thể thêm file đính kèm!");
     }
-    return await prisma.quotation_attachments.create({
+    const attachment = await prisma.quotation_attachments.create({
       data: {
         quotation_id,
         file_name,
         file_url,
       },
     });
+
+    if (global.io) {
+      if (quotation.user_id) {
+        global.io.to(`room_user_${quotation.user_id}`).emit("quote_updated", {
+          message: "Admin vừa đính kèm bản vẽ mới cho báo giá của bạn!",
+        });
+      }
+      global.io.to("room_admin").emit("quote_updated", {
+        message: "Đã thêm bản vẽ đính kèm thành công!",
+      });
+    }
+
+    return attachment;
   }
   // 5. XÓA BÁO GIÁ (Cẩn thận khóa ngoại Restrict từ bảng Orders)
   async deleteQuotation(id) {

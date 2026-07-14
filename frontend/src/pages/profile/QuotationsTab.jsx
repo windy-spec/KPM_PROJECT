@@ -33,9 +33,6 @@ const QuotationsTab = () => {
 
     const handleQuoteUpdated = (payload) => {
       fetchQuotations();
-      showSuccess(
-        payload.message || "Yêu cầu báo giá của bạn đã được cập nhật!",
-      );
     };
 
     socket.on("quote_status_changed", handleQuoteUpdated);

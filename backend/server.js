@@ -51,10 +51,12 @@ io.on("connection", (socket) => {
   keepDatabaseAlive();
 
   socket.on("join", (data) => {
-    if (data?.role === "admin" || data?.role === "superadmin") {
+    const userRole = (data?.role || "").toLowerCase();
+    
+    if (userRole === "admin" || userRole === "superadmin") {
       socket.join("room_admin");
     }
-    if (data?.role === "warehouse") {
+    if (userRole === "warehouse") {
       socket.join("room_warehouse");
     }
     if (data?.user_id) {

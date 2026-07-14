@@ -53,16 +53,22 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
 
   useEffect(() => {
     if (!socket || !id) return;
-    const handleQuoteNegotiated = (payload) => {
-      // Chỉ reload nếu đúng id báo giá đang xem
+    
+    const handleSocketUpdate = (payload) => {
       if (payload?.data?.id === id) {
-        showSuccess(payload?.message || "Khách hàng vừa phản hồi báo giá này!");
+        showSuccess(payload?.message || "Báo giá này vừa được cập nhật!");
         load();
       }
     };
-    socket.on("quote_negotiated", handleQuoteNegotiated);
+
+    socket.on("quote_negotiated", handleSocketUpdate);
+    socket.on("quote_status_changed", handleSocketUpdate);
+    socket.on("quote_updated", handleSocketUpdate);
+    
     return () => {
-      socket.off("quote_negotiated", handleQuoteNegotiated);
+      socket.off("quote_negotiated", handleSocketUpdate);
+      socket.off("quote_status_changed", handleSocketUpdate);
+      socket.off("quote_updated", handleSocketUpdate);
     };
   }, [socket, id]);
 

@@ -58,6 +58,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -71,6 +72,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -87,6 +89,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
         global.io.to("room_admin").emit("new_import_request", { orderId: req.params.orderId }); // Notify admin to check import
       }
       res.status(200).json({ success: true, message: result.message });
@@ -101,6 +104,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -114,6 +118,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -127,6 +132,7 @@ class WarehouseController {
       if (global.io && result.order?.user_id) {
         global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
         global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
+        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {

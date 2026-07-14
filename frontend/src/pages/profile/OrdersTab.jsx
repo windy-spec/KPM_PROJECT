@@ -114,7 +114,7 @@ const OrdersTab = () => {
               name: i.products?.product_name || "Sản phẩm",
               specs: i.products?.product_code || "N/A",
               quantity: i.quantity,
-              unit_price: parseFloat(i.unit_price) || 0
+              unit_price: parseFloat(i.price) || 0
             })),
           raw_items: o.order_items,
           raw_quotation_specs: o.quotations?.quotation_specs,
@@ -138,7 +138,6 @@ const OrdersTab = () => {
 
     const handleOrderStatusUpdated = (data) => {
       fetchOrders();
-      showSuccess(`Đơn hàng ${data.orderId.split('-').pop()} vừa được cập nhật: ${data.stage_name || data.status}`);
 
       // Nếu đang mở modal theo dõi chính đơn hàng này, cập nhật thêm tracking log luôn
       setTrackingData(prev => {

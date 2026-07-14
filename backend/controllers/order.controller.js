@@ -68,15 +68,19 @@ class OrderController {
       const result = await orderService.updateOrderStatus(orderId, payload);
       
       if (global.io && result) {
+        const payloadToSend = {
+          orderId: orderId,
+          status: result.production_status,
+          stage_name: payload.stage_name,
+          stage_description: payload.stage_description
+        };
+
         const userIdToNotify = result.user_id || (result.quotations && result.quotations.user_id);
         if (userIdToNotify) {
-          global.io.to(`room_user_${userIdToNotify}`).emit("orderStatusUpdated", {
-            orderId: orderId,
-            status: result.production_status,
-            stage_name: payload.stage_name,
-            stage_description: payload.stage_description
-          });
+          global.io.to(`room_user_${userIdToNotify}`).emit("orderStatusUpdated", payloadToSend);
         }
+        global.io.to("room_warehouse").emit("orderStatusUpdated", payloadToSend);
+        global.io.to("room_admin").emit("orderStatusUpdated", payloadToSend);
       }
 
       res.status(200).json({
@@ -107,6 +111,22 @@ class OrderController {
     try {
       const orderId = req.params.id;
       const requirements = await orderService.approveOrderAndRequestMaterials(orderId);
+      
+      if (global.io) {
+        // Find the user_id from the order if possible. Wait, orderService.approveOrderAndRequestMaterials doesn't return the order directly, it returns an array of requirements or an object. Let's see if we can get the user_id, or just emit to admin/warehouse.
+        // Let's emit to room_admin and room_warehouse at least.
+        const payloadToSend = {
+          orderId: orderId,
+          status: "admin_approved",
+          stage_name: "Đã duyệt & yêu cầu vật tư",
+          stage_description: "Đơn hàng đã được duyệt, chuyển yêu cầu chuẩn bị vật tư xuống kho."
+        };
+        global.io.to("room_warehouse").emit("orderStatusUpdated", payloadToSend);
+        global.io.to("room_admin").emit("orderStatusUpdated", payloadToSend);
+        
+        // Also try to find the user_id to notify the user.
+        // We'll emit globally and rely on room mapping if possible. If we don't have user_id, it's fine.
+      }
       
       res.status(200).json({
         success: true,

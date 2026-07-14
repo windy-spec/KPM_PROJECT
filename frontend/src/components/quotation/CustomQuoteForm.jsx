@@ -417,19 +417,20 @@ export default function CustomQuoteForm() {
                 )}
               </div>
 
-              <div className="space-y-1 flex-1 min-w-0">
-                <span className="inline-block bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
-                  Ràng buộc Linh Kiện Active
-                </span>
+              <div className="space-y-1.5 flex-1 min-w-0 flex flex-col justify-center">
                 <span className="block text-sm font-bold text-on-surface truncate">
                   {selectedProductData.product_name || selectedProductData.name}
                 </span>
-                {currentBlueprint && (
-                  <p className="text-[11px] text-emerald-800 font-medium flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md mt-1 w-fit">
-                    <Info className="w-3 h-3 shrink-0" />
-                    Vật tư & Sơn đồng bộ với Blueprint danh mục
-                  </p>
-                )}
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-700">
+                    {selectedProductData.product_categories?.category_name || "Cấu kiện mẫu"}
+                  </span>
+                  {selectedProductData.product_code && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-500/10 text-sky-700">
+                      Mã SP: {selectedProductData.product_code}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

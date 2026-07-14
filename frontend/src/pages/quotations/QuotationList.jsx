@@ -20,6 +20,7 @@ function StatusBadge({ status }) {
     favorite: 'bg-pink-50 text-pink-700 border-pink-200',
     under_review: 'bg-gray-50 text-gray-700 border-gray-200',
     admin_quoted: 'bg-sky-50 text-sky-700 border-sky-200',
+    user_proposed: 'bg-purple-50 text-purple-700 border-purple-200',
   };
   const labelMap = {
     draft: 'Nháp',
@@ -33,6 +34,7 @@ function StatusBadge({ status }) {
     favorite: 'Yêu thích',
     under_review: 'Xem xét',
     admin_quoted: 'Admin báo giá',
+    user_proposed: 'Khách mặc cả',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border ${map[status] || 'bg-surface-container text-on-surface-variant border-outline-variant/40'}`}>
