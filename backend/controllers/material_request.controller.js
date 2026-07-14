@@ -60,6 +60,7 @@ class MaterialRequestController {
       // Bắn Socket báo đã nhận hàng
       if (global.io) {
         global.io.to("room_admin").emit("import_request_received", result);
+        global.io.to("room_warehouse").emit("import_request_received", result);
       }
 
       res

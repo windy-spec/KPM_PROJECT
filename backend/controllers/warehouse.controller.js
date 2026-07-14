@@ -207,6 +207,12 @@ class WarehouseController {
   async requestImportMaterials(req, res) {
     try {
       const result = await warehouseService.requestImportMaterials(req.body);
+      
+      // Bắn Socket báo Admin có yêu cầu mới
+      if (global.io) {
+        global.io.to("room_admin").emit("new_import_request", result);
+      }
+
       res.status(200).json({
         success: true,
         message: "Đã gửi yêu cầu nhập hàng!",

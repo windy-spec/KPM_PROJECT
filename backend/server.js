@@ -56,7 +56,7 @@ io.on("connection", (socket) => {
     if (userRole === "admin" || userRole === "superadmin") {
       socket.join("room_admin");
     }
-    if (userRole === "warehouse") {
+    if (userRole === "warehouse" || userRole === "admin_kho") {
       socket.join("room_warehouse");
     }
     if (data?.user_id) {

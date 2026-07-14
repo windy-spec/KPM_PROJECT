@@ -12,6 +12,7 @@ const WarehouseRequest = () => {
     const [selectedOrderId, setSelectedOrderId] = useState("");
     const [missingMaterials, setMissingMaterials] = useState([]);
     const [selectedMaterials, setSelectedMaterials] = useState([]);
+    const [materialsMap, setMaterialsMap] = useState({});
     const [note, setNote] = useState("");
     
     const [loading, setLoading] = useState(false);
@@ -38,9 +39,10 @@ const WarehouseRequest = () => {
     const fetchData = async () => {
         setErrorMsg(""); // Clear previous errors when fetching
         try {
-            const [ordersRes, invRes] = await Promise.all([
+            const [ordersRes, invRes, matRes] = await Promise.all([
                 orderService.getAllOrders(),
-                warehouseService.getAllInventory()
+                warehouseService.getAllInventory(),
+                import("../../services/material.service").then(m => m.materialService.getMaterials())
             ]);
             
             const allOrders = ordersRes?.data || ordersRes || [];
@@ -52,6 +54,13 @@ const WarehouseRequest = () => {
             if (Array.isArray(invData)) {
                 setInventoryMap(invData);
             }
+
+            const matData = matRes?.data?.data || matRes?.data || [];
+            const mMap = {};
+            if (Array.isArray(matData)) {
+                matData.forEach(m => mMap[m.id] = m);
+            }
+            setMaterialsMap(mMap);
         } catch (err) {
             console.error("fetchData error:", err);
             setErrorMsg(`Lỗi làm mới dữ liệu: ${err.message}`);
@@ -79,7 +88,8 @@ const WarehouseRequest = () => {
             const requiredQty = parseFloat(reqQtyStr);
             const inv = inventoryMap.find(i => i.material_id === matId && (thickId ? i.thickness_id === thickId : true));
             const currentStock = inv ? parseFloat(inv.quantity) : 0;
-            let matName = inv ? `${inv.materials?.material_code} - ${inv.materials?.material_name}` : "Vật tư không xác định";
+            const matObj = materialsMap[matId];
+            let matName = inv ? `${inv.materials?.material_code} - ${inv.materials?.material_name}` : (matObj ? `${matObj.material_code} - ${matObj.material_name}` : "Vật tư không xác định");
               if (inv?.material_thickness?.thickness_value) {
                   matName += ` (${inv.material_thickness.thickness_value})`;
               }

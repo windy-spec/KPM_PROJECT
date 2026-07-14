@@ -140,9 +140,16 @@ class WarehouseService {
       const currentStock = inv ? parseFloat(inv.quantity) : 0;
 
       if (currentStock < requiredQty) {
+        let matCode = inv?.materials?.material_code;
+        let matName = inv?.materials?.material_name;
+        if (!inv) {
+          const mat = await prisma.materials.findUnique({ where: { id: actualMatId } });
+          matCode = mat?.material_code || matId;
+          matName = mat?.material_name || "Vật tư chưa rõ";
+        }
         missingMaterials.push({
-          material_code: inv?.materials?.material_code || matId,
-          material_name: inv?.materials?.material_name || "Vật tư chưa rõ",
+          material_code: matCode,
+          material_name: matName,
           current_stock: currentStock,
           required: requiredQty,
           missing: requiredQty - currentStock,
@@ -552,6 +559,22 @@ class WarehouseService {
     const { items, note } = payload;
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new Error("Vui lòng chọn ít nhất 1 vật tư để yêu cầu!");
+    }
+
+    // Check if there are already PENDING or APPROVED requests for these order-material pairs to prevent spam
+    for (const item of items) {
+      if (item.order_id) {
+        const existingReq = await prisma.material_import_requests.findFirst({
+          where: {
+            order_id: item.order_id,
+            material_id: item.material_id,
+            status: { in: ["PENDING", "APPROVED"] }
+          }
+        });
+        if (existingReq) {
+          throw new Error(`Đã có phiếu yêu cầu nhập vật tư cho đơn hàng này đang chờ duyệt. Vui lòng không gửi lại!`);
+        }
+      }
     }
 
     const dataToInsert = items.map((item) => ({

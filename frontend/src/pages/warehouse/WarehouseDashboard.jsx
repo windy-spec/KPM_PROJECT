@@ -57,15 +57,23 @@ const WarehouseDashboard = () => {
             showInfo("Có yêu cầu xuất/nhập kho mới được chuyển xuống!");
             window.dispatchEvent(new Event('warehouse-refresh'));
         };
+        const handleOrderStatusUpdated = (data) => {
+            if (data?.status === "admin_approved") {
+                showInfo("Admin vừa duyệt một đơn hàng mới xuống xưởng sản xuất!");
+            }
+            window.dispatchEvent(new Event('warehouse-refresh'));
+        };
 
         socket.on("import_request_approved", handleImportApproved);
         socket.on("new_warehouse_request", handleNewWarehouseRequest);
-        socket.on("orderStatusUpdated", () => window.dispatchEvent(new Event('warehouse-refresh')));
+        socket.on("orderStatusUpdated", handleOrderStatusUpdated);
+        socket.on("import_request_received", () => window.dispatchEvent(new Event('warehouse-refresh')));
 
         return () => {
             socket.off("import_request_approved", handleImportApproved);
             socket.off("new_warehouse_request", handleNewWarehouseRequest);
-            socket.off("orderStatusUpdated");
+            socket.off("orderStatusUpdated", handleOrderStatusUpdated);
+            socket.off("import_request_received");
         };
     }, [socket]);
 

@@ -13,6 +13,9 @@ const WarehouseMaterialRequestReceive = () => {
 
     useEffect(() => {
         fetchRequests();
+        const handleRefresh = () => fetchRequests();
+        window.addEventListener('warehouse-refresh', handleRefresh);
+        return () => window.removeEventListener('warehouse-refresh', handleRefresh);
     }, []);
 
     const fetchRequests = async () => {

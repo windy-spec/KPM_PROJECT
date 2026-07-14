@@ -5,7 +5,10 @@ import { Loader2, CheckCircle2, Clock, AlertCircle, Boxes, Check, RefreshCcw, Tr
 import { toast } from "react-toastify";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
+import { useSocket } from "../../context/SocketContext";
+
 const AdminMaterialRequestApproval = () => {
+    const socket = useSocket();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -15,6 +18,18 @@ const AdminMaterialRequestApproval = () => {
     useEffect(() => {
         fetchRequests();
     }, []);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleRefresh = () => fetchRequests();
+        socket.on("new_import_request", handleRefresh);
+        socket.on("import_request_received", handleRefresh);
+
+        return () => {
+            socket.off("new_import_request", handleRefresh);
+            socket.off("import_request_received", handleRefresh);
+        };
+    }, [socket]);
 
     const fetchRequests = async () => {
         setLoading(true);

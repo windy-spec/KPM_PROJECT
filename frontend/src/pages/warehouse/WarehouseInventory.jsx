@@ -49,6 +49,10 @@ const WarehouseInventory = () => {
     useEffect(() => {
         fetchInventory();
         fetchMaterialsCatalog();
+        
+        const handleRefresh = () => fetchInventory();
+        window.addEventListener('warehouse-refresh', handleRefresh);
+        return () => window.removeEventListener('warehouse-refresh', handleRefresh);
     }, []);
 
     // --- 1. LỌC SẢN PHẨM NHIỀU / ÍT THEO ĐỊNH MỨC ---

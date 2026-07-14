@@ -73,6 +73,9 @@ const ExportRequestsPanel = ({
 
     useEffect(() => {
         fetchOrders();
+        const handleRefresh = () => fetchOrders();
+        window.addEventListener('warehouse-refresh', handleRefresh);
+        return () => window.removeEventListener('warehouse-refresh', handleRefresh);
     }, []);
 
     const formatDate = (dateString) => {
