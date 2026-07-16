@@ -127,11 +127,7 @@ const Dashboard = () => {
         });
         setChartData(data.chartData || []);
         setRecentItems(data.recentItems || []);
-        setTopProducts(data.topProducts || [
-          { label: "Cổng Sắt CNC", percentage: 45 },
-          { label: "Lan Can Cầu Thang", percentage: 30 },
-          { label: "Hàng Rào Sắt", percentage: 25 }
-        ]);
+        setTopProducts(data.topProducts || []);
       }
     } catch (e) {
       console.error("Lỗi khi tải thông số tổng quan:", e);
