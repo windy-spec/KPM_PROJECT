@@ -5,7 +5,31 @@ class AdminService {
     const now = new Date();
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
+    // 1. Nhóm các order_items theo product_id và tính tổng số lượng bán ra
+    const topSellingItem = await prisma.order_items.groupBy({
+      by:['product_id'],
+      _sum:{quantity:true},
+      orderBy:{
+        _sum:{quantity:"desc"}
+      },
+      take: 5
+    })
+    // 2. Lấy thông tin tên sản phẩm từ DB
+    const productIds = topSellingItem.map(item=>item.product_id);
+    const products = await prisma.products.findMany({
+      where: {id:{in:productIds}},
+      select:{id:true,product_name:true}
+    });
+    // 3. Tính toán phần trăm (Tổng số quantity bán ra của top 5 hoặc tổng toàn bộ)
+    const totalQuantityTop5 = topSellingItem.reduce((acc, curr) => acc + curr._sum.quantity, 0);
+    const topProducts = topSellingItem.map(item => {
+      const product = products.find(p => p.id === item.product_id);
+      const percentage = totalQuantityTop5 > 0 ? Math.round((item._sum.quantity / totalQuantityTop5) * 100) : 0;
+      return {
+        label: product ? product.product_name : 'Sản phẩm không xác định',
+        percentage: percentage
+      };
+    });
     // Doanh thu tháng này
     const currentMonthTransactions = await prisma.transactions.aggregate({
       _sum: { amount: true },
@@ -87,7 +111,8 @@ class AdminService {
         users: { value: totalUsersCount, change: 0 }
       },
       chartData,
-      recentItems
+      recentItems,
+      topProducts
     };
   }
 }
