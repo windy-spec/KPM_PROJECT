@@ -491,14 +491,18 @@ class WarehouseService {
   async getInventoryById(id) {
     const inventory = await prisma.inventory.findUnique({
       where: { id },
-      include: { materials: true },
+      include: {
+        materials: {
+          include: {
+            inventory_logs: {
+              orderBy: { created_at: "desc" },
+            },
+          },
+        },
+      },
     });
     if (!inventory) throw new Error("Không tìm thấy vật tư trong kho!");
-    const logs = await prisma.inventory_logs.findMany({
-      where: { material_id: inventory.material_id },
-      orderBy: { created_at: "desc" },
-    });
-    return { inventory, logs };
+    return inventory;
   }
   // Tạo mới một bản ghi tồn kho
   async createInventory(payload) {

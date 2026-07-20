@@ -215,7 +215,7 @@ const QuotationsTab = () => {
           <div
             key={q.id}
             id={`quote-card-${q.id}`}
-            className={`bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all ${printingId === q.id ? 'print-area' : (printingId ? 'no-print' : '')}`}
+            className={`bg-white rounded-2xl p-6 border border-outline-variant hover:border-primary/50 hover:shadow-md transition-all ${printingId === q.id ? "print-area" : printingId ? "no-print" : ""}`}
           >
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-outline-variant/30 pb-4 mb-4">
               <div>
@@ -290,11 +290,15 @@ const QuotationsTab = () => {
             {q.quotation_attachments && q.quotation_attachments.length > 0 && (
               <div className="mb-4 bg-surface-container/10 border border-outline-variant/40 rounded-xl p-3">
                 <h4 className="text-[11px] font-bold text-on-surface-variant/80 uppercase mb-2 flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5" /> Hồ sơ Bản vẽ đính kèm ({q.quotation_attachments.length})
+                  <Paperclip className="w-3.5 h-3.5" /> Hồ sơ Bản vẽ đính kèm (
+                  {q.quotation_attachments.length})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {q.quotation_attachments.map(att => (
-                    <div key={att.id || att.file_url} className="flex items-center justify-between border border-outline-variant/60 rounded-lg px-3 py-2 bg-white">
+                  {q.quotation_attachments.map((att) => (
+                    <div
+                      key={att.id || att.file_url}
+                      className="flex items-center justify-between border border-outline-variant/60 rounded-lg px-3 py-2 bg-white"
+                    >
                       <div className="truncate text-xs font-medium text-on-surface-variant max-w-[75%]">
                         {att.name || att.file_name}
                       </div>
@@ -341,8 +345,19 @@ const QuotationsTab = () => {
                   <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
                     <input
                       type="text"
-                      value={negotiatePrices[q.id] ? Number(negotiatePrices[q.id]).toLocaleString('vi-VN') : ""}
-                      onChange={(e) => handleInputChange(q.id, e.target.value.replace(/\D/g, ''))}
+                      value={
+                        negotiatePrices[q.id]
+                          ? Number(negotiatePrices[q.id]).toLocaleString(
+                              "vi-VN",
+                            )
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleInputChange(
+                          q.id,
+                          e.target.value.replace(/\D/g, ""),
+                        )
+                      }
                       placeholder="Nhập giá đề xuất..."
                       className="w-full md:w-44 px-3 h-9 text-xs font-bold border border-sky-200 rounded-xl focus:outline-none focus:border-sky-400 bg-white shadow-2xs"
                     />
