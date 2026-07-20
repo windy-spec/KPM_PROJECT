@@ -5,7 +5,10 @@ export const quotationService = {
     return apiClient.post('/quotations/calculate-realtime', data);
   },
   calculateBulk(data) {
-    return apiClient.post('/quotations/calculate-bulk', data);
+    return apiClient.post('/quotations/calculate', data); // Đã sửa thành /calculate để khớp với Backend route
+  },
+  estimateCost(data) {
+    return apiClient.post('/quotations/calculate', { ...data, is_estimate: true });
   },
   saveFavorite(data) {
     return apiClient.post('/quotations/favorite', data);

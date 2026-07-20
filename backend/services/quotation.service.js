@@ -633,6 +633,16 @@ class QuotationService {
       }
     }
 
+    if (data.is_estimate) {
+      return {
+        is_estimate: true,
+        original_price: total_quoted_price,
+        estimated_price: total_quoted_price * 1.07,
+        margin_added: "7%",
+        items: quotation_specs_data,
+      };
+    }
+
     return await prisma.quotations.create({
       data: {
         user_id: user_id || null,

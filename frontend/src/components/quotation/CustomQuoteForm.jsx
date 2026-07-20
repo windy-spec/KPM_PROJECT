@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Layers, ImageIcon, Info, Send } from "lucide-react";
+import { Layers, ImageIcon, Info, Send, Calculator, X } from "lucide-react";
 import { productService } from "../../services/product.service";
 import adminService from "../../services/admin.service";
 import { quotationService } from "../../services/quotation.service";
@@ -23,6 +23,11 @@ export default function CustomQuoteForm() {
   const [isChecked, setIsChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingTemplate, setFetchingTemplate] = useState(false);
+
+  // States for estimation
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [showEstimateModal, setShowEstimateModal] = useState(false);
+  const [estimateData, setEstimateData] = useState(null);
 
   // Theo dõi Auto-focus linh kiện
   const firstComponentRef = useRef(null);
@@ -72,6 +77,9 @@ export default function CustomQuoteForm() {
       width: "",
       height: "",
       paint_id: "",
+      has_length: true,
+      has_width: true,
+      has_height: true,
     };
   }
 
@@ -174,6 +182,9 @@ export default function CustomQuoteForm() {
               length: c.length || "",
               width: c.width || "",
               height: c.height || "",
+              has_length: Boolean(c.length && Number(c.length) > 0),
+              has_width: Boolean(c.width && Number(c.width) > 0),
+              has_height: Boolean(c.height && Number(c.height) > 0),
               paint_id: c.paint_id || "", // Giữ chuỗi UUID nguyên bản
               waste_configs: c.waste_configs || {},
               waste_rate: c.waste_rate || 0,
@@ -263,9 +274,9 @@ export default function CustomQuoteForm() {
       const validThicknessOptions = thicknessOptionsFor(c.material_id);
       if (validThicknessOptions.length > 0 && !c.thickness_id) return false;
 
-      if (isNaN(c.length) || Number(c.length) <= 0) return false;
-      if (isNaN(c.width) || Number(c.width) <= 0) return false;
-      if (isNaN(c.height) || Number(c.height) < 0) return false;
+      if (c.has_length !== false && (isNaN(c.length) || Number(c.length) <= 0)) return false;
+      if (c.has_width !== false && (isNaN(c.width) || Number(c.width) <= 0)) return false;
+      if (c.has_height !== false && (isNaN(c.height) || Number(c.height) < 0)) return false;
     }
     return true;
   }, [productName, components, thicknessList, currentBlueprint, materials]);
@@ -306,6 +317,49 @@ export default function CustomQuoteForm() {
       showError(e?.response?.data?.message || "Gửi yêu cầu báo giá thất bại.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleEstimateCost() {
+    if (!isFormValid) {
+        showError("Vui lòng điền đầy đủ thông tin hợp lệ trước khi xem ước tính!");
+        return;
+    }
+
+    const payload = {
+      items: [{
+          product_id: selectedTemplateId ? selectedTemplateId : null,
+          quantity: 1,
+          components: components.map((c) => {
+            const validThicknessOptions = thicknessOptionsFor(c.material_id);
+            return {
+              component_name: c.component_name,
+              material_id: c.material_id, 
+              thickness_id: validThicknessOptions.length > 0 ? c.thickness_id : null, 
+              length: Number(c.length),
+              width: Number(c.width),
+              height: Number(c.height),
+              paint_id: c.paint_id ? c.paint_id : null,
+              waste_configs: c.waste_configs,
+              waste_rate: c.waste_rate,
+              waste_unit: c.waste_unit,
+            };
+          })
+      }]
+    };
+
+    setIsEstimating(true);
+    try {
+      const res = await quotationService.estimateCost(payload);
+      const data = res.data?.data || res.data;
+      if (data && data.is_estimate) {
+          setEstimateData(data);
+          setShowEstimateModal(true);
+      }
+    } catch (e) {
+      showError(e?.response?.data?.message || "Không thể lấy ước tính chi phí lúc này.");
+    } finally {
+      setIsEstimating(false);
     }
   }
 
@@ -594,8 +648,13 @@ export default function CustomQuoteForm() {
                       </label>
                       <input
                         type="number"
-                        className="mt-1 w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-2 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-white transition-all"
+                        className={`mt-1 w-full rounded-xl border border-outline-variant/60 px-2 py-2.5 text-xs font-bold outline-none transition-all ${
+                          c.has_length === false
+                            ? "bg-surface-container-highest/40 text-on-surface-variant/40 cursor-not-allowed"
+                            : "bg-surface-container/20 focus:border-primary focus:bg-white"
+                        }`}
                         value={c.length}
+                        disabled={c.has_length === false}
                         onChange={(e) =>
                           updateComponent(c.id, { length: e.target.value })
                         }
@@ -607,8 +666,13 @@ export default function CustomQuoteForm() {
                       </label>
                       <input
                         type="number"
-                        className="mt-1 w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-2 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-white transition-all"
+                        className={`mt-1 w-full rounded-xl border border-outline-variant/60 px-2 py-2.5 text-xs font-bold outline-none transition-all ${
+                          c.has_width === false
+                            ? "bg-surface-container-highest/40 text-on-surface-variant/40 cursor-not-allowed"
+                            : "bg-surface-container/20 focus:border-primary focus:bg-white"
+                        }`}
                         value={c.width}
+                        disabled={c.has_width === false}
                         onChange={(e) =>
                           updateComponent(c.id, { width: e.target.value })
                         }
@@ -620,8 +684,13 @@ export default function CustomQuoteForm() {
                       </label>
                       <input
                         type="number"
-                        className="mt-1 w-full rounded-xl border border-outline-variant/60 bg-surface-container/20 px-2 py-2.5 text-xs font-bold outline-none focus:border-primary focus:bg-white transition-all"
+                        className={`mt-1 w-full rounded-xl border border-outline-variant/60 px-2 py-2.5 text-xs font-bold outline-none transition-all ${
+                          c.has_height === false
+                            ? "bg-surface-container-highest/40 text-on-surface-variant/40 cursor-not-allowed"
+                            : "bg-surface-container/20 focus:border-primary focus:bg-white"
+                        }`}
                         value={c.height}
+                        disabled={c.has_height === false}
                         onChange={(e) =>
                           updateComponent(c.id, { height: e.target.value })
                         }
@@ -653,24 +722,88 @@ export default function CustomQuoteForm() {
           </div>
         </label>
 
-        <button
-          onClick={handleSubmitQuote}
-          disabled={!isFormValid || !isChecked || loading || fetchingTemplate}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-xs transition-all w-full sm:w-auto cursor-pointer ${
-            isFormValid && isChecked && !loading && !fetchingTemplate
-              ? "bg-amber-500 hover:bg-amber-600 active:scale-98"
-              : "bg-on-surface-variant/20 text-on-surface-variant/50 cursor-not-allowed"
-          }`}
-        >
-          {loading ? (
-            <span>Đang gửi yêu cầu...</span>
-          ) : (
-            <>
-              <Send className="h-4 w-4" /> <span>Gửi Yêu Cầu Báo Giá Với Admin</span>
-            </>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <button
+            onClick={handleEstimateCost}
+            disabled={!isFormValid || isEstimating || fetchingTemplate}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-xs font-black uppercase tracking-[0.12em] shadow-xs transition-all w-full sm:w-auto cursor-pointer ${
+              isFormValid && !isEstimating && !fetchingTemplate
+                ? "bg-primary text-white hover:bg-primary/90 active:scale-98"
+                : "bg-on-surface-variant/20 text-on-surface-variant/50 cursor-not-allowed"
+            }`}
+          >
+            {isEstimating ? (
+              <span>Đang tính...</span>
+            ) : (
+              <>
+                <Calculator className="h-4 w-4" /> <span>Xem Ước Tính</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleSubmitQuote}
+            disabled={!isFormValid || !isChecked || loading || fetchingTemplate}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-xs transition-all w-full sm:w-auto cursor-pointer ${
+              isFormValid && isChecked && !loading && !fetchingTemplate
+                ? "bg-amber-500 hover:bg-amber-600 active:scale-98"
+                : "bg-on-surface-variant/20 text-on-surface-variant/50 cursor-not-allowed"
+            }`}
+          >
+            {loading ? (
+              <span>Đang gửi...</span>
+            ) : (
+              <>
+                <Send className="h-4 w-4" /> <span>Gửi Yêu Cầu</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* MODAL ƯỚC TÍNH CHI PHÍ */}
+      {showEstimateModal && estimateData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slideUp">
+            <div className="px-6 py-4 border-b border-outline-variant/30 flex items-center justify-between bg-surface-container/10">
+              <h3 className="text-sm font-black uppercase tracking-[0.12em] text-primary flex items-center gap-2">
+                <Calculator className="w-4 h-4" /> Ước Tính Chi Phí
+              </h3>
+              <button 
+                onClick={() => setShowEstimateModal(false)}
+                className="text-on-surface-variant hover:text-error transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="text-center p-4 bg-primary/5 rounded-xl border border-primary/10">
+                <p className="text-xs text-on-surface-variant/80 font-medium mb-1">Mức giá tạm tính (đã gồm {estimateData.margin_added} VAT/Biên độ)</p>
+                <div className="text-2xl font-black text-primary">
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(estimateData.estimated_price)}
+                </div>
+              </div>
+
+              <div className="bg-amber-500/10 text-amber-800 p-4 rounded-xl flex items-start gap-3 border border-amber-500/20">
+                <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                <div className="text-xs font-medium leading-relaxed">
+                  <p className="font-bold mb-1">Lưu ý quan trọng:</p>
+                  Đây chỉ là mức chi phí ước tính dựa trên thông số bạn nhập nhằm mục đích tham khảo. 
+                  Chi phí thực tế có thể thay đổi sau khi Admin thẩm định bản vẽ và yêu cầu kỹ thuật chi tiết.
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowEstimateModal(false)}
+                className="w-full bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs uppercase tracking-wider py-3 rounded-xl transition-all cursor-pointer"
+              >
+                Đóng & Quay Lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

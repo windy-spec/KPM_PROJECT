@@ -123,7 +123,10 @@ ${historyText}`;
 
           if (products.length === 0) {
             // Xử lý từ chối cứng ngay tại đây nếu DB trả về mảng rỗng []
-            aiReply = "Dạ rất tiếc hiện tại xưởng KPM không có sản phẩm nào khớp với yêu cầu của anh/chị. Anh/chị có thể tham khảo các danh mục khác như Cửa, Cổng, Lan can, Mái che ạ.";
+            const fallbackCats = await prisma.product_categories.findMany({ take: 4 });
+            let catStr = fallbackCats.map(c => c.category_name).join(", ");
+            if (!catStr) catStr = "Cửa, Cổng, Lan can, Mái che";
+            aiReply = `Dạ rất tiếc hiện tại xưởng KPM không có sản phẩm nào khớp với yêu cầu của anh/chị. Anh/chị có thể tham khảo các danh mục khác đang có tại xưởng như: ${catStr} ạ.`;
           } else {
             // Đẩy dữ liệu thô (dbContext) cho LLM xào nấu lại
             const dbContext = products.map(p => 
@@ -259,9 +262,11 @@ ${contextText}
 
 NHIỆM VỤ: 
 1. Ưu tiên trả lời dựa trên DỮ LIỆU CHÍNH THỨC CỦA XƯỞNG được cung cấp phía trên.
-2. Nếu câu hỏi thuộc chuyên môn cơ khí nhưng DỮ LIỆU CỦA XƯỞNG không có, bạn được phép DÙNG KIẾN THỨC CƠ KHÍ của bạn để tư vấn khái quát cho khách, nhưng nhớ dặn dò khách liên hệ trực tiếp xưởng để được báo giá và tư vấn chính xác nhất.
-3. Nếu câu hỏi hoàn toàn không liên quan đến lĩnh vực cơ khí/xây dựng (ví dụ hỏi thời tiết, toán học, lịch sử), BẮT BUỘC từ chối khéo: "Dạ vấn đề này nằm ngoài chuyên môn cơ khí của KPM, em không thể hỗ trợ ạ."
-4. Hãy sử dụng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày cho dễ đọc.`;
+2. Nếu khách hỏi về Báo giá hoặc Chi phí Sản phẩm, HÃY LUÔN nhắc nhở khách rằng: "Lưu ý: Đây chỉ là mức giá tham khảo dự kiến. Để biết chi tiết và chính xác nhất, anh/chị vui lòng sử dụng chức năng Báo Giá trên website nhé."
+3. Nếu khách hỏi về Lắp đặt và Thi công, HÃY LUÔN chú thích thêm: "Chi phí lắp đặt và thi công thông thường sẽ rơi vào khoảng 5% - 10% tổng giá trị sản phẩm."
+4. Nếu câu hỏi thuộc chuyên môn cơ khí nhưng DỮ LIỆU CỦA XƯỞNG không có, bạn được phép dùng kiến thức cơ khí của bạn để tư vấn khái quát, nhưng nhớ dặn dò khách liên hệ trực tiếp xưởng.
+5. Nếu câu hỏi hoàn toàn không liên quan đến cơ khí/xây dựng, BẮT BUỘC từ chối khéo: "Dạ vấn đề này nằm ngoài chuyên môn cơ khí của KPM, em không thể hỗ trợ ạ."
+6. Hãy sử dụng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày cho dễ đọc.`;
 
           const ksResponse = await groq.chat.completions.create({
             messages: [
@@ -348,7 +353,7 @@ CẤU TRÚC JSON:
         messages: [
           { role: "user", content: [{ type: "text", text: visionSystemPrompt }, { type: "image_url", image_url: { url: imageUrl } }] },
         ],
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "qwen/qwen3.6-27b",
         temperature: 0.1,
       });
 
@@ -367,6 +372,12 @@ CẤU TRÚC JSON:
         extractedSpecs = JSON.parse(rawJsonString);
       } catch (e) {
         extractedSpecs = { is_valid_drawing: false, message: "AI không thể đọc thông số, ảnh quá mờ." };
+      }
+
+      const isMissingName = !extractedSpecs.drawing_name || String(extractedSpecs.drawing_name).trim().toLowerCase() === "undefined" || String(extractedSpecs.drawing_name).trim() === "";
+      if (isMissingName && extractedSpecs.is_valid_drawing !== false) {
+        extractedSpecs.is_valid_drawing = false;
+        extractedSpecs.message = "AI không thể nhận diện được các thông số chi tiết hoặc tên chủ thể. Có thể ảnh bản vẽ quá mờ, vui lòng tải lên hình ảnh rõ nét hơn.";
       }
 
       if (extractedSpecs.is_valid_drawing === false) {
