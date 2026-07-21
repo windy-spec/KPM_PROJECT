@@ -213,7 +213,7 @@ const Dashboard = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 12, right: 8, left: -20, bottom: 0 }}
+                          margin={{ top: 12, right: 8, left: 25, bottom: 0 }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
@@ -317,8 +317,7 @@ const Dashboard = () => {
                           <th className="p-4">Ngày đặt</th>
                           <th className="p-4">Sản phẩm</th>
                           <th className="p-4">Giá trị</th>
-                          <th className="p-4">Trạng thái</th>
-                          <th className="p-4 pr-6 text-center">Thao tác</th>
+                          <th className="p-4">Trạng thái</th>         
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/30 text-xs font-bold text-on-surface-variant">
@@ -351,24 +350,6 @@ const Dashboard = () => {
                               >
                                 {order.status}
                               </span>
-                            </td>
-                            <td className="p-4 pr-6">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  type="button"
-                                  className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors"
-                                  title="Chỉnh sửa"
-                                >
-                                  <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-colors"
-                                  title="Xem chi tiết"
-                                >
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
                             </td>
                           </tr>
                         ))}

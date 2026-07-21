@@ -751,57 +751,6 @@ const AdminProductPanel = () => {
         </Portal>
       ) : null}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white border border-outline-variant/60 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4 mb-5">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4.5 h-4.5 text-primary" />
-              <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.22em]">Theo dõi biến động giá sắt/thép (đầu vào)</h3>
-            </div>
-            <div className="text-[10px] text-on-surface-variant/55 font-bold">Cập nhật: 10 phút trước</div>
-          </div>
-
-          <div className="space-y-4">
-            {defaultTrendItems.map((item) => (
-              <div key={item.name} className="flex items-center justify-between gap-3 rounded-xl bg-surface-container/20 px-4 py-4">
-                <div>
-                  <div className="font-black text-on-surface">{item.name}</div>
-                  <div className="text-[11px] text-on-surface-variant/60">Quy cách chuẩn</div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-sm font-black text-on-surface">{item.price}</div>
-                  <button type="button" className="text-[11px] font-black uppercase tracking-[0.18em] text-primary hover:underline">
-                    {item.action}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white border border-rose-200 rounded-2xl p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-rose-600 mb-4">
-            <TriangleAlert className="w-5 h-5" />
-            <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.22em]">Cảnh báo hết vật tư</h3>
-          </div>
-
-          <div className="space-y-4">
-            {defaultWarnings.map((item) => (
-              <div key={item.name} className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="font-black text-on-surface leading-5">{item.name}</div>
-                  <span className="text-rose-600 font-black text-sm">{item.remaining}</span>
-                </div>
-                <div className="text-[11px] text-on-surface-variant/70 mb-3">{item.note}</div>
-                <button type="button" className="w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">
-                  {item.action}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {showBatchReviewModal ? (
         <ImportBatchReviewModal
           batch={batchReview}
