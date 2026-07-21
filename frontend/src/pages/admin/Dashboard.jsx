@@ -290,22 +290,6 @@ const Dashboard = () => {
                     <h2 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
                       Đơn hàng mới cập nhật
                     </h2>
-
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <button
-                        type="button"
-                        className="px-3 py-2 border border-outline-variant rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-surface-container transition-colors"
-                      >
-                        <span className="inline-block w-3.5 h-0.5 bg-on-surface-variant/60 rounded-full" />{" "}
-                        Bộ lọc
-                      </button>
-                      <button
-                        type="button"
-                        className="px-3 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary-container transition-all"
-                      >
-                        Xuất Excel
-                      </button>
-                    </div>
                   </div>
 
                   <div className="overflow-x-auto">
