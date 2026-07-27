@@ -69,6 +69,21 @@ class CartController {
       res.status(400).json({ success: false, message: e.message });
     }
   }
+  //
+  async createCarCustom(req, res) {
+    try {
+      const userId = req.params.id;
+      const dataCart = req.body;
+      const result = await cartService.createCartCus(userId, dataCart);
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: { order_id: result.cart_id },
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 
 module.exports = new CartController();

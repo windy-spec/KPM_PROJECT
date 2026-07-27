@@ -4,8 +4,10 @@ const orderController = require("../controllers/order.controller");
 const authenticateToken = require("../middlewares/auth.middleware");
 
 // Route xem danh sách đơn hàng (admin only, but we can secure it later)
+router.delete("/deleteOrCustom/:id", orderController.deleteOrderCus);
 router.get("/", authenticateToken, orderController.getAllOrders);
-
+router.get("/totalOrder", orderController.totalOrder); // Route xem tổng số lượng đơn hàng
+router.get("/GroupByStatus1", orderController.GroupByStatus1); // Route xem tổng số lượng đơn hàng theo trạng thái
 // Route xem danh sách đơn hàng của user hiện tại
 router.get("/my-orders", authenticateToken, orderController.getMyOrders);
 
@@ -20,4 +22,5 @@ router.put(
 router.put("/:id/status", authenticateToken, orderController.updateStatus);
 router.get("/:id/tracking", authenticateToken, orderController.getTracking);
 router.put("/:id/approve", authenticateToken, orderController.approveOrder);
+router.get("/:id/order", orderController.getOrder);
 module.exports = router;

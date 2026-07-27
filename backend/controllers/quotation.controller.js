@@ -204,5 +204,39 @@ class QuotationController {
       res.status(500).json({ success: false, message: e.message });
     }
   }
+  async updateStatus(req, res) {
+    try {
+      const data = await quotationService.changeStatusToApproved(req.params.id);
+      res.status(200).json({
+        success: true,
+        message: "Cập nhật trạng thái thành công!",
+        data: data,
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async countQuo(req, res) {
+    try {
+      const count = await quotationService.countQuotation();
+      res.status(200).json({
+        success: true,
+        data: count,
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async deleteQuo(req, res) {
+    try {
+      const getId = req.params.id;
+      const deleteQuo = await quotationService.deleteQuoCus(getId);
+      res
+        .status(200)
+        .json({ success: true, message: "Xóa báo giá thành công" });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
 module.exports = new QuotationController();

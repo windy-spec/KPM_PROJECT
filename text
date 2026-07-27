@@ -1,0 +1,369 @@
+// Phần 1: Thao tác Database với Prisma (Mức cơ bản)
+// Tập trung vào thư mục services
+
+// 1. Tìm kiếm cơ bản: Viết một hàm lấy ra danh sách tất cả các người dùng (users) có role là "warehouse".
+// async getAllUserWarehouse() {
+//     const users = await prisma.users.findMany({
+//       take: 3,
+//       include: {
+//         roles: {
+//           where: { role_name: "USER" },
+//         },
+//       },
+//     });
+//     return users;
+//   }
+// async getAllUsersWarehouse(req, res) {
+//     try {
+//       const users = await userService.getAllUserWarehouse();
+//       res.status(200).json({ success: true, data: users });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// router.get("/wh", userController.getAllUsersWarehouse);
+// 2. Tìm kiếm theo ID: Viết một hàm lấy thông tin chi tiết của 1 Đơn hàng (orders) dựa vào id, yêu cầu bốc KÈM THEO thông tin của Người đặt hàng (users).
+// async getOrderByIdAndGetUserInfo(Id) {
+//     const order = await prisma.orders.findUnique({
+//       where: { id: Id },
+//       include: {
+//         users: {
+//           include: {
+//             user_profiles: true,
+//           },
+//         },
+//       },
+//     });
+//     return order;
+//   }
+// async getOrder(req, res) {
+//     try {
+//       const order = await orderService.getOrderByIdAndGetUserInfo(
+//         req.params.id,
+//       );
+//       res.status(200).json({ success: true, data: order });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+// }
+// router.get("/:id/order", orderController.getOrder);
+// 3. Thêm mới dữ liệu: Viết logic tạo một Danh mục sản phẩm mới (product_categories). Yêu cầu: Nếu tên danh mục đã tồn tại trong DB thì báo lỗi, không cho tạo.
+// async createCategoryUnique(data) {
+//     const { category_code, category_name } = data;
+//     const exists = await prisma.product_categories.findFirst({
+//       where: { category_name: category_name },
+//     });
+//     if (exists) {
+//       throw new Error(`Tên danh mục '${category_name}' đã tồn tại!`);
+//     }
+//     const newCate = await prisma.product_categories.create({
+//       data: {
+//         category_code: category_code,
+//         category_name: category_name,
+//       },
+//     });
+//     return newCate;
+//   }
+// router.post("/unique",categoryController.createCateUnique);
+// async createCateUnique(req, res) {
+//     try {
+//       const cate = await categoryService.createCategoryUnique(req.body);
+//       res.status(200).json({ success: true, data: cate });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 4. Cập nhật dữ liệu: Viết một hàm để chuyển trạng thái (status) của một đơn báo giá (quotations) từ "pending" sang "approved".
+// async changeStatusToApproved(Id) {
+//     const exists = await prisma.quotations.findUnique({
+//       where: { id: Id },
+//     });
+//     if (!exists) {
+//       throw new Error("Không tìm thấy báo giá này!");
+//     }
+//     const update = await prisma.quotations.update({
+//       where: { id: Id },
+//       data: {
+//         status: "approved",
+//       },
+//     });
+//     return update;
+//   }
+//  async updateStatus(req, res) {
+//     try {
+//       const data = await quotationService.changeStatusToApproved(req.params.id);
+//       res.status(200).json({
+//         success: true,
+//         message: "Cập nhật trạng thái thành công!",
+//         data: data,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 5. Xoá dữ liệu an toàn: Viết hàm xoá một Sản phẩm (products). Trước khi xoá, hãy kiểm tra xem sản phẩm đó có đang nằm trong đơn hàng nào không, nếu có thì chặn không cho xoá và ném ra lỗi throw new Error(...).
+// async getProductContain(keyword) {
+//     const products = await prisma.products.findMany({
+//       where: {
+//         product_name: { contains: keyword, mode: "insensitive" },
+//       },
+//     });
+//     return products;
+//   }
+// async safeDelete(req, res) {
+//     try {
+//       const DeletePro = await productService.safeDelete(req.params.id);
+//       res.status(200).json({
+//         success: true,
+//         message: "Xóa sản phẩm thành công",
+//         data: DeletePro,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// Phần 2: Query Prisma (Mức nâng cao - Hay bị hỏi)
+// Tập trung vào thư mục services
+// 6. Đếm số lượng (Count): Viết hàm đếm xem trong tháng này có bao nhiêu đơn báo giá (quotations) mới được tạo.
+//  async countQuotation() {
+//     const date = new Date();
+//     const firstMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+//     const count = await prisma.quotations.count({
+//       where: {
+//         created_at: { gte: firstMonth },
+//       },
+//     });
+//     return count;
+//   }
+// async countQuo(req, res) {
+//     try {
+//       const count = await quotationService.countQuotation();
+//       res.status(200).json({
+//         success: true,
+//         data: count,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 7. Nested Select (Chọn lọc dữ liệu): Viết một hàm lấy danh sách Sản phẩm. Yêu cầu: Chỉ lấy cột id, product_name, base_price và mảng hình ảnh (product_images) nhưng chỉ lấy đường link ảnh (image_url). KHÔNG được lấy các cột thừa thãi khác.
+// async getProductsWithImages() {
+//     const products = await prisma.products.findMany({
+//       select: {
+//         base_price: true,
+//         product_name: true,
+//         id: true,
+//         product_images: {
+//           select: {
+//             image_url: true,
+//           },
+//         },
+//       },
+//     });
+//     return products;
+//   }
+// async getProductsImages(req, res) {
+//     try {
+//       const getProducts = await productService.getProductsWithImages();
+//       res.status(200).json({
+//         success: true,
+//         data: getProducts,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 8. Tìm kiếm chuỗi (Search): Sửa lại hàm lấy danh sách sản phẩm sao cho hỗ trợ tìm kiếm gần đúng (nhập "bàn" sẽ ra "Bàn làm việc"). Gợi ý: Dùng contains.
+// async getProductContain(keyword) {
+//     const products = await prisma.products.findMany({
+//       where: {
+//         product_name: { contains: keyword, mode: "insensitive" },
+//       },
+//     });
+//     return products;
+//   }
+// async getProductContaint(req, res) {
+//     try {
+//       const getProducts = await productService.getProductContain(
+//         req.params.body,
+//       );
+//       res.status(200).json({
+//         success: true,
+//         data: getProducts,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 9. Sắp xếp và Giới hạn: Viết hàm lấy ra Top 3 người dùng (users) tạo tài khoản gần đây nhất (Sắp xếp theo created_at giảm dần).
+//  async getTop3Users() {
+//     const getTop3 = await prisma.users.findMany({
+//       select: {
+//         id: true,
+//         username: true,
+//         email: true,
+//       },
+//       take: 3,
+//       orderBy: {
+//         created_at: "desc",
+//       },
+//     });
+//     return getTop3;
+//   }
+// async getTop3Users(req, res) {
+//     try {
+//       const top3Users = await userService.getTop3Users();
+//       res.status(200).json({
+//         success: true,
+//         data: top3Users,
+//       });
+//     } catch (error) {
+//       res.status(400).json({ success: false, message: error.message });
+//     }
+//   }
+// 11. Phân trang (Pagination):
+// Viết hàm lấy danh sách Lịch sử kho (inventory_logs). Khách hàng yêu cầu lấy dữ liệu ở trang số 2, mỗi trang hiển thị 10 dòng (Sắp xếp mới nhất lên đầu).
+// Gợi ý: Dùng kết hợp skip và take. Tính toán skip như thế nào nếu page = 2?
+
+// 12. Tính tổng (Sum):
+// Viết hàm tính Tổng doanh thu (cột total_amount) của tất cả các đơn hàng (orders) đã hoàn thành (production_status = "completed").
+// Gợi ý: Dùng prisma.orders.aggregate({ _sum: { ... } }).
+
+// 13. Gộp nhóm (GroupBy):
+// Thầy cô yêu cầu vẽ biểu đồ thống kê: "Trong hệ thống hiện tại, mỗi trạng thái Đơn hàng (pending, processing, completed...) đang có số lượng là bao nhiêu?".
+// Gợi ý: Dùng prisma.orders.groupBy. Nhóm theo cột production_status và đếm bằng _count.
+
+// 14. Lọc phức tạp (AND / OR):
+// Viết API tìm kiếm Sản phẩm (products) thỏa mãn ĐỒNG THỜI 2 điều kiện:
+
+// Giá cơ bản (base_price) lớn hơn 100,000.
+// Tên sản phẩm chứa chữ "Gỗ" HOẶC chứa chữ "Kính".
+// Gợi ý: Bọc điều kiện trong mảng AND: [ { ... }, { OR: [...] } ].
+// 15. Cập nhật hoặc Thêm mới (Upsert):
+// Viết logic thêm Sản phẩm vào Giỏ hàng (cart_items). Yêu cầu:
+
+// Nếu sản phẩm đó ĐÃ CÓ trong giỏ hàng 👉 Tăng số lượng (quantity) lên 1.
+// Nếu CHƯA CÓ 👉 Tạo bản ghi mới vào giỏ hàng.
+// Gợi ý: Không dùng If/Else kiểm tra dài dòng, hãy dùng thẳng hàm prisma.cart_items.upsert.
+// Phần 4: Xử lý hàng loạt và Bảng liên kết phức tạp
+// 16. Cập nhật hàng loạt (UpdateMany):
+// Hệ thống có quy định: Báo giá (quotations) nếu tạo ra mà sau 30 ngày khách không chốt thì tự động Hủy. Viết 1 hàm cập nhật TẤT CẢ các Báo giá có status = "pending" và created_at nhỏ hơn (cách đây) 30 ngày thành trạng thái "expired".
+
+// 17. Xóa hàng loạt (DeleteMany):
+// Viết hàm dọn dẹp hệ thống: Xóa TẤT CẢ các Yêu cầu nhập vật tư (material_import_requests) có trạng thái là "rejected" (đã bị từ chối) để đỡ rác Database.
+
+// 18. Lọc qua bảng liên kết (Relation Filters):
+// Đây là câu hỏi phân loại Giỏi: Lấy danh sách Khách hàng (users) mà ĐÃ TỪNG đặt ít nhất 1 Đơn hàng (orders) có tổng giá trị lớn hơn 50 triệu.
+// Gợi ý: Đứng từ bảng users, dùng where: { orders: { some: { total_amount: { gt: ... } } } }.
+
+// 19. Socket.io kết hợp Prisma:
+// Viết API Sinh viên / Kho báo cáo hết vật tư. Hành động 1: Tạo 1 bản ghi mới vào material_import_requests. Hành động 2: Nếu tạo thành công, dùng global.io bắn ngay 1 sự kiện tên là "new_material_alert" vào room_admin để màn hình Admin ting ting thông báo.
+
+// 20. Transaction 2 bảng chéo nhau:
+// Khách hàng vừa bấm "Thanh toán hóa đơn". Viết hàm xử lý 2 việc ĐỒNG THỜI:
+
+// (1) Đổi trạng thái Hóa đơn (invoices) thành "paid".
+// (2) Nhảy sang bảng Đơn hàng (orders - liên kết qua order_id), đổi trạng thái đơn hàng thành "processing".
+// Bắt buộc dùng prisma.$transaction để đảm bảo nếu hóa đơn lỗi thì đơn hàng cũng không bị đổi trạng thái sai.
+
+
+
+// // GET
+
+// //const test = await prisma.tên bảng. findmany({}) if (test.tên biến. equals("giá trị")) { // làm gì đó } else { const a[]=test }
+// return
+
+// Bài 1: Giới hạn số lượng mua tối đa (Chống spam)
+// Vị trí: Trong file cart.service.js, hàm addToCart(userId, data). 
+// Tình huống: Có một số khách hàng rảnh rỗi bấm thêm 1 
+// sản phẩm vào giỏ hàng với số lượng 9999 gây rác database. 
+// Yêu cầu: Ngay trên dòng const cart = await this.getCart(userId); (dòng 76),
+//  bạn hãy viết 1 câu lệnh if kiểm tra:
+// Nếu số lượng (quantity) người dùng gửi lên lớn hơn 10.
+// Hãy dùng throw new Error("Mỗi lần chỉ được thêm tối đa 10 sản phẩm!"); để chặn lại.
+// Bài 2: Chặn thêm hàng vào giỏ nếu không truyền ID
+// if product id không có id => throw ra lỗi
+// if quotation id k có => throw ra lỗi
+// Vị trí: Vẫn trong hàm addToCart(userId, data). 
+// Tình huống: Đôi khi bên Frontend bị lỗi, gửi API lên Backend 
+// mà quên mất không truyền product_id (đối với hàng thường) 
+// và cũng không truyền quotation_id (đối với hàng thiết kế riêng).
+//  Dẫn đến giỏ hàng bị thêm một dòng trống trơn. Yêu cầu:
+// Viết 1 câu lệnh if kiểm tra: Nếu cả product_id VÀ quotation_id đều bị trống (undefined hoặc null).
+// Ném ra lỗi: throw new Error("Lỗi dữ liệu: Phải chọn sản phẩm hoặc báo giá!");
+// Bài 3: Khuyến mãi "mua 3 tặng 1" ngầm trong Code
+// Vị trí: Trong hàm addToCart, chỗ đoạn code update 
+// nếu sản phẩm ĐÃ TỒN TẠI trong giỏ (Khoảng dòng 90-95).
+// javascript
+// if (existingItem) {
+//   // Logic cũ: data: { quantity: existingItem.quantity + Number(quantity) }
+// }
+// Tình huống: Sếp muốn chạy chương trình tri ân: 
+// Nếu khách hàng bấm thêm hàng mà tổng số lượng trong giỏ (của món đó) vừa đúng chạm mốc 3 cái,
+//  thì tự động độn lên thành 4 cái (coi như tặng 1). Yêu cầu:
+// Bạn sửa lại đoạn code trong block if (existingItem) một chút.
+// Khai báo một biến tổng số lượng: let newTotal = existingItem.quantity + Number(quantity);
+// Viết một câu lệnh if: Nếu newTotal bằng đúng 3, thì gán lại newTotal = 4.
+// Sau đó đưa biến newTotal này vào hàm update thay cho logic cũ.
+
+// Đề 1: Chặn "âm binh" ở hàm cập nhật số lượng
+// Vị trí: Hàm updateQuantity(userId, itemId, quantity) (khoảng dòng 111). 
+// Tình huống: Khách hàng dùng tool để cố tình truyền tham số quantity không phải là số 
+// (VD: chữ cái "abc", "muoi", hoặc NaN). Nếu lọt qua được, 
+// database sẽ lưu số lượng là null hoặc báo lỗi sập server. Yêu cầu:
+// Ngay đầu hàm updateQuantity (trước khi gọi DB), 
+// viết lệnh kiểm tra: Nếu quantity truyền vào không phải là một số hợp lệ (gợi ý: dùng hàm isNaN).
+// Ném ra lỗi throw new Error("Số lượng không hợp lệ!"); để chặn lại.
+// Đề 2: Tách đơn hàng thường và đơn hàng custom
+// Vị trí: Hàm submitCart(userId) (khoảng dòng 143). 
+// Tình huống: Quy định mới của công ty: Khách hàng không được phép thanh toán chung hàng thường
+//  (product) và hàng thiết kế riêng (quotation) trong cùng một lúc, 
+// vì quy trình xử lý 2 loại này khác nhau. Yêu cầu:
+// Hàm submitCart hiện tại đã có sẵn 2 biến mảng customItems và normalItems.
+// Hãy thêm một điều kiện kiểm tra: Nếu trong giỏ hàng vừa có hàng thường, vừa có hàng thiết kế.
+// Ném ra lỗi báo cho người dùng biết: throw new Error
+// ("Không thể thanh toán chung hàng thường và hàng thiết kế. 
+// Vui lòng tách thành 2 lần thanh toán!");
+
+// Đề 1: "Bút sa gà chết" - Không cho hồi sinh báo giá đã hủy
+// Vị trí: Hàm updateStatus(id, status) (khoảng dòng 98). 
+// Tình huống: Một báo giá khi khách hàng chê đắt và bị hủy 
+// (trạng thái hiện tại của nó trong DB đang là "cancelled"), 
+// thì theo quy trình, Admin không được phép tự tiện đổi lại thành "approved" 
+// hay bất kỳ trạng thái nào khác nữa. 
+// Đã hủy là hủy luôn, muốn làm tiếp thì phải tạo báo giá mới. Yêu cầu:
+// Ngay sau dòng const quotation = await this.getQuotationById(id); 
+// (khi đã lấy được data báo giá cũ từ DB).
+// Hãy kiểm tra: Nếu trạng thái CŨ của báo giá đó (tức là quotation.status) đang là "cancelled".
+// Ném ra lỗi: throw new Error("Báo giá này đã bị hủy, không thể thay đổi trạng thái nữa!");
+// Đề 2: Chống tạo đơn hàng "0 đồng"
+// Vị trí: Vẫn trong hàm updateStatus(id, status). 
+// Tuốt ở bên dưới, khoảng dòng 138-149, chỗ có dòng chữ 
+// Nếu Admin xác nhận lên đơn hàng... 
+// Tình huống: Ở đoạn này code của bạn đang lấy ra totalAmount (tổng tiền). 
+// Đôi khi do lỗi nhập liệu, tổng tiền bị tính ra 0 hoặc âm. 
+// Nếu cứ thế mà hệ thống tự động sinh ra Đơn hàng (Order) 
+// gửi xuống xưởng sản xuất thì sẽ bị lỗ nặng. Yêu cầu:
+// Ngay bên dưới dòng const totalAmount = Number(rawAmount) || 0;
+// Viết điều kiện kiểm tra xem tổng tiền này như thế nào.
+// Nếu tiền <= 0, ném ra một lỗi: throw new Error
+// ("Lỗi: Tổng tiền báo giá phải lớn hơn 0 để tạo đơn hàng!");
+
+// Đề 1: Chống spam tiêu đề (Title) quá dài
+// Vị trí: Hàm requestCustomQuote(data) (khoảng dòng 182). 
+// Tình huống: Khách hàng (hoặc hacker rảnh rỗi) cố tình nhập một cái title dài 5000 ký tự (ví dụ chép cả bài diễn văn vào đó).
+// Database của bạn set trường title giới hạn là VARCHAR(255) 
+// hoặc bạn không muốn giao diện Frontend bị vỡ vì tiêu đề quá dài. Yêu cầu:
+// Ngay đoạn đầu hàm requestCustomQuote, hãy kiểm tra biến title.
+// Nếu title CÓ tồn tại và độ dài của nó lớn hơn 100 ký tự. (Gợi ý: thuộc tính đếm độ dài chuỗi giống như mảng).
+// Ném ra lỗi: throw new Error("Tiêu đề báo giá quá dài, vui lòng nhập tối đa 100 ký tự!");
+// Đề 2: Bộ lọc định dạng File Đính Kèm (Security)
+// Vị trí: Hàm addAttachment(quotation_id, data) (khoảng dòng 398). 
+// Tình huống: Ở hàm thêm file đính kèm, khách hàng được phép gắn link file (file_url). 
+// Sẽ rất nguy hiểm nếu họ gắn link của một file thực thi chứa virus (ví dụ: .exe, .bat, .sh). 
+// Công ty chỉ cho phép đính kèm Ảnh hoặc PDF. Yêu cầu:
+// Ngay dưới đoạn kiểm tra if (!file_name || !file_url) throw...
+// Viết điều kiện kiểm tra chuỗi file_url.
+// Nếu file_url KHÔNG kết thúc bằng .png, KHÔNG kết thúc bằng .jpg, và KHÔNG kết thúc bằng .pdf. 
+// (Gợi ý: Dùng hàm .endsWith("chuỗi") của JavaScript).
+// Ném ra lỗi: throw new Error("Hệ thống chỉ chấp nhận file đính kèm định dạng Ảnh (.png, .jpg) hoặc PDF!");

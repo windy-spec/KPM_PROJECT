@@ -66,20 +66,25 @@ class OrderController {
       const payload = req.body; // chứa status, stage_name, stage_description
 
       const result = await orderService.updateOrderStatus(orderId, payload);
-      
+
       if (global.io && result) {
         const payloadToSend = {
           orderId: orderId,
           status: result.production_status,
           stage_name: payload.stage_name,
-          stage_description: payload.stage_description
+          stage_description: payload.stage_description,
         };
 
-        const userIdToNotify = result.user_id || (result.quotations && result.quotations.user_id);
+        const userIdToNotify =
+          result.user_id || (result.quotations && result.quotations.user_id);
         if (userIdToNotify) {
-          global.io.to(`room_user_${userIdToNotify}`).emit("orderStatusUpdated", payloadToSend);
+          global.io
+            .to(`room_user_${userIdToNotify}`)
+            .emit("orderStatusUpdated", payloadToSend);
         }
-        global.io.to("room_warehouse").emit("orderStatusUpdated", payloadToSend);
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", payloadToSend);
         global.io.to("room_admin").emit("orderStatusUpdated", payloadToSend);
       }
 
@@ -110,8 +115,9 @@ class OrderController {
   async approveOrder(req, res) {
     try {
       const orderId = req.params.id;
-      const requirements = await orderService.approveOrderAndRequestMaterials(orderId);
-      
+      const requirements =
+        await orderService.approveOrderAndRequestMaterials(orderId);
+
       if (global.io) {
         // Find the user_id from the order if possible. Wait, orderService.approveOrderAndRequestMaterials doesn't return the order directly, it returns an array of requirements or an object. Let's see if we can get the user_id, or just emit to admin/warehouse.
         // Let's emit to room_admin and room_warehouse at least.
@@ -119,22 +125,72 @@ class OrderController {
           orderId: orderId,
           status: "admin_approved",
           stage_name: "Đã duyệt & yêu cầu vật tư",
-          stage_description: "Đơn hàng đã được duyệt, chuyển yêu cầu chuẩn bị vật tư xuống kho."
+          stage_description:
+            "Đơn hàng đã được duyệt, chuyển yêu cầu chuẩn bị vật tư xuống kho.",
         };
-        global.io.to("room_warehouse").emit("orderStatusUpdated", payloadToSend);
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", payloadToSend);
         global.io.to("room_admin").emit("orderStatusUpdated", payloadToSend);
-        
+
         // Also try to find the user_id to notify the user.
         // We'll emit globally and rely on room mapping if possible. If we don't have user_id, it's fine.
       }
-      
+
       res.status(200).json({
         success: true,
         message: "Đã duyệt đơn và tạo yêu cầu vật tư xuống Kho.",
-        data: requirements
+        data: requirements,
       });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
+    }
+  }
+  async getOrder(req, res) {
+    try {
+      const order = await orderService.getOrderByIdAndGetUserInfo(
+        req.params.id,
+      );
+      res.status(200).json({ success: true, data: order });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async totalOrder(req, res) {
+    try {
+      const totalOrders = await orderService.getTotalSum();
+      res.status(200).json({ success: true, data: totalOrders });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async GroupByStatus1(req, res) {
+    try {
+      const groupBy = await orderService.GroupByStatus();
+      res
+        .status(200)
+        .json({ success: true, 
+          data:  groupBy });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async deletedOrderCus(req,res){
+    try {
+      const id = req.params;
+      const deleteOrder = await orderService.deleteOrder(id);
+      res.status(200).json({ success: true, message: "Xóa đơn hàng thành công" });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+  async deleteOrderCus(req,res){
+    try {
+      const id = req.params.id;
+      const deleteOrder = await orderService.deleteOrCustom(id);
+      res.status(200).json({ success: true, message: "Xóa đơn hàng thành công" });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 }

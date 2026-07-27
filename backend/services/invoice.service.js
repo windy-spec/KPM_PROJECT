@@ -2,12 +2,17 @@ const prisma = require("../models/prisma");
 const { sendVerifyEmail } = require("../utils/mailer.utils");
 class InvoiceService {
   // Hàm này được gọi tự động sau khi thanh toán thành công
-  async createInvoice(orderId, totalAmount, prismaClient = prisma, invoiceType = "TOTAL") {
+  async createInvoice(
+    orderId,
+    totalAmount,
+    prismaClient = prisma,
+    invoiceType = "TOTAL",
+  ) {
     // 1. Kiểm tra xem đã có hóa đơn loại này chưa
     const existing = await prismaClient.invoices.findFirst({
       where: { order_id: orderId, invoice_type: invoiceType },
     });
-    
+
     if (existing) return existing;
 
     const invoiceNo = `INV-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -33,13 +38,13 @@ class InvoiceService {
           include: {
             users: { include: { user_profiles: true } },
             quotation_specs: {
-              include: { materials: true, paint_types: true }
-            }
-          }
+              include: { materials: true, paint_types: true },
+            },
+          },
         },
         order_items: {
-          include: { products: true }
-        }
+          include: { products: true },
+        },
       },
     });
 
@@ -48,10 +53,14 @@ class InvoiceService {
       sendVerifyEmail(
         orderData.users.email,
         invoiceNo,
-        invoiceType === "DEPOSIT" ? "DEPOSIT_INVOICE" : invoiceType === "PHASE_2" ? "PHASE2_INVOICE" : "INVOICE",
-        orderData,          // Dữ liệu Đơn hàng
-        orderData.quotations,// Dữ liệu bóc tách
         invoiceType === "DEPOSIT"
+          ? "DEPOSIT_INVOICE"
+          : invoiceType === "PHASE_2"
+            ? "PHASE2_INVOICE"
+            : "INVOICE",
+        orderData, // Dữ liệu Đơn hàng
+        orderData.quotations, // Dữ liệu bóc tách
+        invoiceType === "DEPOSIT",
       ).catch((err) => console.error("Lỗi gửi mail hóa đơn:", err));
     }
 
@@ -59,7 +68,9 @@ class InvoiceService {
   }
 
   async createTotalInvoice(orderId, prismaClient = prisma) {
-    const order = await prismaClient.orders.findUnique({ where: { id: orderId }});
+    const order = await prismaClient.orders.findUnique({
+      where: { id: orderId },
+    });
     if (!order) return null;
 
     const existingTotal = await prismaClient.invoices.findFirst({
@@ -84,9 +95,9 @@ class InvoiceService {
     await prismaClient.invoices.updateMany({
       where: {
         order_id: orderId,
-        invoice_type: { in: ["DEPOSIT", "PHASE_2"] }
+        invoice_type: { in: ["DEPOSIT", "PHASE_2"] },
       },
-      data: { parent_invoice_id: newInvoice.id }
+      data: { parent_invoice_id: newInvoice.id },
     });
 
     // Gửi email hoá đơn tổng
@@ -97,10 +108,12 @@ class InvoiceService {
         quotations: {
           include: {
             users: { include: { user_profiles: true } },
-            quotation_specs: { include: { materials: true, paint_types: true } }
-          }
+            quotation_specs: {
+              include: { materials: true, paint_types: true },
+            },
+          },
         },
-        order_items: { include: { products: true } }
+        order_items: { include: { products: true } },
       },
     });
 
@@ -111,7 +124,7 @@ class InvoiceService {
         "TOTAL_INVOICE",
         orderData,
         orderData.quotations,
-        false
+        false,
       ).catch((err) => console.error("Lỗi gửi mail hóa đơn tổng:", err));
     }
 
@@ -163,6 +176,31 @@ class InvoiceService {
     });
     if (!invoice) throw new Error("Không tìm thấy hoá đơn!");
     return invoice;
+  }
+  // 📝 Đề bài: Xử lý danh sách đơn hàng giá trị cao
+  // Bạn cần viết một hàm tên là getHighValueCompletedOrders().
+  // Yêu cầu nghiệp vụ:
+  // Lấy dữ liệu từ Database thông qua prisma.orders.findMany(...).
+  // Kiểm tra: Nếu danh sách rỗng (không tìm thấy bất kỳ đơn hàng nào dưới DB),
+  // hãy quăng ra một lỗi (throw Error): "Không có đơn hàng nào trong hệ thống!".
+  // Chỉ trả về mảng kết quả gồm những đơn hàng thỏa mãn đồng thời 2 điều kiện sau:
+  // Trạng thái (status) của đơn hàng là: "COMPLETED"
+  // Tổng tiền (total_amount) phải lớn hơn 500000
+  async getHighValueCompletedOrders() {
+    const orders = await prisma.orders.findMany({});
+    if (orders.length === 0) {
+      throw new Error("Không có đơn hàng nào trong hệ thống!");
+    }
+    const list = [];
+    for (const order of orders) {
+      if (
+        order.production_status === "COMPLETED" &&
+        order.total_amount > 500000
+      ) {
+        list.push(order);
+      }
+      return list;
+    }
   }
 }
 

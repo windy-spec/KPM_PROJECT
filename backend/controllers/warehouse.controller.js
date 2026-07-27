@@ -56,9 +56,24 @@ class WarehouseController {
     try {
       const result = await warehouseService.receiveOrder(req.params.orderId);
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "warehouse_received" });
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "warehouse_received",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "warehouse_received",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "warehouse_received",
+          });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -68,16 +83,39 @@ class WarehouseController {
 
   async confirmSufficientStock(req, res) {
     try {
-      const result = await warehouseService.confirmSufficientStock(req.params.orderId);
+      const result = await warehouseService.confirmSufficientStock(
+        req.params.orderId,
+      );
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
       if (error.isMissingMaterialError) {
-        return res.status(400).json({ success: false, message: error.message, missing_list: error.missingList });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: error.message,
+            missing_list: error.missingList,
+          });
       }
       res.status(400).json({ success: false, message: error.message });
     }
@@ -85,12 +123,31 @@ class WarehouseController {
 
   async reportOutOfStock(req, res) {
     try {
-      const result = await warehouseService.reportOutOfStock(req.params.orderId);
+      const result = await warehouseService.reportOutOfStock(
+        req.params.orderId,
+      );
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "out_of_stock" });
-        global.io.to("room_admin").emit("new_import_request", { orderId: req.params.orderId }); // Notify admin to check import
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "out_of_stock",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "out_of_stock",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "out_of_stock",
+          });
+        global.io
+          .to("room_admin")
+          .emit("new_import_request", { orderId: req.params.orderId }); // Notify admin to check import
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -100,11 +157,28 @@ class WarehouseController {
 
   async completeImportAndReady(req, res) {
     try {
-      const result = await warehouseService.completeImportAndReady(req.params.orderId);
+      const result = await warehouseService.completeImportAndReady(
+        req.params.orderId,
+      );
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_ready" });
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_ready",
+          });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -116,9 +190,24 @@ class WarehouseController {
     try {
       const result = await warehouseService.startProduction(req.params.orderId);
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "producing" });
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "producing",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "producing",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "producing",
+          });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -128,11 +217,28 @@ class WarehouseController {
 
   async completeProduction(req, res) {
     try {
-      const result = await warehouseService.completeProduction(req.params.orderId);
+      const result = await warehouseService.completeProduction(
+        req.params.orderId,
+      );
       if (global.io && result.order?.user_id) {
-        global.io.to(`room_user_${result.order.user_id}`).emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
-        global.io.to("room_admin").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
-        global.io.to("room_warehouse").emit("orderStatusUpdated", { orderId: req.params.orderId, status: "production_completed" });
+        global.io
+          .to(`room_user_${result.order.user_id}`)
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_completed",
+          });
+        global.io
+          .to("room_admin")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_completed",
+          });
+        global.io
+          .to("room_warehouse")
+          .emit("orderStatusUpdated", {
+            orderId: req.params.orderId,
+            status: "production_completed",
+          });
       }
       res.status(200).json({ success: true, message: result.message });
     } catch (error) {
@@ -207,7 +313,7 @@ class WarehouseController {
   async requestImportMaterials(req, res) {
     try {
       const result = await warehouseService.requestImportMaterials(req.body);
-      
+
       // Bắn Socket báo Admin có yêu cầu mới
       if (global.io) {
         global.io.to("room_admin").emit("new_import_request", result);
@@ -226,7 +332,10 @@ class WarehouseController {
   async confirmImportRequest(req, res) {
     try {
       const { actualQuantity } = req.body;
-      const result = await warehouseService.confirmImportRequest(req.params.id, parseFloat(actualQuantity));
+      const result = await warehouseService.confirmImportRequest(
+        req.params.id,
+        parseFloat(actualQuantity),
+      );
       if (global.io) {
         global.io.to("room_admin").emit("import_request_received", result);
       }
@@ -242,13 +351,11 @@ class WarehouseController {
   async deleteInventory(req, res) {
     try {
       const result = await warehouseService.deleteInventory(req.params.id);
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "Xoá tồn kho thành công",
-          data: result,
-        });
+      res.status(200).json({
+        success: true,
+        message: "Xoá tồn kho thành công",
+        data: result,
+      });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
     }
@@ -256,7 +363,8 @@ class WarehouseController {
   async generateExportPDF(req, res) {
     try {
       const { orderId } = req.params;
-      const missingMaterials = await warehouseService.getMissingMaterialsForPDF(orderId);
+      const missingMaterials =
+        await warehouseService.getMissingMaterialsForPDF(orderId);
       if (missingMaterials.length === 0) {
         return res.status(400).json({
           success: false,
@@ -272,25 +380,28 @@ class WarehouseController {
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Lỗi khi tạo PDF:", error);
-      res.status(500).json({ success: false, message: "Đã xảy ra lỗi khi tạo PDF." });
+      res
+        .status(500)
+        .json({ success: false, message: "Đã xảy ra lỗi khi tạo PDF." });
     }
   }
 
   async generateInventoryPDF(req, res) {
     try {
       const { selectedIds, reportType } = req.body;
-      const inventories = await warehouseService.getInventoryForPDF(selectedIds);
+      const inventories =
+        await warehouseService.getInventoryForPDF(selectedIds);
       if (!inventories || inventories.length === 0) {
         return res.status(404).json({
           success: false,
           message: "Không tìm thấy dữ liệu tồn kho nào để xuất PDF!",
         });
       }
-      
+
       let pdfBuffer;
       let filename = `bao-cao-ton-kho_${Date.now()}.pdf`;
 
-      if (reportType === 'LEFTOVER') {
+      if (reportType === "LEFTOVER") {
         pdfBuffer = await PdfService.generateLeftoverReportPDF(inventories);
         filename = `bao-cao-vat-tu-thua_${Date.now()}.pdf`;
       } else {
@@ -298,10 +409,7 @@ class WarehouseController {
       }
 
       res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename=${filename}`,
-      );
+      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Lỗi khi tạo PDF Báo cáo tồn kho:", error);
@@ -309,6 +417,17 @@ class WarehouseController {
         success: false,
         message: "Đã xảy ra lỗi khi tạo báo cáo PDF.",
       });
+    }
+  }
+  async getInvento(req, res) {
+    try {
+      const InvenPag = await warehouseService.getInvenPag();
+      res.status(200).json({
+        success: true,
+        data: InvenPag,
+      });
+    } catch (error) {
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 }

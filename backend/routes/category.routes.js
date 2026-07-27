@@ -16,5 +16,7 @@ router.delete(
   adminMiddleware,
   categoryController.delete,
 );
+router.post("/unique", categoryController.createCateUnique);
+router.post("/createCateCus", categoryController.createCateCus);
 
 module.exports = router;

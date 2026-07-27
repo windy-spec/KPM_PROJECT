@@ -41,28 +41,32 @@ class QuotationService {
         orders: true, // Check xem báo giá này đã biến thành đơn hàng xưởng chưa
         product_drawings: {
           include: {
-            drawing_parts: true
-          }
+            drawing_parts: true,
+          },
         },
       },
     });
     if (!quotation) throw new Error("Không tìm thấy báo giá này!");
 
     // Nếu báo giá chưa có bản vẽ tổng thể, tự động lấy bản vẽ mặc định của Sản phẩm (dựa vào product_id trong specs)
-    if (!quotation.product_drawings && quotation.quotation_specs && quotation.quotation_specs.length > 0) {
+    if (
+      !quotation.product_drawings &&
+      quotation.quotation_specs &&
+      quotation.quotation_specs.length > 0
+    ) {
       const firstSpec = quotation.quotation_specs[0];
       const productId = firstSpec.dimensions?.product_id;
       if (productId) {
         const activeDrawing = await prisma.product_drawings.findFirst({
           where: { product_id: productId, is_active: true },
-          include: { drawing_parts: true }
+          include: { drawing_parts: true },
         });
         if (activeDrawing) {
           quotation.product_drawings = activeDrawing;
           // Tự động cập nhật luôn vào DB để lần sau khỏi query
           await prisma.quotations.update({
             where: { id: quotation.id },
-            data: { drawing_id: activeDrawing.id }
+            data: { drawing_id: activeDrawing.id },
           });
         }
       }
@@ -113,7 +117,9 @@ class QuotationService {
     }
 
     const quotation = await this.getQuotationById(id);
-
+    if (status === "cancelled") {
+      throw new Error("Báo giá đã bị huỷ, không thể thay đổi trạng thái nữa!");
+    }
     const updatedQuotation = await prisma.quotations.update({
       where: { id },
       data: { status },
@@ -140,14 +146,17 @@ class QuotationService {
       try {
         // 1. Dùng Date.now() để mã đơn hàng hoàn toàn unique
         const orderCode = `KPM-ORD-${Date.now()}`;
-
         // 2. Lấy giá trị tiền và ép kiểu an toàn về Number (tránh lỗi NaN làm sập Prisma)
         const rawAmount =
           updatedQuotation.user_proposed_price ||
           updatedQuotation.admin_proposed_price ||
           updatedQuotation.total_quoted_price;
         const totalAmount = Number(rawAmount) || 0;
-
+        if (totalAmount <= 0) {
+          throw new Error(
+            "Lỗi: Tổng tiền báo giá phải lớn hơn 0 để tạo đơn hàng!",
+          );
+        }
         // 3. Chuẩn bị Object Data với cú pháp 'connect' của Prisma cho khóa ngoại
         const orderData = {
           order_code: orderCode,
@@ -187,7 +196,9 @@ class QuotationService {
     const { user_id, title, nick_name, product_id, components, note } = data;
 
     if (!user_id) throw new Error("Vui lòng đăng nhập để gửi yêu cầu báo giá!");
-
+    if (title && title.length > 100) {
+      throw new Error("Ghi chú quá dài, vui lòng nhập tối đa 500 ký tự!");
+    }
     // Kiểm tra thông tin khách hàng (phải có SĐT hoặc Địa chỉ mới cho gửi)
     const profile = await prisma.user_profiles.findUnique({
       where: { user_id },
@@ -208,7 +219,7 @@ class QuotationService {
       const l = parseFloat(comp.length || 0) / 1000;
       const w = parseFloat(comp.width || 0) / 1000;
       const h = parseFloat(comp.height || 0) / 1000;
-      
+
       let area = 0;
       if (l > 0 && w > 0 && h > 0) area = l * w * h;
       else if (l > 0 && w > 0) area = l * w;
@@ -450,6 +461,15 @@ class QuotationService {
     const { file_name, file_url } = data;
     if (!file_name || !file_url)
       throw new Error("Tên file và URL không được trống!");
+    if (
+      !file_name.endsWith(".jpg") ||
+      !file_name.endsWith("png") ||
+      !file_name.endsWith("pdf")
+    ) {
+      throw new Error(
+        "Hệ thống chỉ chấp nhận file đính kèm định dạng Ảnh (.png, .jpg) hoặc PDF!",
+      );
+    }
     const quotation = await this.getQuotationById(quotation_id);
     if (!quotation) throw new Error("Báo giá không tồn tại!");
     // chỉ cho phép gửi file ảnh qua nếu đang ở trạng thái "draft" hoặc "pending_admin" (chưa gửi cho khách)
@@ -702,7 +722,7 @@ class QuotationService {
       const l = parseFloat(length || 0) / 1000;
       const w = parseFloat(width || 0) / 1000;
       const h = parseFloat(height || 0) / 1000;
-      
+
       let area = 0;
       if (l > 0 && w > 0 && h > 0) area = l * w * h;
       else if (l > 0 && w > 0) area = l * w;
@@ -839,6 +859,50 @@ class QuotationService {
       },
       include: { quotation_specs: true },
     });
+  }
+  // 4. Cập nhật dữ liệu: Viết một hàm để chuyển trạng thái (status)
+  // của một đơn báo giá (quotations) từ "pending" sang "approved".
+  async changeStatusToApproved(Id) {
+    const exists = await prisma.quotations.findUnique({
+      where: { id: Id },
+    });
+    if (!exists) {
+      throw new Error("Không tìm thấy báo giá này!");
+    }
+    const update = await prisma.quotations.update({
+      where: { id: Id },
+      data: {
+        status: "approved",
+      },
+    });
+    return update;
+  }
+  // 6. Đếm số lượng (Count): Viết hàm đếm xem trong tháng này
+  // có bao nhiêu đơn báo giá (quotations) mới được tạo.
+  async countQuotation() {
+    const date = new Date();
+    const firstMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const count = await prisma.quotations.count({
+      where: {
+        created_at: { gte: firstMonth },
+      },
+    });
+    return count;
+  }
+  async deleteQuoCus(id) {
+    if (!id) throw new Error("ID không được để trống!");
+    const existsQuo = await prisma.quotations.findUnique({
+      where: { id: id },
+    });
+    if (!existsQuo) throw new Error("Không tìm thấy báo giá này!");
+    if (existsQuo.status !== "pending_admin") {
+      throw new Error("Chỉ có thể xóa báo giá ở trạng thái pending_Admin!");
+    } else {
+      const deleteQuo = await prisma.quotations.delete({
+        where: { id: id },
+      });
+      return deleteQuo;
+    }
   }
 }
 module.exports = new QuotationService();

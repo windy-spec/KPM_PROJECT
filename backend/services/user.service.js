@@ -82,6 +82,72 @@ class UserService {
       recentActivities: mergedActivities,
     };
   }
+  //1. Tìm kiếm cơ bản: Viết một hàm lấy ra danh sách tất cả các người dùng (users) có role là "warehouse".
+  async getAllUserWarehouse() {
+    const users = await prisma.users.findMany({
+      take: 3,
+      include: {
+        roles: {
+          where: { role_name: "USER" },
+        },
+      },
+    });
+    return users;
+  }
+  // 9. Sắp xếp và Giới hạn: Viết hàm lấy ra Top 3 người dùng (users)
+  // tạo tài khoản gần đây nhất (Sắp xếp theo created_at giảm dần).
+  async getTop3Users() {
+    const getTop3 = await prisma.users.findMany({
+      select: {
+        id: true,
+        username: true,
+        email: true,
+      },
+      take: 3,
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+    return getTop3;
+  }
+  //    Bài tập 3 (Boss): Cập nhật (Update) - Mức độ Suy luận (Hardcore)
+  // Tình huống: Cập nhật thông tin Hồ sơ người dùng (User Profile),
+  // nhưng đi kèm điều kiện nghiệp vụ rất gắt.
+  // Đề bài: Viết hàm async updateUserProfile(userId, data)
+  // Người dùng có thể đổi Tên (first_name), Họ (last_name), và Số điện thoại (phone_number).
+  //  Bất cứ trường nào cũng có thể gửi hoặc không gửi.
+  // Điều kiện chông gai: NẾU trong data người dùng có gửi lên phone_number mới để cập nhật,
+  // bạn phải kiểm tra xem dưới Database đã có ai xài cái số điện thoại này chưa (Dùng lệnh findFirst).
+  // Nếu số đó đã có người xài, quăng lỗi: "Số điện thoại này đã được đăng ký cho tài khoản khác!".
+  // Nếu số đó chưa ai xài (hoặc người ta không gửi phone_number lên để đổi),
+  //  thì dùng lệnh prisma.user_profiles.update(...) để cập nhật như bình thường.
+  async updateProfileCus(userId, data) {
+    const { first_name, middle_name, last_name, phone_number } = data;
+    if (!data) {
+      throw new Error("Vui lòng điền đầy đủ thông tin!");
+    }
+    if (phone_number) {
+      const ExistsP = await prisma.user_profiles.findFirst({
+        where: { phone_number: phone_number },
+        user_id: { not: userId },
+      });
+      if (ExistsP)
+        throw new Error(
+          "Số điện thoại này đã được đăng ký cho tài khoản khác!",
+        );
+    }
+    const updateProfile = await prisma.user_profiles.update({
+      where: { user_id: userId },
+      data: {
+        first_name: first_name,
+        middle_name: middle_name,
+        last_name: last_name,
+        phone_number: phone_number,
+      },
+    });
+    return updateProfile;
+  }
+  
 }
 
 module.exports = new UserService();

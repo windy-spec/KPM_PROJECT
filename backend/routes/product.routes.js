@@ -6,11 +6,16 @@ const adminMiddleware = require("../middlewares/admin.middleware");
 const { upload } = require("../middlewares/upload.middleware"); // Gọi lính gác Cloudinary
 
 // 1. GET: Public cho khách hàng vãng lai xem danh sách sản phẩm
+router.get("/p1", productController.getALlp);
+router.get("/p2", productController.getALlp2);
+router.get("/filterPro", productController.filterPro);
 router.get("/", productController.getAll);
-
+router.get("/getProduct", productController.getProductsImages);
+router.post("/search", productController.getProductContaint);
 // 2. POST, PUT, DELETE: Khóa chặt, chỉ Admin được đụng vào
 router.post("/", authMiddleware, adminMiddleware, productController.create);
 router.put("/:id", authMiddleware, adminMiddleware, productController.update);
+router.put("/updateProCus/:id",productController.updateProCus);
 router.delete(
   "/:id",
   authMiddleware,
@@ -33,4 +38,5 @@ router.delete(
   productController.deleteImage,
 );
 router.get("/:id", productController.getById);
+router.delete("/:id/safe", productController.safeDelete);
 module.exports = router;

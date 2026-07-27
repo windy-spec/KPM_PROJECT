@@ -809,6 +809,20 @@ class WarehouseService {
       note: inv.note || ""
     }));
   }
+  // 11. Phân trang (Pagination):
+//Viết hàm lấy danh sách Lịch sử kho (inventory_logs). 
+// Khách hàng yêu cầu lấy dữ liệu ở trang số 2, mỗi trang hiển thị 10 dòng (Sắp xếp mới nhất lên đầu).
+//Gợi ý: Dùng kết hợp skip và take. Tính toán skip như thế nào nếu page = 2?
+  async getInvenPag(){
+    const getInven = await prisma.inventory_logs.findMany({
+      skip:10,
+      take:10,
+      orderBy:{
+        created_at:"desc",
+      }
+    })
+    return getInven;
+  }
 }
 
 module.exports = new WarehouseService();

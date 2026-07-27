@@ -11,8 +11,8 @@ class OrderService {
             quotation_specs: {
               include: {
                 materials: true,
-                material_thickness: true
-              }
+                material_thickness: true,
+              },
             },
             quotation_attachments: true,
             // Đã xóa product_drawings lỗi ở đây
@@ -25,7 +25,7 @@ class OrderService {
                 product_drawings: {
                   include: {
                     drawing_parts: true,
-                  }
+                  },
                 },
               },
             },
@@ -41,10 +41,11 @@ class OrderService {
 
     // TỐI ƯU HÓA (Xóa bỏ vòng lặp N+1 query)
     const allProductIds = [];
-    orders.forEach(order => {
+    orders.forEach((order) => {
       if (order.quotations && order.quotations.quotation_specs) {
-        order.quotations.quotation_specs.forEach(spec => {
-          if (spec.dimensions?.product_id) allProductIds.push(spec.dimensions.product_id);
+        order.quotations.quotation_specs.forEach((spec) => {
+          if (spec.dimensions?.product_id)
+            allProductIds.push(spec.dimensions.product_id);
         });
       }
     });
@@ -69,13 +70,15 @@ class OrderService {
           .filter(Boolean);
 
         if (productIds.length > 0) {
-          order.quotations.product_drawings = productIds.flatMap(id => drawingsMap[id] || []);
+          order.quotations.product_drawings = productIds.flatMap(
+            (id) => drawingsMap[id] || [],
+          );
         } else {
           order.quotations.product_drawings = [];
         }
       }
     }
-    
+
     // FETCH IMAGES FOR ALL PRODUCT IDS
     if (allProductIds.length > 0) {
       const allImages = await prisma.product_images.findMany({
@@ -91,7 +94,9 @@ class OrderService {
           const productIds = order.quotations.quotation_specs
             .map((spec) => spec.dimensions?.product_id)
             .filter(Boolean);
-          order.quotations.product_images = productIds.flatMap(id => imagesMap[id] || []);
+          order.quotations.product_images = productIds.flatMap(
+            (id) => imagesMap[id] || [],
+          );
         }
       }
     }
@@ -118,7 +123,7 @@ class OrderService {
                 product_drawings: {
                   include: {
                     drawing_parts: true,
-                  }
+                  },
                 },
               },
             },
@@ -143,7 +148,7 @@ class OrderService {
           }),
           prisma.product_images.findMany({
             where: { product_id: { in: productIds }, is_primary: true },
-          })
+          }),
         ]);
         order.quotations.product_drawings = drawings;
         order.quotations.product_images = images;
@@ -169,8 +174,8 @@ class OrderService {
             quotation_specs: {
               include: {
                 materials: true,
-                material_thickness: true
-              }
+                material_thickness: true,
+              },
             },
             quotation_attachments: true,
           },
@@ -183,7 +188,7 @@ class OrderService {
                 product_drawings: {
                   include: {
                     drawing_parts: true,
-                  }
+                  },
                 },
               },
             },
@@ -194,10 +199,10 @@ class OrderService {
 
     // Lấy thông tin vật tư để map vào components
     const materials = await prisma.materials.findMany({
-      include: { material_thickness: true }
+      include: { material_thickness: true },
     });
     const materialMap = {};
-    materials.forEach(m => {
+    materials.forEach((m) => {
       materialMap[m.id] = m;
     });
 
@@ -215,7 +220,7 @@ class OrderService {
             }),
             prisma.product_images.findMany({
               where: { product_id: { in: productIds }, is_primary: true },
-            })
+            }),
           ]);
           order.quotations.product_drawings = drawings;
           order.quotations.product_images = images;
@@ -227,14 +232,16 @@ class OrderService {
 
       // Map material_name vào components của products
       if (order.order_items) {
-        order.order_items.forEach(item => {
+        order.order_items.forEach((item) => {
           if (item.products && item.products.components) {
-            item.products.components = item.products.components.map(comp => {
+            item.products.components = item.products.components.map((comp) => {
               const mat = materialMap[comp.material_id];
               if (mat) {
                 comp.material_name = mat.material_name;
                 if (comp.thickness_id) {
-                  const thk = mat.material_thickness.find(t => t.id === comp.thickness_id);
+                  const thk = mat.material_thickness.find(
+                    (t) => t.id === comp.thickness_id,
+                  );
                   if (thk) comp.thickness_value = thk.thickness_value;
                 }
               }
@@ -470,6 +477,90 @@ class OrderService {
     }
 
     return requiredMaterials;
+  }
+  //2. Tìm kiếm theo ID: Viết một hàm lấy thông tin chi tiết của 1 Đơn hàng (orders) dựa vào id,
+  // yêu cầu bốc KÈM THEO thông tin của Người đặt hàng (users).
+  async getOrderByIdAndGetUserInfo(Id) {
+    const order = await prisma.orders.findUnique({
+      where: { id: Id },
+      include: {
+        users: {
+          include: {
+            user_profiles: true,
+          },
+        },
+      },
+    });
+    return order;
+  }
+  // 12. Tính tổng (Sum):
+  // Viết hàm tính Tổng doanh thu (cột total_amount) của tất cả các đơn hàng (orders) đã hoàn thành (production_status = "completed").
+  // Gợi ý: Dùng prisma.orders.aggregate({ _sum: { ... } }).
+  async getTotalSum() {
+    const total = await prisma.orders.aggregate({
+      _sum: {
+        total_amount: true,
+      },
+      where: {
+        production_status: "completed",
+      },
+    });
+    return total;
+  }
+  // 13. Gộp nhóm (GroupBy):
+  // Thầy cô yêu cầu vẽ biểu đồ thống kê:
+  // "Trong hệ thống hiện tại, mỗi trạng thái Đơn hàng (pending, processing, completed...)
+  // đang có số lượng là bao nhiêu?".
+  // Gợi ý: Dùng prisma.orders.groupBy. Nhóm theo cột production_status và đếm bằng _count.
+  async GroupByStatus() {
+    const groupby = await prisma.orders.groupBy({
+      by: ["production_status"],
+      _count: {
+        production_status: true,
+      },
+    });
+    return groupby;
+  }
+  // Bài tập 2: Xoá (Delete) - Mức độ Thực tế
+  // Tình huống: Giám đốc yêu cầu viết tính năng xoá Đơn hàng. Đề bài: Viết hàm async deleteOrder(id)
+  // Hàm này chỉ nhận đúng 1 tham số là id (như đã học, xoá thì chỉ cần ID).
+  // Dùng lệnh prisma.orders.delete({ ... }) để xoá cứng đơn hàng đó.
+  // Yêu cầu bảo vệ: Nhớ lại bài học cũ, nếu xoá một cái ID không có trong Database,
+  // Prisma sẽ quăng lỗi mã P2025.
+  // Bạn hãy dùng try...catch để bắt đúng cái mã lỗi P2025 này, và
+  // biến nó thành câu lỗi tiếng Việt: "Đơn hàng không tồn tại hoặc đã bị xóa trước đó!"
+  // để người dùng hiểu.
+  async deleteOrder(id) {
+    try {
+      const deletedOrder = await prisma.orders.delete({
+        where: { id: id },
+      });
+      return deletedOrder;
+    } catch (error) {
+      if (error.code === "P2025") {
+        throw new Error("Đơn hàng không tồn tại hoặc đã bị xóa trước đó!");
+      }
+      throw error;
+    }
+  }
+  async deleteOrCustom(id) {
+    if (!id) {
+      throw new Error("Vui lòng cung cấp ID đơn hàng để xóa!");
+    }
+    const getOrder = await prisma.orders.findUnique({
+      where: { id: id },
+    });
+    if (!getOrder) {
+      throw new Error("Đơn hàng không tồn tại hoặc đã bị xóa trước đó!");
+    }
+    if (getOrder.production_status !== "pending_payment") {
+      throw new Error("Chỉ có thể xóa đơn hàng ở trạng thái pending_payment!");
+    } else {
+      const deleteOrder = await prisma.orders.delete({
+        where: { id: id },
+      });
+      return deleteOrder;
+    }
   }
 }
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const warehouseController = require("../controllers/warehouse.controller");
 
 // Các API Quản lý Tồn Kho (CRUD)
+router.get("/invenPag", warehouseController.getInvento);
 router.get("/inventory", warehouseController.getAllInventory);
 router.get("/inventory/export-history", warehouseController.getExportHistory);
 router.get("/inventory/low-stock", warehouseController.getLowStock);
@@ -49,5 +50,8 @@ router.post(
 );
 router.delete("/inventory/:id", warehouseController.deleteInventory);
 router.post("/inventory/export-pdf", warehouseController.generateInventoryPDF);
-router.get("/orders/:orderId/export-pdf", warehouseController.generateExportPDF);
+router.get(
+  "/orders/:orderId/export-pdf",
+  warehouseController.generateExportPDF,
+);
 module.exports = router;
