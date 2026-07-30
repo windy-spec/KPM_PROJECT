@@ -1,7 +1,7 @@
 const prisma = require("../models/prisma");
 const { sendVerifyEmail } = require("../utils/mailer.utils");
 class InvoiceService {
-  // Hàm này được gọi tự động sau khi thanh toán thành công
+  // Tạo hóa đơn (invoice) cho đơn hàng (order)
   async createInvoice(orderId, totalAmount, prismaClient = prisma, invoiceType = "TOTAL") {
     // 1. Kiểm tra xem đã có hóa đơn loại này chưa
     const existing = await prismaClient.invoices.findFirst({
@@ -57,7 +57,7 @@ class InvoiceService {
 
     return newInvoice;
   }
-
+  // Tạo hóa đơn tổng cho đơn hàng
   async createTotalInvoice(orderId, prismaClient = prisma) {
     const order = await prismaClient.orders.findUnique({ where: { id: orderId }});
     if (!order) return null;
@@ -117,7 +117,7 @@ class InvoiceService {
 
     return newInvoice;
   }
-
+  // Lấy danh sách hoá đơn của user hiện tại
   async getUserInvoices(userId) {
     // Truy vấn Hoá đơn thông qua Order -> Quotation -> User HOẶC Order -> User (hàng thường)
     return await prisma.invoices.findMany({
@@ -142,7 +142,7 @@ class InvoiceService {
       orderBy: { created_at: "desc" },
     });
   }
-
+  // Lấy chi tiết hoá đơn theo ID
   async getInvoiceById(invoiceId, userId) {
     const invoice = await prisma.invoices.findFirst({
       where: {

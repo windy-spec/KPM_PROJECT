@@ -18,12 +18,13 @@ const CATEGORY_RESOURCES = {
 const getCategoryMeta = (name) => {
   const normalizeName = (name || "").toLowerCase().trim();
 
-  if (normalizeName.includes("cửa") || normalizeName.includes("cổng")) return CATEGORY_RESOURCES["cổng sắt kỹ nghệ"];
-  if (normalizeName.includes("cầu thang") || normalizeName.includes("lan can")) return CATEGORY_RESOURCES["cầu thang & lan can"];
-  if (normalizeName.includes("hàng rào") || normalizeName.includes("lưới")) return CATEGORY_RESOURCES["hàng rào mỹ thuật"];
-  if (normalizeName.includes("kết cấu") || normalizeName.includes("khung") || normalizeName.includes("thép")) return CATEGORY_RESOURCES["kết cấu thép"];
-  if (normalizeName.includes("mái") || normalizeName.includes("che")) return CATEGORY_RESOURCES["mái che tiền chế"];
-  if (normalizeName.includes("bản mã") || normalizeName.includes("phụ kiện") || normalizeName.includes("bản lề")) return CATEGORY_RESOURCES["phụ kiện bản mã"];
+  // Xử lý riêng cho 6 danh mục hiện tại của bạn
+  if (normalizeName.includes("cửa sổ")) return CATEGORY_RESOURCES["cầu thang & lan can"]; // Dùng LayoutGrid (trông giống ô cửa sổ)
+  if (normalizeName === "cửa" || normalizeName.includes("cổng")) return CATEGORY_RESOURCES["cổng sắt kỹ nghệ"]; // Dùng DoorOpen
+  if (normalizeName.includes("hàng rào")) return CATEGORY_RESOURCES["hàng rào mỹ thuật"]; // Dùng Layers
+  if (normalizeName.includes("nhà tiền chế")) return CATEGORY_RESOURCES["kết cấu thép"]; // Dùng Construction
+  if (normalizeName.includes("mái nhà")) return CATEGORY_RESOURCES["mái che tiền chế"]; // Dùng Home
+  if (normalizeName.includes("vật dụng")) return CATEGORY_RESOURCES["phụ kiện bản mã"]; // Dùng Box
 
   return CATEGORY_RESOURCES[normalizeName] || {
     icon: Box,

@@ -1,6 +1,6 @@
 import React from 'react';
-import { PlayCircle, ShieldCheck, Cpu, Award } from 'lucide-react';
-import factoryVideo from '../../assets/video/factory.mp4'
+import { PlayCircle, ShieldCheck, Cpu, Award, Notebook, ListCheck } from 'lucide-react';
+import factoryVideo from '../../assets/video/intro_boy.mp4'
 
 const HomeAbout = () => {
     return (
@@ -38,8 +38,8 @@ const HomeAbout = () => {
                     {/* Các điểm nổi bật (Ưu điểm) */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                         <div className="p-4 bg-surface-container/40 border border-outline-variant/60 rounded-xl flex flex-col gap-2">
-                            <Cpu className="w-5 h-5 text-primary" />
-                            <h4 className="text-xs font-black text-on-surface uppercase">Bóc tách AI</h4>
+                            <ListCheck className="w-5 h-5 text-primary" />
+                            <h4 className="text-xs font-black text-on-surface uppercase">Bóc tách dữ liệu </h4>
                             <p className="text-[11px] text-on-surface-variant leading-relaxed">Tự động hóa kích thước phôi vật liệu.</p>
                         </div>
 

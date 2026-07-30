@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from "react";
-import { BookOpen, Search, HelpCircle } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { BookOpen, Search, HelpCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
 const TechnicalTerms = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedLetter, setSelectedLetter] = useState("ALL");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     // DỮ LIỆU THUẬT NGỮ CƠ KHÍ & VẬT TƯ CÔNG NGHIỆP (ĐÃ ĐƯỢC LÀM GIÀU)
     const termsData = [
@@ -102,6 +104,42 @@ const TechnicalTerms = () => {
             definition: "Công nghệ mài hoặc cắt bỏ cạnh sắc vuông góc của chi tiết phôi để tạo thành một bề mặt nghiêng (thường là góc 45 độ), đảm bảo an toàn và dễ lắp ráp.",
             category: "Thuật ngữ gia công"
         },
+        // MỚI THÊM TỪ AI KNOWLEDGE
+        {
+            term: "Inox 304 / Inox 201",
+            definition: "Các mác thép không gỉ phổ biến. Inox 304 chứa nhiều niken hơn, chống ăn mòn cực tốt ngoài trời. Inox 201 rẻ hơn nhưng dễ rỉ sét nếu tiếp xúc ẩm ướt kéo dài.",
+            category: "Vật liệu vật tư"
+        },
+        {
+            term: "Thép SS400 / A36",
+            definition: "Các mác thép kết cấu cacbon thông dụng. SS400 (tiêu chuẩn Nhật) và A36 (tiêu chuẩn Mỹ) có độ bền kéo cao, lý tưởng cho khung nhà tiền chế, dầm, cột chịu lực.",
+            category: "Vật liệu vật tư"
+        },
+        {
+            term: "Sơn Epoxy 2 thành phần",
+            definition: "Hệ sơn công nghiệp cao cấp gồm phần sơn và phần đóng rắn. Khi pha trộn tạo màng sơn cực cứng, bám dính siêu việt, chống hóa chất, dùng cho kết cấu thép chịu mài mòn cao.",
+            category: "Xử lý bề mặt"
+        },
+        {
+            term: "Kính dán an toàn (Laminated Glass)",
+            definition: "Kính ghép từ 2 hay nhiều lớp kính phẳng, ở giữa là lớp phim PVB. Khi vỡ, các mảnh kính dính lại trên lớp phim, không văng ra ngoài gây sát thương.",
+            category: "Vật liệu vật tư"
+        },
+        {
+            term: "Tôn PU cách nhiệt",
+            definition: "Tôn lợp mái có lớp Polyurethane (PU) ở giữa giúp cách nhiệt, cách âm cực hiệu quả, làm mát công trình, thường dùng cho nhà xưởng hoặc nhà ở cao cấp.",
+            category: "Vật liệu vật tư"
+        },
+        {
+            term: "Bản lề cối tiện",
+            definition: "Loại bản lề được tiện nguyên khối từ sắt hoặc Inox dày, xoay bằng bi, chịu được tải trọng rất lớn, chống xệ cửa, chuyên dùng cho cổng sắt nặng nguyên khối.",
+            category: "Phụ kiện cơ khí"
+        },
+        {
+            term: "Gỗ nhựa Composite (WPC)",
+            definition: "Vật liệu tổng hợp từ bột gỗ, nhựa và phụ gia. Có vân gỗ tự nhiên nhưng chống nước 100%, không mối mọt cong vênh, chuyên dùng ốp cổng, ốp sàn ngoài trời.",
+            category: "Vật liệu vật tư"
+        }
     ];
 
     // TỰ ĐỘNG TẠO DANH SÁCH BẢNG CHỮ CÁI DỰA TRÊN CÁC TỪ HIỆN CÓ
@@ -115,6 +153,11 @@ const TechnicalTerms = () => {
         return ["ALL", ...Array.from(letters).sort()];
     }, [termsData]);
 
+    // Reset pagination when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedLetter]);
+
     // LOGIC TÌM KIẾM VÀ LỌC DỮ LIỆU
     const filteredTerms = useMemo(() => {
         return termsData.filter((item) => {
@@ -127,10 +170,13 @@ const TechnicalTerms = () => {
             const firstLetter = item.term.trim().charAt(0).toUpperCase();
             return firstLetter === selectedLetter && matchesSearch;
         });
-    }, [searchTerm, selectedLetter, termsData]);
+    }, [searchTerm, selectedLetter]); // termsData is static inside component
+
+    const totalPages = Math.ceil(filteredTerms.length / itemsPerPage);
+    const paginatedTerms = filteredTerms.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     return (
-        <div className="min-h-screen bg-surface-container/10 text-on-surface">
+        <div className="min-h-screen bg-surface-container/10 text-on-surface pb-16">
             {/* HERO BANNER */}
             <section className="bg-white border-b border-outline-variant/60 py-12 px-5">
                 <div className="max-w-[1280px] mx-auto text-center space-y-4">
@@ -151,7 +197,7 @@ const TechnicalTerms = () => {
                             type="text"
                             placeholder="Tìm kiếm thuật ngữ hoặc định nghĩa..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.value)}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-surface-container/40 border border-outline-variant/70 rounded-xl py-3 pl-11 pr-4 text-sm font-semibold outline-none focus:border-primary focus:bg-white transition-all text-on-surface"
                         />
                     </div>
@@ -178,27 +224,66 @@ const TechnicalTerms = () => {
 
             {/* LIST */}
             <section className="max-w-[1280px] mx-auto px-5 py-10">
-                {filteredTerms.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {filteredTerms.map((item, idx) => (
-                            <div
-                                key={idx}
-                                className="bg-white border border-outline-variant/60 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200 group"
-                            >
-                                <div className="flex items-start justify-between gap-4 mb-3">
-                                    <h3 className="text-base font-black text-on-surface group-hover:text-primary transition-colors">
-                                        {item.term}
-                                    </h3>
-                                    <span className="shrink-0 bg-surface-container/60 border border-outline-variant/50 text-on-surface-variant/80 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
-                                        {item.category}
-                                    </span>
+                {paginatedTerms.length > 0 ? (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {paginatedTerms.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className="bg-white border border-outline-variant/60 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-200 group"
+                                >
+                                    <div className="flex items-start justify-between gap-4 mb-3">
+                                        <h3 className="text-base font-black text-on-surface group-hover:text-primary transition-colors">
+                                            {item.term}
+                                        </h3>
+                                        <span className="shrink-0 bg-surface-container/60 border border-outline-variant/50 text-on-surface-variant/80 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
+                                            {item.category}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-on-surface-variant/80 leading-relaxed">
+                                        {item.definition}
+                                    </p>
                                 </div>
-                                <p className="text-xs text-on-surface-variant/80 leading-relaxed">
-                                    {item.definition}
-                                </p>
+                            ))}
+                        </div>
+
+                        {/* Pagination UI */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-center gap-2 mt-12">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-on-surface-variant border border-outline-variant/60 hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-outline-variant/60 disabled:hover:text-on-surface-variant transition-all cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+                                
+                                <div className="flex items-center gap-1.5 px-3">
+                                    {Array.from({ length: totalPages }).map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(i + 1)}
+                                            className={`w-8 h-8 rounded-lg text-xs font-black flex items-center justify-center transition-all cursor-pointer ${
+                                                currentPage === i + 1 
+                                                    ? 'bg-primary text-white shadow-sm' 
+                                                    : 'text-on-surface-variant hover:bg-surface-container'
+                                            }`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="w-9 h-9 rounded-xl flex items-center justify-center text-on-surface-variant border border-outline-variant/60 hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-outline-variant/60 disabled:hover:text-on-surface-variant transition-all cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </>
                 ) : (
                     <div className="text-center py-16 bg-white border border-outline-variant/60 rounded-2xl max-w-md mx-auto p-6 space-y-3">
                         <div className="w-12 h-12 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant/40 mx-auto">

@@ -1,6 +1,7 @@
 const prisma = require("../models/prisma");
 
 class OrderService {
+  // LẤY TOÀN BỘ ĐƠN HÀNG DÀNH CHO ADMIN
   async getAllOrders() {
     const orders = await prisma.orders.findMany({
       include: {
@@ -98,7 +99,7 @@ class OrderService {
 
     return orders;
   }
-
+  // LẤY CHI TIẾT ĐƠN HÀNG THEO ID
   async getOrderById(id) {
     const order = await prisma.orders.findUnique({
       where: { id: id },
@@ -155,7 +156,7 @@ class OrderService {
 
     return order;
   }
-
+  // LẤY DANH SÁCH ĐƠN HÀNG CỦA USER HIỆN TẠI
   async getMyOrders(userId) {
     const orders = await prisma.orders.findMany({
       where: {
@@ -247,6 +248,7 @@ class OrderService {
 
     return orders;
   }
+  // Tạo đơn hàng trực tiếp (không qua báo giá)
   async createDirectOrder(userId, payload) {
     const { product_id, quantity, price } = payload;
 
@@ -271,7 +273,8 @@ class OrderService {
     });
 
     return newOrder;
-  } // THÊM MỚI: Cập nhật thông tin giao hàng & các loại phí trước khi thanh toán
+  } 
+  // Cập nhật thông tin giao hàng & các loại phí trước khi thanh toán
   async updateCheckoutInfo(orderId, userId, payload) {
     const {
       customer_name,
@@ -315,6 +318,7 @@ class OrderService {
       },
     });
   }
+  // Cập nhật thông tin giao hàng & các loại phí trước khi thanh toán
   async updateOrderStatus(orderId, payload) {
     const { status, stage_name, stage_description } = payload;
 
@@ -357,13 +361,13 @@ class OrderService {
       return updatedOrder;
     });
   }
+  // Cập nhật trạng thái đơn hàng & ghi log vào order_tracking 
   async getOrderTracking(orderID) {
     return await prisma.order_tracking.findMany({
       where: { order_id: orderID },
       orderBy: { tracked_at: "desc" },
     });
   }
-
   // API Duyệt Đơn của Admin -> Tính 1 lần & Lưu Snapshot
   async approveOrderAndRequestMaterials(orderId) {
     const order = await prisma.orders.findUnique({

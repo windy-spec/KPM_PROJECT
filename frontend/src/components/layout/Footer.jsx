@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Factory,
   Mail,
@@ -6,11 +6,15 @@ import {
   MapPin,
   ArrowRight,
   Send,
-  Globe
+  Globe,
+  X,
+  Bot
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
+  const [showAIAlert, setShowAIAlert] = useState(false);
+
   return (
     /* - Đổi bg-[#1e2b2b] sang bg-[#253535]: Màu nền tối được nâng sáng lên 1 tông, trong và dễ chịu hơn.
       - Giữ nguyên text-white để toàn bộ hệ chữ đạt độ sắc nét và sáng rõ cao nhất.
@@ -80,12 +84,39 @@ const Footer = () => {
             Dịch vụ
           </h4>
           <ul className="flex flex-col gap-3.5 text-sm text-white font-normal">
-            {['Cắt CNC theo yêu cầu', 'Gia công bản mã', 'Lắp dựng nhà tiền chế'].map((item, index) => (
-              <li key={index}>
-                <a href="#" className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1">
-                  <ArrowRight className="w-0 h-3 opacity-0 group-hover:w-3 group-hover:opacity-100 text-[#c6e9e9] transition-all duration-300" />
-                  <span>{item}</span>
-                </a>
+            {[
+              { label: 'Báo giá sản phẩm', to: '/request-a-quote' },
+              { label: 'Đặt hàng', to: '/products' },
+              { label: 'Tư vấn xây dựng', action: () => setShowAIAlert(!showAIAlert) }
+            ].map((item, index) => (
+              <li key={index} className="relative">
+                {item.to ? (
+                  <Link to={item.to} onClick={() => window.scrollTo(0, 0)} className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1 w-max">
+                    <ArrowRight className="w-0 h-3 opacity-0 group-hover:w-3 group-hover:opacity-100 text-[#c6e9e9] transition-all duration-300" />
+                    <span>{item.label}</span>
+                  </Link>
+                ) : (
+                  <div>
+                    <button onClick={item.action} className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1 cursor-pointer w-max">
+                      <ArrowRight className="w-0 h-3 opacity-0 group-hover:w-3 group-hover:opacity-100 text-[#c6e9e9] transition-all duration-300" />
+                      <span>{item.label}</span>
+                    </button>
+                    {showAIAlert && item.label === 'Tư vấn xây dựng' && (
+                      <div className="absolute top-full mt-2 left-0 bg-surface-container-highest/20 backdrop-blur-md border border-white/20 text-[#e3fffe] text-xs p-2.5 rounded-lg shadow-xl z-10 animate-in fade-in zoom-in-95 w-max flex flex-col gap-2">
+                        <span>Vui lòng sử dụng AI tư vấn góc màn hình</span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAIAlert(false);
+                          }}
+                          className="bg-primary hover:bg-primary-dark text-white text-[10px] uppercase font-bold py-1 px-3 rounded-md self-end transition-all cursor-pointer"
+                        >
+                          Đã hiểu
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -97,12 +128,16 @@ const Footer = () => {
             Hỗ trợ
           </h4>
           <ul className="flex flex-col gap-3.5 text-sm text-white font-normal">
-            {['Quy trình đặt hàng', 'Chính sách vận chuyển', 'Bảo hành & Đổi trả'].map((item, index) => (
+            {[
+              { label: 'Quy trình đặt hàng', to: '/faq' },
+              { label: 'Chính sách vận chuyển', to: '/faq' },
+              { label: 'Bảo hành & Đổi trả', to: '/warranty' }
+            ].map((item, index) => (
               <li key={index}>
-                <a href="#" className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1">
+                <Link to={item.to} onClick={() => window.scrollTo(0, 0)} className="hover:text-[#c6e9e9] flex items-center gap-1 group transition-all duration-300 hover:translate-x-1 w-max">
                   <ArrowRight className="w-0 h-3 opacity-0 group-hover:w-3 group-hover:opacity-100 text-[#c6e9e9] transition-all duration-300" />
-                  <span>{item}</span>
-                </a>
+                  <span>{item.label}</span>
+                </Link>
               </li>
             ))}
           </ul>
@@ -161,6 +196,8 @@ const Footer = () => {
           <Link to="/privacy-policy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
         </div>
       </div>
+
+
     </footer>
   );
 };

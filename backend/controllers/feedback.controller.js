@@ -11,8 +11,7 @@ class feedbackController {
         .status(201)
         .json({ message: "Feedback created successfully", feedback });
     } catch (error) {
-      console.error("Error creating feedback:", error);
-      res.status(500).json({ message: "Internal server error" });
+      res.status(400).json({ message: error.message });
     }
   }
   // GỌI HÀM LẤY TẤT CẢ FEEDBACKS

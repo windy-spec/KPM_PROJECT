@@ -10,6 +10,7 @@ const qs = require("qs");
 const moment = require("moment");
 
 class PaymentService {
+  // Xác định số tiền cần thanh toán cọc đợt 1 hoặc đợt 2 hoặc toàn bộ đơn hàng
   resolveOrderPaymentAmount(
     order,
     { is_deposit = false, is_phase_2 = false } = {},
@@ -837,6 +838,7 @@ class PaymentService {
   }
 }
 
+  // Hàm chuẩn hóa dữ liệu bắt buộc của VNPay
 function sortObject(obj) {
   let sorted = {};
   let str = [];

@@ -17,7 +17,8 @@ const Contact = () => {
       toast.success('Gửi góp ý thành công! Chúng tôi sẽ phản hồi sớm nhất có thể.');
       setFormData({ category: '', title: '', content: '' });
     } catch (error) {
-      toast.error('Có lỗi xảy ra khi gửi góp ý. Vui lòng thử lại sau.');
+      const errorMsg = error.response?.data?.message || 'Có lỗi xảy ra khi gửi góp ý. Vui lòng thử lại sau.';
+      toast.error(errorMsg);
     }
   };
 

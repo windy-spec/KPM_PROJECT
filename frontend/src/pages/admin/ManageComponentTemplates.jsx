@@ -400,7 +400,19 @@ const ManageComponentTemplates = () => {
       setItems(Array.isArray(templateData) ? templateData.map(normalizeTemplate) : []);
 
       const catData = categoriesRes.data?.data || categoriesRes.data || [];
-      setCategories(Array.isArray(catData) ? catData : []);
+      const flatCategories = [];
+      (Array.isArray(catData) ? catData : []).forEach(cat => {
+        flatCategories.push(cat);
+        if (cat.sub_categories && cat.sub_categories.length > 0) {
+          cat.sub_categories.forEach(sub => {
+            flatCategories.push({
+              ...sub,
+              category_name: `--- ${sub.category_name}` // Thêm tiền tố để dễ phân biệt danh mục con
+            });
+          });
+        }
+      });
+      setCategories(flatCategories);
 
       const matData = materialsRes.data?.data || materialsRes.data || [];
       setMaterials(Array.isArray(matData) ? matData : []);

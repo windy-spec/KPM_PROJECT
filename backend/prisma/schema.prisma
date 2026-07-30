@@ -137,7 +137,7 @@ model orders {
   deposit_amount           Decimal?                   @db.Decimal(15, 2)
   is_deposit_paid          Boolean?                   @default(false)
   is_deposit_required      Boolean?                   @default(false)
-  invoices                 invoices[]
+  invoices                  invoices[]
   material_import_requests material_import_requests[]
   order_items              order_items[]
   order_tracking           order_tracking[]

@@ -358,6 +358,10 @@ CẤU TRÚC JSON:
       });
 
       let rawJsonString = response.choices[0].message.content;
+      console.log("=== KẾT QUẢ RAW TỪ AI ===");
+      console.log(rawJsonString);
+      console.log("=========================");
+
       const jsonMatch = rawJsonString.match(/```(?:json)?\n([\s\S]*?)\n```/);
       if (jsonMatch && jsonMatch[1]) rawJsonString = jsonMatch[1].trim();
 
@@ -370,14 +374,17 @@ CẤU TRÚC JSON:
       let extractedSpecs = {};
       try {
         extractedSpecs = JSON.parse(rawJsonString);
+        console.log("=== JSON ĐÃ PARSE THÀNH CÔNG ===", extractedSpecs);
       } catch (e) {
-        extractedSpecs = { is_valid_drawing: false, message: "AI không thể đọc thông số, ảnh quá mờ." };
+        console.error("❌ LỖI PARSE JSON. Chuỗi cần parse:", rawJsonString);
+        console.error("Chi tiết lỗi parse:", e.message);
+        extractedSpecs = { is_valid_drawing: false, message: "AI không thể đọc thông số, ảnh quá mờ hoặc định dạng sai." };
       }
 
       const isMissingName = !extractedSpecs.drawing_name || String(extractedSpecs.drawing_name).trim().toLowerCase() === "undefined" || String(extractedSpecs.drawing_name).trim() === "";
       if (isMissingName && extractedSpecs.is_valid_drawing !== false) {
-        extractedSpecs.is_valid_drawing = false;
-        extractedSpecs.message = "AI không thể nhận diện được các thông số chi tiết hoặc tên chủ thể. Có thể ảnh bản vẽ quá mờ, vui lòng tải lên hình ảnh rõ nét hơn.";
+        console.log("⚠️ Thiếu drawing_name trong JSON, tự động gán tên mặc định:", extractedSpecs);
+        extractedSpecs.drawing_name = "Bản vẽ chi tiết cơ khí";
       }
 
       if (extractedSpecs.is_valid_drawing === false) {
@@ -447,7 +454,7 @@ CẤU TRÚC JSON:
       select: { id: true, session_title: true, started_at: true },
     });
   }
-
+ // --- LẤY CHI TIẾT PHIÊN CHAT & BẢN VẼ ---
   async getSessionDetails(sessionId, userId) {
     const session = await prisma.ai_chat_sessions.findUnique({ where: { id: sessionId } });
     if (!session || session.user_id !== userId) throw new Error("Phiên chat không tồn tại!");
