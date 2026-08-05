@@ -399,12 +399,7 @@ const ChatWindow = () => {
                             </div>
                           ))}
                         </div>
-
-                        <div className="p-3 bg-white border-t border-outline-variant/30">
-                          <button onClick={() => toast.info("Đã gom dữ liệu, chuẩn bị chuyển sang màn hình Báo Giá!")} className="w-full bg-primary text-white py-2.5 rounded-xl text-[13px] font-bold hover:bg-primary-container flex items-center justify-center gap-2 shadow-md transition-all">
-                            <CheckCircle2 size={16} /> Chốt thông số
-                          </button>
-                        </div>
+                        
                       </div>
                     )}
 

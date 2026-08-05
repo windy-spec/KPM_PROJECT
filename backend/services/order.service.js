@@ -340,12 +340,17 @@ class OrderService {
     // Transaction lỗi sẽ không bị thừa
     return await prisma.$transaction(async (tx) => {
       // cập nhật trạng thái tổng
-
       const updatedOrder = await tx.orders.update({
         where: { id: orderId },
         data: { production_status: status },
         include: { quotations: true },
       });
+
+      // Nếu trạng thái là completed thì đảm bảo hóa đơn tổng được tạo
+      if (status === "completed") {
+        const invoiceService = require("./invoice.service");
+        await invoiceService.createTotalInvoice(orderId, tx);
+      }
 
       // Ghi log trạng thái
       if (stage_name) {

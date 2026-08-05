@@ -44,7 +44,52 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   const [packaging, setPackaging] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
 
+  const [showRequestDeleteModal, setShowRequestDeleteModal] = useState(false);
+  const [showApproveDeleteModal, setShowApproveDeleteModal] = useState(false);
+
   const socket = useSocket();
+
+  const userStr = localStorage.getItem("user");
+  let currentUserRole = "USER";
+  if (userStr) {
+    try {
+      const u = JSON.parse(userStr);
+      currentUserRole = u.role || u.role_name || "USER"; 
+    } catch(e){}
+  }
+
+  async function handleRequestDelete() {
+    try {
+      await apiClient.post(`/quotations/${id}/request-delete`);
+      showSuccess("Đã gửi yêu cầu xoá!");
+      setShowRequestDeleteModal(false);
+      await load();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi gửi yêu cầu xoá");
+    }
+  }
+
+  async function handleApproveDelete() {
+    try {
+      await apiClient.post(`/quotations/${id}/approve-delete`);
+      showSuccess("Báo giá đã được xoá thành công!");
+      setShowApproveDeleteModal(false);
+      localStorage.removeItem("activeQuotationId");
+      if (onBack) onBack();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi duyệt xoá");
+    }
+  }
+
+  async function handleRejectDelete() {
+    try {
+      await apiClient.post(`/quotations/${id}/reject-delete`);
+      showSuccess("Đã từ chối yêu cầu xoá!");
+      await load();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi từ chối xoá");
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -61,14 +106,28 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
       }
     };
 
+    const handleSocketDeleteApproved = (payload) => {
+      if (payload?.data?.id === id) {
+        showSuccess("Báo giá này đã bị xoá!");
+        localStorage.removeItem("activeQuotationId");
+        if (onBack) onBack();
+      }
+    };
+
     socket.on("quote_negotiated", handleSocketUpdate);
     socket.on("quote_status_changed", handleSocketUpdate);
     socket.on("quote_updated", handleSocketUpdate);
+    socket.on("quote_deletion_requested", handleSocketUpdate);
+    socket.on("quote_deletion_rejected", handleSocketUpdate);
+    socket.on("quote_deletion_approved", handleSocketDeleteApproved);
     
     return () => {
       socket.off("quote_negotiated", handleSocketUpdate);
       socket.off("quote_status_changed", handleSocketUpdate);
       socket.off("quote_updated", handleSocketUpdate);
+      socket.off("quote_deletion_requested", handleSocketUpdate);
+      socket.off("quote_deletion_rejected", handleSocketUpdate);
+      socket.off("quote_deletion_approved", handleSocketDeleteApproved);
     };
   }, [socket, id]);
 
@@ -678,10 +737,13 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
         {/* 2. Quy trình xử lý báo giá */}
         <div className="rounded-2xl border border-outline-variant/60 bg-white p-5 shadow-sm">
           <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant/80 mb-3">Chốt đơn & Xử lý</h4>
-          <div className="space-y-3">
+          
+          {/* Các tác vụ khác bị ẩn nếu đang có yêu cầu xoá */}
+          {data && !data.deletion_status && (
+            <div className="space-y-3">
 
             {/* TRẠNG THÁI CHỜ DUYỆT ADMIN */}
-            {data && data.status === "pending_admin" && (
+            {data.status === "pending_admin" && (
               <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/80 space-y-3">
                 <div className="flex items-center gap-1.5 text-amber-800 text-xs font-black uppercase tracking-wider">
                   <Clock className="w-3.5 h-3.5" />
@@ -720,7 +782,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* TRẠNG THÁI ĐÃ ĐỀ XUẤT GIÁ - CHO PHÉP MẶC CẢ (status === "admin_quoted") */}
-            {data && data.status === "admin_quoted" && (
+            {data.status === "admin_quoted" && (
               <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-200 space-y-3">
                 <div className="flex items-center gap-1.5 text-sky-800 text-xs font-black uppercase tracking-wider">
                   <DollarSign className="w-3.5 h-3.5" />
@@ -733,7 +795,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* TRẠNG THÁI KHÁCH HÀNG MUỐN MẶC CẢ (status === "user_proposed") */}
-            {data && data.status === "user_proposed" && (
+            {data.status === "user_proposed" && (
               <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-200 space-y-3">
                 <div className="flex items-center gap-1.5 text-purple-800 text-xs font-black uppercase tracking-wider">
                   <Gavel className="w-3.5 h-3.5" />
@@ -761,7 +823,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* TRẠNG THÁI NHÁP HOẶC ĐÃ GỬI KHÁCH HÀNG */}
-            {data && (data.status === "draft" || data.status === "sent_to_customer") && (
+            {(data.status === "draft" || data.status === "sent_to_customer") && (
               <div className="space-y-2">
                 <button
                   onClick={() => changeStatus("approved")}
@@ -780,7 +842,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* TRẠNG THÁI KHÁCH DUYỆT -> ADMIN XÁC NHẬN SẢN XUẤT */}
-            {data && (data.status === "customer_approved" || data.status === "approved") && (
+            {(data.status === "customer_approved" || data.status === "approved") && (
               <button
                 onClick={() => changeStatus("admin_confirmed")}
                 className="w-full rounded-xl bg-emerald-600 px-4 h-11 text-white font-bold text-xs uppercase shadow-md hover:bg-emerald-700 transition-all active:scale-95"
@@ -790,7 +852,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* CÁC TRẠNG THÁI VÒNG ĐỜI ĐÃ KHÓA */}
-            {data && !["draft", "pending_admin", "sent_to_customer", "customer_approved", "approved"].includes(data.status) && (
+            {!["draft", "pending_admin", "sent_to_customer", "customer_approved", "approved"].includes(data.status) && (
               <div className="bg-surface-container/30 border border-outline-variant/40 rounded-xl p-3.5 text-xs text-on-surface-variant/70 italic flex gap-2 items-center">
                 <AlertCircle className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
                 <p>
@@ -798,8 +860,64 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                 </p>
               </div>
             )}
-          </div>
+            
+            </div>
+          )}
         </div>
+
+        {/* ======================= UI XÓA BÁO GIÁ (2-WAY APPROVAL) ======================= */}
+        {data && ['pending_admin', 'user_proposed', 'admin_quoted', 'sent_to_customer', 'draft'].includes(data.status) && (
+          <div className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm mt-6">
+            <h4 className="text-xs font-black uppercase tracking-widest text-rose-800/80 mb-3">Vùng Nguy Hiểm</h4>
+            
+            {!data.deletion_status && (
+              <button
+                onClick={() => setShowRequestDeleteModal(true)}
+                className="w-full rounded-xl border border-rose-200 bg-white px-4 h-10 text-rose-600 font-bold text-xs uppercase hover:bg-rose-50 transition-colors"
+              >
+                Yêu cầu xoá báo giá
+              </button>
+            )}
+
+            {/* Mình là người yêu cầu */}
+            {((currentUserRole === "ADMIN" && data.deletion_status === "REQUESTED_BY_ADMIN") || 
+              (currentUserRole !== "ADMIN" && data.deletion_status === "REQUESTED_BY_USER")) && (
+              <div className="bg-surface-container/30 border border-outline-variant/40 rounded-xl p-3 text-xs text-on-surface-variant/70 italic text-center">
+                <Clock className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                Đang chờ đối tác duyệt yêu cầu xoá...
+              </div>
+            )}
+
+            {/* Phía bên kia yêu cầu */}
+            {((currentUserRole === "ADMIN" && data.deletion_status === "REQUESTED_BY_USER") || 
+              (currentUserRole !== "ADMIN" && data.deletion_status === "REQUESTED_BY_ADMIN")) && (
+              <div className="bg-rose-50/80 p-4 rounded-xl border border-rose-200 shadow-sm">
+                <div className="flex items-start gap-2 mb-3">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <div>
+                    <div className="text-sm font-black text-rose-800">Đối tác yêu cầu xoá</div>
+                    <div className="text-xs text-rose-700/80 font-medium">Bạn có đồng ý xoá vĩnh viễn báo giá này không?</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowApproveDeleteModal(true)}
+                    className="flex-1 rounded-lg bg-rose-600 hover:bg-rose-700 h-9 text-white font-bold text-xs uppercase shadow-sm transition-all active:scale-95"
+                  >
+                    Đồng ý xoá
+                  </button>
+                  <button
+                    onClick={handleRejectDelete}
+                    className="flex-1 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 h-9 text-rose-700 font-bold text-xs uppercase shadow-sm transition-colors"
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {/* ============================================================================== */}
       </div>
 
       {blueprintPreview && (
@@ -840,6 +958,74 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   className="absolute inset-0 w-full h-full border-none"
                   title="Xem trước Mô hình 3D"
                 />
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+      {/* MODALS */}
+      {showRequestDeleteModal && (
+        <Portal>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-on-surface mb-2">Gửi yêu cầu xoá báo giá?</h3>
+                  <p className="text-sm text-on-surface-variant mb-6">
+                    Hệ thống sẽ gửi yêu cầu xoá báo giá này đến đối tác. Việc xoá chỉ được thực hiện khi đối tác đồng ý. Bạn có chắc chắn muốn gửi?
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setShowRequestDeleteModal(false)}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleRequestDelete}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all active:scale-95"
+                    >
+                      Gửi yêu cầu
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {showApproveDeleteModal && (
+        <Portal>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-on-surface mb-2">Đồng ý xoá báo giá?</h3>
+                  <p className="text-sm text-on-surface-variant mb-6">
+                    Báo giá này sẽ bị chuyển vào thùng rác và không còn hiển thị trong danh sách nữa. Hành động này không thể hoàn tác ngay lập tức. Bạn có chắc chắn?
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setShowApproveDeleteModal(false)}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleApproveDelete}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all active:scale-95"
+                    >
+                      Chắc chắn xoá
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

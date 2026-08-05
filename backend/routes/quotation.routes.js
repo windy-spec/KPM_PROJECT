@@ -34,6 +34,9 @@ router.put(
   quotationController.adminFinalDecision,
 );
 router.post("/:id/attachments", quotationController.addAttachment); // API lưu link bản vẽ
-router.delete("/:id", quotationController.delete);
+router.post("/:id/request-delete", authenticateToken, quotationController.requestDelete);
+router.post("/:id/approve-delete", authenticateToken, quotationController.approveDelete);
+router.post("/:id/reject-delete", authenticateToken, quotationController.rejectDelete);
+router.delete("/:id", authenticateToken, quotationController.delete);
 
 module.exports = router;

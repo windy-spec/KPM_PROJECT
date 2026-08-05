@@ -36,7 +36,7 @@ const WarehouseRequest = () => {
         };
     }, [socket]);
 
-    const fetchData = async () => {
+    async function fetchData() {
         setErrorMsg(""); // Clear previous errors when fetching
         try {
             const [ordersRes, invRes, matRes] = await Promise.all([
@@ -50,24 +50,24 @@ const WarehouseRequest = () => {
             const outOfStockOrders = allOrders.filter(o => o.production_status === "out_of_stock");
             setOrders(outOfStockOrders);
 
-            const invData = invRes?.data?.data || invRes?.data || [];
+            const invData = invRes?.data?.data || invRes?.data || invRes || [];
             if (Array.isArray(invData)) {
                 setInventoryMap(invData);
             }
-
-            const matData = matRes?.data?.data || matRes?.data || [];
+            
+            const matData = matRes?.data?.data || matRes?.data || matRes || [];
             const mMap = {};
             if (Array.isArray(matData)) {
                 matData.forEach(m => mMap[m.id] = m);
             }
             setMaterialsMap(mMap);
         } catch (err) {
-            console.error("fetchData error:", err);
-            setErrorMsg(`Lỗi làm mới dữ liệu: ${err.message}`);
+            console.error(err);
+            setErrorMsg("Không thể tải dữ liệu đơn hàng và kho.");
         } finally {
             setFetching(false);
         }
-    };
+    }
 
     // Khi chọn 1 đơn hàng, tính toán ra danh sách vật tư thiếu
     useEffect(() => {
@@ -96,7 +96,9 @@ const WarehouseRequest = () => {
 
             if (currentStock < requiredQty) {
                 missingList.push({
+                    req_key: reqKey,
                     material_id: matId,
+                    thickness_id: thickId || null,
                     material_name: matName,
                     required_quantity: requiredQty,
                     current_stock: currentStock,
@@ -107,14 +109,14 @@ const WarehouseRequest = () => {
         
         setMissingMaterials(missingList);
         // Chọn sẵn tất cả theo mặc định
-        setSelectedMaterials(missingList.map(m => m.material_id));
+        setSelectedMaterials(missingList.map(m => m.req_key));
     }, [selectedOrderId, orders, inventoryMap]);
 
-    const handleToggleMaterial = (matId) => {
-        if (selectedMaterials.includes(matId)) {
-            setSelectedMaterials(selectedMaterials.filter(id => id !== matId));
+    const handleToggleMaterial = (reqKey) => {
+        if (selectedMaterials.includes(reqKey)) {
+            setSelectedMaterials(selectedMaterials.filter(key => key !== reqKey));
         } else {
-            setSelectedMaterials([...selectedMaterials, matId]);
+            setSelectedMaterials([...selectedMaterials, reqKey]);
         }
     };
 
@@ -135,9 +137,10 @@ const WarehouseRequest = () => {
 
         // Tạo mảng items để gửi lên
         const itemsToRequest = missingMaterials
-            .filter(m => selectedMaterials.includes(m.material_id))
+            .filter(m => selectedMaterials.includes(m.req_key))
             .map(m => ({
                 material_id: m.material_id,
+                thickness_id: m.thickness_id,
                 requested_quantity: m.missing_quantity,
                 order_id: selectedOrderId
             }));
@@ -226,11 +229,11 @@ const WarehouseRequest = () => {
                             ) : (
                                 <div className="divide-y divide-outline-variant/40">
                                     {missingMaterials.map((mat) => (
-                                        <label key={mat.material_id} className="flex items-center p-3 hover:bg-slate-50 cursor-pointer transition-colors">
+                                        <label key={mat.req_key} className="flex items-center p-3 hover:bg-slate-50 cursor-pointer transition-colors">
                                             <input 
                                                 type="checkbox" 
-                                                checked={selectedMaterials.includes(mat.material_id)}
-                                                onChange={() => handleToggleMaterial(mat.material_id)}
+                                                checked={selectedMaterials.includes(mat.req_key)}
+                                                onChange={() => handleToggleMaterial(mat.req_key)}
                                                 className="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300"
                                             />
                                             <div className="ml-3 flex-1">

@@ -15,12 +15,16 @@ import {
 import { useSocket } from "../../context/SocketContext";
 import { showError, showSuccess } from "../../utils/notify";
 import apiClient from "../../services/apiClient";
+import Portal from "../../components/common/Portal";
 
 const QuotationsTab = () => {
   const socket = useSocket();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [printingId, setPrintingId] = useState(null);
+  
+  const [deletingId, setDeletingId] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
 
   const [negotiatePrices, setNegotiatePrices] = useState({});
 
@@ -37,10 +41,16 @@ const QuotationsTab = () => {
 
     socket.on("quote_status_changed", handleQuoteUpdated);
     socket.on("quote_updated", handleQuoteUpdated);
+    socket.on("quote_deletion_requested", handleQuoteUpdated);
+    socket.on("quote_deletion_rejected", handleQuoteUpdated);
+    socket.on("quote_deletion_approved", handleQuoteUpdated);
 
     return () => {
       socket.off("quote_status_changed", handleQuoteUpdated);
       socket.off("quote_updated", handleQuoteUpdated);
+      socket.off("quote_deletion_requested", handleQuoteUpdated);
+      socket.off("quote_deletion_rejected", handleQuoteUpdated);
+      socket.off("quote_deletion_approved", handleQuoteUpdated);
     };
   }, [socket]);
 
@@ -113,6 +123,40 @@ const QuotationsTab = () => {
       fetchQuotations();
     } catch (e) {
       showError(e?.response?.data?.message || "Gửi đề xuất mặc cả thất bại");
+    }
+  };
+
+  const handleRequestDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await apiClient.post(`/quotations/${deletingId}/request-delete`);
+      showSuccess("Đã gửi yêu cầu xoá!");
+      setDeletingId(null);
+      fetchQuotations();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi gửi yêu cầu xoá");
+    }
+  };
+
+  const handleApproveDelete = async () => {
+    if (!approvingId) return;
+    try {
+      await apiClient.post(`/quotations/${approvingId}/approve-delete`);
+      showSuccess("Báo giá đã được xoá thành công!");
+      setApprovingId(null);
+      fetchQuotations();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi duyệt xoá");
+    }
+  };
+
+  const handleRejectDelete = async (id) => {
+    try {
+      await apiClient.post(`/quotations/${id}/reject-delete`);
+      showSuccess("Đã từ chối yêu cầu xoá!");
+      fetchQuotations();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Lỗi khi từ chối xoá");
     }
   };
 
@@ -228,12 +272,7 @@ const QuotationsTab = () => {
                     Mã YC: #{q.id.slice(0, 8).toUpperCase()} • Tạo lúc:{" "}
                     {new Date(q.created_at).toLocaleString("vi-VN")}
                   </p>
-                  <button
-                    onClick={() => handleExportPDF(q.id)}
-                    className="no-print mt-1 flex items-center gap-1 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded font-bold"
-                  >
-                    <Download className="w-3 h-3" /> Tải PDF
-                  </button>
+                  
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2">
@@ -318,79 +357,204 @@ const QuotationsTab = () => {
 
             <div className="flex justify-end gap-3" data-html2canvas-ignore>
               {/* Nút hành động */}
-              {q.status === "sent_to_customer" && (
+              {!q.deletion_status && (
                 <>
-                  <button
-                    onClick={() => handleReject(q.id)}
-                    className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
-                  >
-                    Từ chối
-                  </button>
-                  <button
-                    onClick={() => handleApprove(q.id)}
-                    className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary text-white rounded-xl hover:bg-primary-container transition-colors shadow-md shadow-primary/20"
-                  >
-                    Đồng ý chốt đơn
-                  </button>
+                  {q.status === "sent_to_customer" && (
+                    <>
+                      <button
+                        onClick={() => handleReject(q.id)}
+                        className="px-4 py-2 text-xs font-bold bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                      >
+                        Từ chối
+                      </button>
+                      <button
+                        onClick={() => handleApprove(q.id)}
+                        className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-primary text-white rounded-xl hover:bg-primary-container transition-colors shadow-md shadow-primary/20"
+                      >
+                        Đồng ý chốt đơn
+                      </button>
+                    </>
+                  )}
+
+                  {/* Khi trạng thái là admin_quoted (Xưởng đề xuất giá nhưng cho mặc cả) */}
+                  {q.status === "admin_quoted" && (
+                    <div className="border-t border-dashed border-outline-variant/40 pt-3 flex flex-col md:flex-row items-end md:items-center justify-between gap-3 bg-sky-50/20 p-3 rounded-xl border border-sky-100/50 w-full">
+                      <div className="text-xs text-sky-800 font-medium">
+                        💡 Bạn có thể đồng ý với giá xưởng hoặc nhập số tiền muốn
+                        mặc cả thấp hơn vào ô bên cạnh:
+                      </div>
+                      <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                        <input
+                          type="text"
+                          value={
+                            negotiatePrices[q.id]
+                              ? Number(negotiatePrices[q.id]).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : ""
+                          }
+                          onChange={(e) =>
+                            handleInputChange(
+                              q.id,
+                              e.target.value.replace(/\D/g, ""),
+                            )
+                          }
+                          placeholder="Nhập giá đề xuất..."
+                          className="w-full md:w-44 px-3 h-9 text-xs font-bold border border-sky-200 rounded-xl focus:outline-none focus:border-sky-400 bg-white shadow-2xs"
+                        />
+                        <button
+                          onClick={() => handleCustomerNegotiate(q.id)}
+                          className="h-9 px-4 text-xs font-black uppercase bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-all shrink-0 shadow-sm"
+                        >
+                          Mặc cả
+                        </button>
+                        <button
+                          onClick={() => handleApprove(q.id)}
+                          className="h-9 px-4 text-xs font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shrink-0 shadow-sm"
+                        >
+                          Chốt giá luôn
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Khi trạng thái là user_proposed (Khách hàng đang treo giá mặc cả đợi Admin duyệt) */}
+                  {q.status === "user_proposed" && (
+                    <div className="bg-purple-50/40 border border-purple-100 text-purple-800 p-3 rounded-xl text-xs flex items-center gap-2 italic w-full">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-purple-600" />
+                      <span>
+                        Hệ thống đã ghi nhận mức giá mặc cả của bạn. Vui lòng đợi
+                        quản lý phân xưởng xem xét và đưa ra quyết định chốt đơn
+                        cuối cùng!
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
-
-              {/* Khi trạng thái là admin_quoted (Xưởng đề xuất giá nhưng cho mặc cả) */}
-              {q.status === "admin_quoted" && (
-                <div className="border-t border-dashed border-outline-variant/40 pt-3 flex flex-col md:flex-row items-end md:items-center justify-between gap-3 bg-sky-50/20 p-3 rounded-xl border border-sky-100/50">
-                  <div className="text-xs text-sky-800 font-medium">
-                    💡 Bạn có thể đồng ý với giá xưởng hoặc nhập số tiền muốn
-                    mặc cả thấp hơn vào ô bên cạnh:
-                  </div>
-                  <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-                    <input
-                      type="text"
-                      value={
-                        negotiatePrices[q.id]
-                          ? Number(negotiatePrices[q.id]).toLocaleString(
-                              "vi-VN",
-                            )
-                          : ""
-                      }
-                      onChange={(e) =>
-                        handleInputChange(
-                          q.id,
-                          e.target.value.replace(/\D/g, ""),
-                        )
-                      }
-                      placeholder="Nhập giá đề xuất..."
-                      className="w-full md:w-44 px-3 h-9 text-xs font-bold border border-sky-200 rounded-xl focus:outline-none focus:border-sky-400 bg-white shadow-2xs"
-                    />
-                    <button
-                      onClick={() => handleCustomerNegotiate(q.id)}
-                      className="h-9 px-4 text-xs font-black uppercase bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-all shrink-0 shadow-sm"
-                    >
-                      Mặc cả
-                    </button>
-                    <button
-                      onClick={() => handleApprove(q.id)}
-                      className="h-9 px-4 text-xs font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shrink-0 shadow-sm"
-                    >
-                      Chốt giá luôn
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Khi trạng thái là user_proposed (Khách hàng đang treo giá mặc cả đợi Admin duyệt) */}
-              {q.status === "user_proposed" && (
-                <div className="bg-purple-50/40 border border-purple-100 text-purple-800 p-3 rounded-xl text-xs flex items-center gap-2 italic">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-purple-600" />
-                  <span>
-                    Hệ thống đã ghi nhận mức giá mặc cả của bạn. Vui lòng đợi
-                    quản lý phân xưởng xem xét và đưa ra quyết định chốt đơn
-                    cuối cùng!
-                  </span>
-                </div>
-              )}
             </div>
+
+            {/* ======================= UI XÓA BÁO GIÁ (2-WAY APPROVAL) CHO USER ======================= */}
+            {['pending_admin', 'user_proposed', 'admin_quoted', 'sent_to_customer', 'draft'].includes(q.status) && (
+              <div className="mt-4 pt-4 border-t border-outline-variant/30 flex flex-col items-end gap-3" data-html2canvas-ignore>
+                {!q.deletion_status && (
+                  <button
+                    onClick={() => setDeletingId(q.id)}
+                    className="px-4 py-2 text-xs font-bold text-rose-600 border border-rose-200 rounded-xl hover:bg-rose-50 transition-colors w-full sm:w-auto"
+                  >
+                    Yêu cầu xoá báo giá
+                  </button>
+                )}
+
+                {/* Mình (User) là người yêu cầu */}
+                {q.deletion_status === "REQUESTED_BY_USER" && (
+                  <div className="bg-surface-container/30 border border-outline-variant/40 rounded-xl p-3 text-xs text-on-surface-variant/70 italic text-center w-full">
+                    <Clock className="w-4 h-4 inline-block mr-1.5 -mt-0.5" />
+                    Đang chờ Admin duyệt yêu cầu xoá...
+                  </div>
+                )}
+
+                {/* Phía bên kia (Admin) yêu cầu */}
+                {q.deletion_status === "REQUESTED_BY_ADMIN" && (
+                  <div className="bg-rose-50/80 p-4 rounded-xl border border-rose-200 shadow-sm w-full">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="text-sm font-black text-rose-800">Admin yêu cầu xoá</div>
+                          <div className="text-xs text-rose-700/80 font-medium">Bạn có đồng ý xoá vĩnh viễn báo giá này không?</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => setApprovingId(q.id)}
+                          className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase shadow-sm transition-all active:scale-95 flex-1 sm:flex-none"
+                        >
+                          Đồng ý xoá
+                        </button>
+                        <button
+                          onClick={() => handleRejectDelete(q.id)}
+                          className="px-4 py-2 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 font-bold text-xs uppercase shadow-sm transition-colors flex-1 sm:flex-none"
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* ========================================================================================= */}
           </div>
         ))
+      )}
+
+      {/* MODALS */}
+      {deletingId && (
+        <Portal>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-on-surface mb-2">Gửi yêu cầu xoá báo giá?</h3>
+                  <p className="text-sm text-on-surface-variant mb-6">
+                    Yêu cầu xoá sẽ được gửi đến Admin. Chỉ khi Admin đồng ý thì báo giá này mới bị xoá. Bạn có chắc chắn muốn gửi yêu cầu?
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setDeletingId(null)}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleRequestDelete}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all active:scale-95"
+                    >
+                      Gửi yêu cầu
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {approvingId && (
+        <Portal>
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-on-surface mb-2">Đồng ý xoá báo giá?</h3>
+                  <p className="text-sm text-on-surface-variant mb-6">
+                    Báo giá này sẽ bị chuyển vào thùng rác và không còn hiển thị trong danh sách nữa. Hành động này không thể hoàn tác ngay lập tức. Bạn có chắc chắn?
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => setApprovingId(null)}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface-variant"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleApproveDelete}
+                      className="px-5 py-2.5 rounded-xl font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-md transition-all active:scale-95"
+                    >
+                      Chắc chắn xoá
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
       )}
     </div>
   );

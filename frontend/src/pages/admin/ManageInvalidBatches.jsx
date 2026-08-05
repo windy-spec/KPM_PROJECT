@@ -10,6 +10,7 @@ import {
   X,
   Search,
   TriangleAlert,
+  CheckCircle,
 } from "lucide-react";
 import adminService from "../../services/admin.service";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -43,6 +44,8 @@ export default function ManageInvalidBatches() {
 
   // Xem chi tiết lỗi lô hàng
   const [selectedBatch, setSelectedBatch] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [modalTab, setModalTab] = useState("INVALID");
 
   // Xử lý xóa lô lỗi
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -94,6 +97,7 @@ export default function ManageInvalidBatches() {
         id: detailData.batch_id,
         file_name: batch.file_name,
       });
+      setModalTab("INVALID");
     } catch (err) {
       console.error(err);
       showError("Không thể tải chi tiết dòng lỗi của lô này!");
@@ -121,6 +125,24 @@ export default function ManageInvalidBatches() {
       );
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  // Duyệt các dòng hợp lệ
+  const handleApproveBatch = async (batchId) => {
+    setIsApproving(true);
+    try {
+      await adminService.approveImportBatch(batchId);
+      showSuccess("Đã duyệt thành công các dòng dữ liệu hợp lệ!");
+      setSelectedBatch(null);
+      fetchInvalidBatches();
+    } catch (err) {
+      console.error(err);
+      showError(
+        err?.response?.data?.message || "Có lỗi xảy ra khi duyệt lô hàng."
+      );
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -380,7 +402,7 @@ export default function ManageInvalidBatches() {
                   <TriangleAlert className="h-5 w-5 text-rose-600" />
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-[0.22em] text-on-surface">
-                      Chi Tiết Lỗi Lô: {selectedBatch.file_name} ({(selectedBatch.rows?.filter(r => r.validation_status === "INVALID") || []).length} lỗi)
+                      Chi Tiết Lô Nhập: {selectedBatch.file_name} ({(selectedBatch.rows?.filter(r => r.validation_status === "INVALID") || []).length} lỗi)
                     </h3>
                     <p className="text-[11px] font-bold text-on-surface-variant/70 mt-1">
                       Mã:{" "}
@@ -401,6 +423,22 @@ export default function ManageInvalidBatches() {
 
               {/* Thân Modal Chứa Bảng Con */}
               <div className="flex-1 overflow-y-auto p-6 bg-[#f6f8f8]">
+                {/* Tabs */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setModalTab("INVALID")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors border ${modalTab === "INVALID" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-white text-slate-500 border-outline-variant/60 hover:bg-slate-50"}`}
+                  >
+                    Dòng bị lỗi ({(selectedBatch.rows?.filter(r => r.validation_status === "INVALID") || []).length})
+                  </button>
+                  <button
+                    onClick={() => setModalTab("VALID")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors border ${modalTab === "VALID" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-white text-slate-500 border-outline-variant/60 hover:bg-slate-50"}`}
+                  >
+                    Dòng hợp lệ ({(selectedBatch.rows?.filter(r => r.validation_status === "VALID") || []).length})
+                  </button>
+                </div>
+
                 <div className="rounded-2xl border border-outline-variant/60 bg-white overflow-hidden shadow-sm">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
@@ -408,63 +446,87 @@ export default function ManageInvalidBatches() {
                         <th className="p-4 pl-6 w-32">Mã SP</th>
                         <th className="p-4 w-48">Tên Sản Phẩm</th>
                         <th className="p-4 w-32">Danh Mục</th>
-                        <th className="p-4">Nguyên nhân Lỗi (Validation)</th>
+                        <th className="p-4">{modalTab === "INVALID" ? "Nguyên nhân Lỗi (Validation)" : "Trạng thái"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/25">
                       {(() => {
-                        const invalidRows = selectedBatch.rows?.filter((r) => r.validation_status === "INVALID") || [];
-                        if (invalidRows.length === 0) {
+                        const filteredRows = selectedBatch.rows?.filter((r) => r.validation_status === modalTab) || [];
+                        if (filteredRows.length === 0) {
                           return (
                             <tr>
                               <td
                                 colSpan="4"
                                 className="p-8 text-center text-sm font-medium text-on-surface-variant/60"
                               >
-                                Không tìm thấy dữ liệu dòng lỗi.
+                                Không tìm thấy dữ liệu cho mục này.
                               </td>
                             </tr>
                           );
                         }
-                        return invalidRows.map((row, idx) => {
+                        return filteredRows.map((row, idx) => {
                           const rawData =
                             typeof row.data === "string"
                               ? JSON.parse(row.data)
                               : row.data || {};
-                          const errors =
-                            typeof row.validation_errors === "string"
-                              ? JSON.parse(row.validation_errors)
-                              : row.validation_errors || {};
 
-                          return (
-                            <tr
-                              key={row.id || idx}
-                              className="hover:bg-surface-container/10 transition-colors"
-                            >
-                              <td className="p-4 pl-6 font-mono font-bold text-[12px] text-primary">
-                                {rawData.product_code || (
-                                  <span className="text-on-surface-variant/40 italic">
-                                    Trống
+                          if (modalTab === "INVALID") {
+                            const errors =
+                              typeof row.validation_errors === "string"
+                                ? JSON.parse(row.validation_errors)
+                                : row.validation_errors || {};
+                            return (
+                              <tr
+                                key={row.id || idx}
+                                className="hover:bg-surface-container/10 transition-colors"
+                              >
+                                <td className="p-4 pl-6 font-mono font-bold text-[12px] text-primary">
+                                  {rawData.product_code || (
+                                    <span className="text-on-surface-variant/40 italic">
+                                      Trống
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-4 font-bold text-on-surface text-[13px]">
+                                  {rawData.product_name || "N/A"}
+                                </td>
+                                <td className="p-4 font-bold text-[12px] uppercase text-on-surface-variant">
+                                  {rawData.category_code || "N/A"}
+                                </td>
+                                <td className="p-4">
+                                  <div className="text-rose-600 text-[12px] font-semibold whitespace-pre-line bg-rose-50/50 p-2.5 rounded-lg border border-rose-100">
+                                    {errors && Object.keys(errors).length > 0
+                                      ? Object.values(errors)
+                                        .map((err) => `• ${err}`)
+                                        .join("\n")
+                                      : "Lỗi cấu trúc hoặc định dạng dữ liệu không đồng nhất."}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          } else {
+                            return (
+                              <tr
+                                key={row.id || idx}
+                                className="hover:bg-surface-container/10 transition-colors"
+                              >
+                                <td className="p-4 pl-6 font-mono font-bold text-[12px] text-primary">
+                                  {rawData.product_code || "N/A"}
+                                </td>
+                                <td className="p-4 font-bold text-on-surface text-[13px]">
+                                  {rawData.product_name || "N/A"}
+                                </td>
+                                <td className="p-4 font-bold text-[12px] uppercase text-on-surface-variant">
+                                  {rawData.category_code || "N/A"}
+                                </td>
+                                <td className="p-4">
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.18em] bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <CheckCircle className="w-3.5 h-3.5" /> Hợp lệ
                                   </span>
-                                )}
-                              </td>
-                              <td className="p-4 font-bold text-on-surface text-[13px]">
-                                {rawData.product_name || "N/A"}
-                              </td>
-                              <td className="p-4 font-bold text-[12px] uppercase text-on-surface-variant">
-                                {rawData.category_code || "N/A"}
-                              </td>
-                              <td className="p-4">
-                                <div className="text-rose-600 text-[12px] font-semibold whitespace-pre-line bg-rose-50/50 p-2.5 rounded-lg border border-rose-100">
-                                  {errors && Object.keys(errors).length > 0
-                                    ? Object.values(errors)
-                                      .map((err) => `• ${err}`)
-                                      .join("\n")
-                                    : "Lỗi cấu trúc hoặc định dạng dữ liệu không đồng nhất."}
-                                </div>
-                              </td>
-                            </tr>
-                          );
+                                </td>
+                              </tr>
+                            );
+                          }
                         });
                       })()}
                     </tbody>
@@ -480,6 +542,23 @@ export default function ManageInvalidBatches() {
                 >
                   Đóng cửa sổ
                 </button>
+                {(() => {
+                  const validRowsCount = (selectedBatch.rows || []).filter(r => r.validation_status === "VALID").length;
+                  if (validRowsCount > 0 && selectedBatch.status === "PENDING") {
+                    return (
+                      <button
+                        type="button"
+                        disabled={isApproving}
+                        onClick={() => handleApproveBatch(selectedBatch.batch_id)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-70"
+                      >
+                        {isApproving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        Duyệt {validRowsCount} dòng hợp lệ
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
                 <button
                   type="button"
                   onClick={() =>

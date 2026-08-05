@@ -8,6 +8,12 @@ class QuotationService {
   // 1. LẤY DANH SÁCH BÁO GIÁ (Dành cho Admin/Sale xem tổng quan)
   async getAllQuotations() {
     return await prisma.quotations.findMany({
+      where: {
+        OR: [
+          { deletion_status: null },
+          { deletion_status: { not: "DELETED" } }
+        ]
+      },
       include: {
         users: { select: { username: true, email: true } },
         // Thêm đoạn này để kéo luôn thông số vật tư ra cho danh sách
@@ -210,8 +216,7 @@ class QuotationService {
       const h = parseFloat(comp.height || 0) / 1000;
       
       let area = 0;
-      if (l > 0 && w > 0 && h > 0) area = l * w * h;
-      else if (l > 0 && w > 0) area = l * w;
+      if (l > 0 && w > 0) area = l * w;
       else if (l > 0 && h > 0) area = l * h;
       else if (w > 0 && h > 0) area = w * h;
       else area = l || w || h || 0;
@@ -259,7 +264,13 @@ class QuotationService {
 
   // 3.2 LẤY DANH SÁCH CÁ NHÂN (Cho User Dashboard)
   async getUserQuotations(user_id, statuses = []) {
-    const whereClause = { user_id };
+    const whereClause = { 
+      user_id,
+      OR: [
+        { deletion_status: null },
+        { deletion_status: { not: "DELETED" } }
+      ]
+    };
     if (statuses && statuses.length > 0) {
       whereClause.status = { in: statuses };
     }
@@ -510,6 +521,7 @@ class QuotationService {
     const materialIds = new Set();
     const thicknessIds = new Set();
     const paintIds = new Set();
+    const productIds = new Set();
 
     // 2. Lấy đơn giá nhân công mặc định
     const laborRate = await prisma.labor_rates.findFirst();
@@ -519,6 +531,7 @@ class QuotationService {
 
     // 3. Query toàn bộ dữ liệu 1 lần duy nhất
     items.forEach((item) => {
+      if (item.product_id) productIds.add(item.product_id);
       (item.components || []).forEach((comp) => {
         if (comp.material_id) materialIds.add(comp.material_id);
         if (comp.thickness_id) thicknessIds.add(comp.thickness_id);
@@ -527,7 +540,7 @@ class QuotationService {
     });
 
     // 4. Lấy dữ liệu từ DB
-    const [materialsDb, thicknessDb, paintsDb] = await Promise.all([
+    const [materialsDb, thicknessDb, paintsDb, productsDb] = await Promise.all([
       prisma.materials.findMany({
         where: { id: { in: Array.from(materialIds) } },
       }),
@@ -537,17 +550,27 @@ class QuotationService {
       prisma.paint_types.findMany({
         where: { id: { in: Array.from(paintIds) } },
       }),
+      prisma.products.findMany({
+        where: { id: { in: Array.from(productIds) } },
+      }),
     ]);
 
     // 5. Chuyển array thành Map object để tra cứu
     const mapMaterials = Object.fromEntries(materialsDb.map((m) => [m.id, m]));
     const mapThickness = Object.fromEntries(thicknessDb.map((t) => [t.id, t]));
     const mapPaints = Object.fromEntries(paintsDb.map((p) => [p.id, p]));
+    const mapProducts = Object.fromEntries(productsDb.map((p) => [p.id, p]));
 
     // 6. Vòng lặp tính toán
     for (const item of items) {
       const { product_id, components, note } = item;
       const itemQty = item.quantity || 1; // Số lượng sản phẩm
+      
+      const product = mapProducts[product_id];
+      const base_product_price = product?.price_adjustment ? parseFloat(product.price_adjustment) : 0;
+      
+      // Thêm giá cơ sở của sản phẩm vào tổng báo giá (có nhân với số lượng sản phẩm)
+      total_quoted_price += base_product_price * itemQty;
 
       if (!components || !Array.isArray(components) || components.length === 0)
         continue;
@@ -574,10 +597,16 @@ class QuotationService {
           );
         }
 
-        // Tính diện tích 1 linh kiện (m2) (Dùng length * width vì height thường = 0)
-        const l = parseFloat(length || height || 0);
-        const w = parseFloat(width || 0);
-        const area = (l / 1000) * (w / 1000);
+        // Tính diện tích 1 linh kiện (m2)
+        const l = parseFloat(length || 0) / 1000;
+        const w = parseFloat(width || 0) / 1000;
+        const h = parseFloat(height || 0) / 1000;
+        
+        let area = 0;
+        if (l > 0 && w > 0) area = l * w;
+        else if (l > 0 && h > 0) area = l * h;
+        else if (w > 0 && h > 0) area = w * h;
+        else area = l || w || h || 0;
 
         // Công thức tính không dùng % hao hụt (wasted) nữa, mà dùng số lượng tuyệt đối từ waste_configs hoặc waste_rate
         const mat_multiplier = thickness
@@ -615,8 +644,9 @@ class QuotationService {
           paint_id,
           dimensions: {
             product_id,
-            width: parseFloat(width),
-            height: parseFloat(height),
+            width: parseFloat(width || 0),
+            height: parseFloat(height || 0),
+            length: parseFloat(length || 0),
             area,
             quantity: compQty * itemQty, // Lưu lại tổng số lượng thực tế
             breakdown_costs: {
@@ -704,8 +734,7 @@ class QuotationService {
       const h = parseFloat(height || 0) / 1000;
       
       let area = 0;
-      if (l > 0 && w > 0 && h > 0) area = l * w * h;
-      else if (l > 0 && w > 0) area = l * w;
+      if (l > 0 && w > 0) area = l * w;
       else if (l > 0 && h > 0) area = l * h;
       else if (w > 0 && h > 0) area = w * h;
       else area = l || w || h || 0;
@@ -839,6 +868,112 @@ class QuotationService {
       },
       include: { quotation_specs: true },
     });
+  }
+
+  // 6. CƠ CHẾ XÓA BÁO GIÁ (2-WAY APPROVAL)
+  async requestDelete(id, role) {
+    const quotation = await this.getQuotationById(id);
+    if (!quotation) throw new Error("Báo giá không tồn tại!");
+    
+    // Validate trạng thái không cho xóa
+    const allowedStatuses = ["pending_admin", "user_proposed", "admin_quoted", "sent_to_customer", "draft"];
+    if (!allowedStatuses.includes(quotation.status)) {
+      throw new Error("Không thể xóa báo giá ở trạng thái này!");
+    }
+    
+    if (quotation.deletion_status) {
+      throw new Error("Yêu cầu xóa báo giá đang chờ xử lý!");
+    }
+    
+    const deletion_status = role === "ADMIN" ? "REQUESTED_BY_ADMIN" : "REQUESTED_BY_USER";
+    
+    const updated = await prisma.quotations.update({
+      where: { id },
+      data: { deletion_status },
+    });
+    
+    if (global.io) {
+      if (role === "ADMIN" && quotation.user_id) {
+        global.io.to(`room_user_${quotation.user_id}`).emit("quote_deletion_requested", {
+          message: "Admin vừa yêu cầu xóa báo giá này. Bạn có đồng ý không?",
+          data: updated,
+        });
+      } else if (role !== "ADMIN") {
+        global.io.to("room_admin").emit("quote_deletion_requested", {
+          message: "Khách hàng vừa yêu cầu xóa báo giá này!",
+          data: updated,
+        });
+      }
+    }
+    
+    return updated;
+  }
+
+  async approveDelete(id, role) {
+    const quotation = await this.getQuotationById(id);
+    if (!quotation) throw new Error("Báo giá không tồn tại!");
+    
+    if (role === "ADMIN" && quotation.deletion_status !== "REQUESTED_BY_USER") {
+      throw new Error("Bạn không có quyền duyệt yêu cầu xóa này!");
+    }
+    if (role !== "ADMIN" && quotation.deletion_status !== "REQUESTED_BY_ADMIN") {
+      throw new Error("Bạn không có quyền duyệt yêu cầu xóa này!");
+    }
+    
+    // Thực hiện Xóa Mềm (Soft Delete)
+    await prisma.quotations.update({
+      where: { id },
+      data: { deletion_status: "DELETED" },
+    });
+    
+    if (global.io) {
+      if (role === "ADMIN" && quotation.user_id) {
+        global.io.to(`room_user_${quotation.user_id}`).emit("quote_deletion_approved", {
+          message: "Admin đã đồng ý xóa báo giá.",
+          data: { id },
+        });
+      } else if (role !== "ADMIN") {
+        global.io.to("room_admin").emit("quote_deletion_approved", {
+          message: "Khách hàng đã đồng ý xóa báo giá.",
+          data: { id },
+        });
+      }
+    }
+    
+    return { success: true, message: "Báo giá đã được xóa thành công!" };
+  }
+
+  async rejectDelete(id, role) {
+    const quotation = await this.getQuotationById(id);
+    if (!quotation) throw new Error("Báo giá không tồn tại!");
+    
+    if (role === "ADMIN" && quotation.deletion_status !== "REQUESTED_BY_USER") {
+      throw new Error("Bạn không có quyền từ chối yêu cầu này!");
+    }
+    if (role !== "ADMIN" && quotation.deletion_status !== "REQUESTED_BY_ADMIN") {
+      throw new Error("Bạn không có quyền từ chối yêu cầu này!");
+    }
+    
+    const updated = await prisma.quotations.update({
+      where: { id },
+      data: { deletion_status: null },
+    });
+    
+    if (global.io) {
+      if (role === "ADMIN" && quotation.user_id) {
+        global.io.to(`room_user_${quotation.user_id}`).emit("quote_deletion_rejected", {
+          message: "Admin đã từ chối yêu cầu xóa báo giá của bạn.",
+          data: updated,
+        });
+      } else if (role !== "ADMIN") {
+        global.io.to("room_admin").emit("quote_deletion_rejected", {
+          message: "Khách hàng đã từ chối yêu cầu xóa báo giá.",
+          data: updated,
+        });
+      }
+    }
+    
+    return updated;
   }
 }
 module.exports = new QuotationService();

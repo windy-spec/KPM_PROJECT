@@ -47,7 +47,7 @@ const Footer = () => {
           <div className="flex gap-3 pt-2">
             {/* Facebook */}
             <a
-              href="https://www.facebook.com/groups/1212236082236816"
+              href="https://www.facebook.com/profile.php?id=61592936637761"
               className="w-9 h-9 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center text-white hover:bg-[#1877F2] hover:border-[#1877F2] hover:-translate-y-1 transition-all duration-300"
               title="Facebook"
             >

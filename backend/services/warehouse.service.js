@@ -685,6 +685,42 @@ class WarehouseService {
             }
           }
           if (isEnough) {
+            // Đã đủ vật tư -> Tiến hành trừ kho cho đơn hàng
+            for (const [matId, requiredQtyStr] of Object.entries(reqs)) {
+              const requiredQty = parseFloat(requiredQtyStr);
+              let actualMatId = matId;
+              let actualThickId = null;
+              if (matId.includes('_')) {
+                [actualMatId, actualThickId] = matId.split('_');
+              }
+              
+              let inv = await tx.inventory.findFirst({
+                where: { material_id: actualMatId, thickness_id: actualThickId || null },
+              });
+              if (!inv && actualThickId) {
+                inv = await tx.inventory.findFirst({
+                  where: { material_id: actualMatId, thickness_id: null },
+                });
+              }
+              if (inv) {
+                await tx.inventory.update({
+                  where: { id: inv.id },
+                  data: { quantity: { decrement: requiredQty } },
+                });
+              }
+
+              await tx.inventory_logs.create({
+                data: {
+                  material_id: actualMatId || matId,
+                  action_type: "EXPORT",
+                  quantity_change: -requiredQty,
+                  reference_code: `ORDER_${request.order_id}`,
+                  note: `Kho xuất vật tư (sau khi nhập bù) sản xuất đơn hàng ${request.order_id}`,
+                },
+              });
+            }
+
+            // Chuyển trạng thái sang sẵn sàng sản xuất
             await tx.orders.update({
               where: { id: request.order_id },
               data: { production_status: "production_ready" },

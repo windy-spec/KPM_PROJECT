@@ -231,6 +231,7 @@ model quotations {
   user_proposed_price   Decimal?                @db.Decimal(15, 2)
   nick_name             String?                 @db.VarChar(255)
   drawing_id            String?                 @db.Uuid
+  deletion_status       String?                 @db.VarChar(50)
   cart_items            cart_items[]
   orders                orders?
   quotation_attachments quotation_attachments[]

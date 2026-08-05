@@ -337,6 +337,7 @@ NHIỆM VỤ:
 Nhiệm vụ của bạn là phân tích hình ảnh bản vẽ và BẮT BUỘC trả về kết quả dưới định dạng JSON hợp lệ.
 TUYỆT ĐỐI KHÔNG thêm văn bản nằm ngoài JSON.
 Sử dụng Markdown (in đậm, gạch đầu dòng) trong phần diễn giải (nếu có).
+LƯU Ý QUAN TRỌNG: Hãy suy nghĩ thật ngắn gọn (dưới 100 từ) hoặc bỏ qua luôn bước suy nghĩ. Trả về JSON ngay lập tức để tránh bị ngắt giữa chừng do quá giới hạn dữ liệu.
 
 CẤU TRÚC JSON:
 {
@@ -355,12 +356,13 @@ CẤU TRÚC JSON:
         ],
         model: "qwen/qwen3.6-27b",
         temperature: 0.1,
+        max_tokens: 4096,
       });
 
       let rawJsonString = response.choices[0].message.content;
-      console.log("=== KẾT QUẢ RAW TỪ AI ===");
-      console.log(rawJsonString);
-      console.log("=========================");
+
+      // Xóa thẻ <think> ngay cả khi AI bị ngắt giữa chừng (chưa có </think>)
+      rawJsonString = rawJsonString.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
 
       const jsonMatch = rawJsonString.match(/```(?:json)?\n([\s\S]*?)\n```/);
       if (jsonMatch && jsonMatch[1]) rawJsonString = jsonMatch[1].trim();
@@ -379,6 +381,20 @@ CẤU TRÚC JSON:
         console.error("❌ LỖI PARSE JSON. Chuỗi cần parse:", rawJsonString);
         console.error("Chi tiết lỗi parse:", e.message);
         extractedSpecs = { is_valid_drawing: false, message: "AI không thể đọc thông số, ảnh quá mờ hoặc định dạng sai." };
+      }
+
+      // Normalize AI response if it returned a flat object or has typos
+      if (!extractedSpecs.dimensions) {
+        const hasFlatDims = extractedSpecs.length !== undefined || extractedSpecs.width !== undefined || extractedSpecs.height !== undefined || extractedSpecs.heiight !== undefined;
+        if (hasFlatDims) {
+          extractedSpecs.dimensions = {
+            length: extractedSpecs.length,
+            width: extractedSpecs.width,
+            height: extractedSpecs.height !== undefined ? extractedSpecs.height : extractedSpecs.heiight
+          };
+        }
+      } else if (extractedSpecs.dimensions && extractedSpecs.dimensions.heiight !== undefined && extractedSpecs.dimensions.height === undefined) {
+        extractedSpecs.dimensions.height = extractedSpecs.dimensions.heiight;
       }
 
       const isMissingName = !extractedSpecs.drawing_name || String(extractedSpecs.drawing_name).trim().toLowerCase() === "undefined" || String(extractedSpecs.drawing_name).trim() === "";

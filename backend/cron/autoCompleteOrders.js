@@ -49,6 +49,10 @@ cron.schedule("0 0 * * *", async () => {
                 tracked_at: new Date(),
               },
             });
+
+            // Đảm bảo hóa đơn tổng được tạo
+            const invoiceService = require("../services/invoice.service");
+            await invoiceService.createTotalInvoice(order.id, tx);
           });
           completedCount++;
         }

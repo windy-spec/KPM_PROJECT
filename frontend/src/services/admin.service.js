@@ -164,12 +164,6 @@ const adminService = {
   },
   
   // Drawings Management
-  createDrawing(data) {
-    return apiClient.post('/drawings', data);
-  },
-  getDrawingsByProduct(productId) {
-    return apiClient.get(`/drawings/product/${productId}`);
-  },
 
   updateProduct(id, data) {
     return apiClient.put(`/products/${id}`, data);

@@ -164,6 +164,7 @@ class PaymentService {
           prisma,
           "PHASE_2",
         );
+        await invoiceService.createTotalInvoice(order_id, prisma);
         if (global.io) {
           global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
             orderId: order_id,
@@ -224,6 +225,7 @@ class PaymentService {
             prisma,
             "PHASE_2",
           );
+          await invoiceService.createTotalInvoice(order.id, prisma);
           if (global.io) {
             global.io.to(`room_user_${userId}`).emit("orderStatusUpdated", {
               orderId: order.id,
@@ -367,6 +369,9 @@ class PaymentService {
               tx,
               invoiceType,
             );
+            if (isPhase2) {
+              await invoiceService.createTotalInvoice(order.id, tx);
+            }
 
             // Gửi email xác nhận
             const user = await tx.users.findUnique({
@@ -429,6 +434,9 @@ class PaymentService {
             tx,
             invoiceType,
           );
+          if (isPhase2) {
+            await invoiceService.createTotalInvoice(transaction.order_id, tx);
+          }
 
           // Gửi email xác nhận
           const user = await tx.users.findUnique({
@@ -713,6 +721,9 @@ class PaymentService {
                 tx,
                 invoiceType,
               );
+              if (isPhase2) {
+                await invoiceService.createTotalInvoice(order.id, tx);
+              }
 
               // Gửi email xác nhận
               const user = await tx.users.findUnique({
@@ -778,6 +789,9 @@ class PaymentService {
               tx,
               invoiceType,
             );
+            if (isPhase2) {
+              await invoiceService.createTotalInvoice(transaction.order_id, tx);
+            }
 
             // Gửi email xác nhận
             const user = await tx.users.findUnique({

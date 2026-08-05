@@ -204,5 +204,35 @@ class QuotationController {
       res.status(500).json({ success: false, message: e.message });
     }
   }
+
+  async requestDelete(req, res) {
+    try {
+      const role = req.user?.role === "ADMIN" ? "ADMIN" : "USER";
+      const result = await quotationService.requestDelete(req.params.id, role);
+      res.status(200).json({ success: true, message: "Đã gửi yêu cầu xóa báo giá!", data: result });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async approveDelete(req, res) {
+    try {
+      const role = req.user?.role === "ADMIN" ? "ADMIN" : "USER";
+      const result = await quotationService.approveDelete(req.params.id, role);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async rejectDelete(req, res) {
+    try {
+      const role = req.user?.role === "ADMIN" ? "ADMIN" : "USER";
+      const result = await quotationService.rejectDelete(req.params.id, role);
+      res.status(200).json({ success: true, message: "Đã từ chối yêu cầu xóa báo giá!", data: result });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
 }
 module.exports = new QuotationController();
