@@ -5,7 +5,7 @@ import forumService from "../../services/forumService";
 import moment from "moment";
 
 const ALLOWED_HASHTAGS = [
-  "#NoiThat", "#ThietKe", "#XuHuong", "#KienThuc", 
+  "#NoiThat", "#ThietKe", "#XuHuong", "#KienThuc",
   "#BaoGia", "#DuAn", "#SanXuat", "#GocChiaSe"
 ];
 
@@ -52,7 +52,7 @@ const ForumList = () => {
   return (
     <div className="min-h-screen bg-gray-50/50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Header Section */}
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-extrabold text-on-surface mb-4 tracking-tight">
@@ -63,49 +63,60 @@ const ForumList = () => {
           </p>
         </div>
 
-        {/* Filters and Search */}
-        <div className="flex flex-col items-center gap-6 mb-12 bg-white p-6 rounded-3xl border border-outline-variant/30 shadow-sm max-w-5xl mx-auto">
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="w-full max-w-2xl relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-outline group-focus-within:text-primary transition-colors" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-12 pr-4 py-3.5 border border-outline-variant/50 rounded-2xl leading-5 bg-surface-container/20 placeholder-outline focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary focus:bg-white text-base transition-all shadow-inner text-on-surface font-semibold"
-              placeholder="Tìm kiếm bài viết, xu hướng, báo giá..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </form>
+        {/* Filters and Search - Modern Big Bar */}
+        <div className="mb-12 max-w-4xl mx-auto px-2">
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-2.5 rounded-2xl border border-outline-variant/40 shadow-sm hover:shadow-md focus-within:shadow-md focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
+          >
 
-          {/* Hashtag Filters */}
-          <div className="flex flex-wrap gap-2 justify-center w-full">
+            {/* Search Input (Phần Search lớn & nổi bật) */}
+            <div className="relative flex-1 flex items-center min-w-0">
+              <Search className="h-5 w-5 text-outline absolute left-3.5 pointer-events-none transition-colors group-focus-within:text-primary" />
+              <input
+                type="text"
+                className="w-full pl-11 pr-4 py-3 bg-transparent text-base font-semibold text-on-surface placeholder:text-outline/70 placeholder:font-normal focus:outline-none"
+                placeholder="Tìm kiếm bài viết, xu hướng, báo giá..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Custom Styled Dropdown (Được bọc gọn gàng) */}
+            <div className="relative shrink-0 sm:border-l sm:border-outline-variant/30 sm:pl-2.5">
+              <div className="relative flex items-center">
+                <Hash className="w-4 h-4 text-primary absolute left-3 pointer-events-none opacity-80" />
+                <select
+                  value={selectedTag}
+                  onChange={(e) => {
+                    setSelectedTag(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full sm:w-auto appearance-none bg-surface-container/30 hover:bg-surface-container/60 text-on-surface font-bold text-sm py-3 pl-9 pr-10 rounded-xl cursor-pointer focus:outline-none border border-outline-variant/20 hover:border-primary/30 transition-all text-ellipsis"
+                >
+                  <option value="" className="font-semibold text-on-surface">Tất cả chủ đề</option>
+                  {ALLOWED_HASHTAGS.map((tag) => (
+                    <option key={tag} value={tag} className="font-semibold text-on-surface">
+                      {tag}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Custom Chevron Icon */}
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/70">
+                  <ChevronRight className="w-4 h-4 rotate-90" />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <button
-              onClick={() => { setSelectedTag(""); setPage(1); }}
-              className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
-                selectedTag === "" 
-                  ? "bg-primary text-white shadow-md" 
-                  : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
-              }`}
+              type="submit"
+              className="bg-primary hover:bg-primary-container text-white font-bold text-sm px-6 py-3 rounded-xl shadow-sm hover:shadow transition-all duration-200 shrink-0 flex items-center justify-center gap-2"
             >
-              Tất cả
+              <span>Tìm kiếm</span>
             </button>
-            {ALLOWED_HASHTAGS.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => { setSelectedTag(tag); setPage(1); }}
-                className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1 ${
-                  selectedTag === tag 
-                    ? "bg-primary text-white shadow-md" 
-                    : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
-                }`}
-              >
-                <Hash className="w-3 h-3" />
-                {tag.replace("#", "")}
-              </button>
-            ))}
-          </div>
+          </form>
         </div>
 
         {/* Posts Grid */}
@@ -124,14 +135,14 @@ const ForumList = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.map((post) => (
-              <Link 
-                to={`/forum/${post.id}`} 
+              <Link
+                to={`/forum/${post.id}`}
                 key={post.id}
                 className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-outline-variant/20 transform hover:-translate-y-1"
               >
                 <div className="p-8 flex flex-col flex-grow relative">
                   <div className="absolute top-0 left-0 w-full h-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  
+
                   <div className="flex flex-wrap gap-2 mb-4">
                     {post.hashtags?.map((tag, idx) => (
                       <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
@@ -167,11 +178,10 @@ const ForumList = () => {
               <button
                 key={idx}
                 onClick={() => setPage(idx + 1)}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
-                  page === idx + 1
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
-                }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${page === idx + 1
+                  ? "bg-primary text-white shadow-md"
+                  : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
+                  }`}
               >
                 {idx + 1}
               </button>

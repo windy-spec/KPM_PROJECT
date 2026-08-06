@@ -42,9 +42,9 @@ const ForumDetail = () => {
   if (!post) return null;
 
   return (
-    <div className="min-h-screen bg-surface-container/20 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+    <div className="min-h-screen bg-surface-container/20 py-12 md:py-16">
+      <div className="max-w-[85%] lg:max-w-[75%] 2xl:max-w-[1200px] mx-auto px-4 sm:px-6">
+
         {/* Back Button */}
         <button
           onClick={() => navigate("/forum")}
@@ -57,51 +57,60 @@ const ForumDetail = () => {
         </button>
 
         {/* Article Container */}
-        <article className="bg-white rounded-[2rem] shadow-sm border border-outline-variant/30 overflow-hidden relative">
-          
+        <article className="bg-white rounded-3xl shadow-sm border border-outline-variant/30 overflow-hidden relative">
+
           {/* Header */}
-          <header className="p-8 md:p-14 border-b border-outline-variant/30 bg-surface-container/10 relative overflow-hidden">
+          <header className="p-8 md:p-12 lg:p-16 border-b border-outline-variant/30 bg-white relative overflow-hidden">
             {/* Decorative background element */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-            
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+
+            <div className="flex items-center gap-4 text-sm font-semibold text-on-surface-variant mb-8 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black border border-primary/20 text-lg">
+                KPM
+              </div>
+              <div>
+                <div className="text-on-surface font-extrabold text-base">Ban Quản Trị</div>
+                <div className="flex items-center opacity-80 mt-0.5">
+                  <Calendar className="w-4 h-4 mr-1.5" />
+                  {moment(post.created_at).format("DD/MM/YYYY - HH:mm")}
+                </div>
+              </div>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl lg:text-[56px] font-black text-on-surface leading-[1.15] mb-8 tracking-tight relative z-10">
+              {post.title}
+            </h1>
+
             <div className="flex flex-wrap gap-2 mb-8 relative z-10">
               {post.hashtags?.map((tag, idx) => (
-                <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                  <Tag className="w-3 h-3 mr-1" />
+                <span key={idx} className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors">
+                  <Tag className="w-3.5 h-3.5 mr-1.5 opacity-60" />
                   {tag.replace("#", "")}
                 </span>
               ))}
             </div>
-            
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-on-surface leading-tight mb-6">
-              {post.title}
-            </h1>
-            
-            <div className="flex items-center justify-between text-sm text-on-surface-variant">
-              <div className="flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-outline" />
-                Đăng ngày: <span className="font-bold text-on-surface ml-1">{moment(post.created_at).format("DD/MM/YYYY HH:mm")}</span>
-              </div>
-              <button 
-                className="flex items-center font-bold hover:text-primary transition-colors"
+
+            <div className="flex items-center gap-4 relative z-10 border-t border-outline-variant/30 pt-6 mt-6">
+              <button
+                className="flex items-center px-5 py-2.5 rounded-xl font-bold bg-surface-container/40 hover:bg-primary/10 hover:text-primary transition-colors text-sm text-on-surface-variant"
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   alert("Đã copy link bài viết!");
                 }}
               >
-                <Share2 className="w-5 h-5 mr-1" />
-                Chia sẻ
+                <Share2 className="w-4 h-4 mr-2" />
+                Chia sẻ bài viết
               </button>
             </div>
           </header>
 
           {/* Content Body */}
-          <div className="p-8 md:p-12 prose prose-lg prose-slate max-w-none text-on-surface-variant prose-headings:text-on-surface prose-headings:font-black prose-img:rounded-2xl prose-img:shadow-md prose-img:w-full prose-img:object-cover prose-a:text-primary hover:prose-a:text-primary-container">
+          <div className="p-8 md:p-12 lg:p-16 prose prose-lg md:prose-xl prose-slate max-w-none text-on-surface-variant prose-headings:text-on-surface prose-headings:font-black prose-p:leading-relaxed prose-img:rounded-3xl prose-img:shadow-lg prose-img:w-full prose-img:object-cover prose-a:text-primary hover:prose-a:text-primary-container">
             <ReactMarkdown>
               {post.content}
             </ReactMarkdown>
           </div>
-          
+
         </article>
       </div>
     </div>

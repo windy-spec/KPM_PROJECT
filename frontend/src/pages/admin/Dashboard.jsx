@@ -214,7 +214,7 @@ const Dashboard = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={chartData}
-                          margin={{ top: 12, right: 8, left: 25, bottom: 0 }}
+                          margin={{ top: 12, right: 10, left: -9, bottom: 0 }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
@@ -231,8 +231,12 @@ const Dashboard = () => {
                             tickLine={false}
                             axisLine={false}
                             stroke="#94a3b8"
+                            tickFormatter={(value) => value >= 1000000000 ? `${value / 1000000000}B` : value >= 1000000 ? `${value / 1000000}M` : value >= 1000 ? `${value / 1000}K` : value}
                           />
-                          <Tooltip cursor={{ fill: "#f8fafc" }} />
+                          <Tooltip
+                            cursor={{ fill: "#f8fafc" }}
+                            formatter={(value) => [formatMoney(value), "Doanh thu"]}
+                          />
                           <Bar
                             dataKey="revenue"
                             fill="#0f766e"
@@ -280,7 +284,7 @@ const Dashboard = () => {
                     <div className="mt-6 pt-5 border-t border-dashed border-outline-variant/40 text-center">
                       <div className="inline-flex items-center gap-2 rounded-xl border border-outline-variant/50 px-4 py-3 text-[11px] font-semibold text-on-surface-variant/80 bg-surface-container/20">
                         <ArrowDown className="w-4 h-4 text-primary" />
-                        Thống kê dựa trên 120 đơn hàng gần nhất
+                        Thống kê dựa trên các đơn hàng gần nhất
                       </div>
                     </div>
                   </div>
@@ -302,7 +306,7 @@ const Dashboard = () => {
                           <th className="p-4">Ngày đặt</th>
                           <th className="p-4">Sản phẩm</th>
                           <th className="p-4">Giá trị</th>
-                          <th className="p-4">Trạng thái</th>         
+                          <th className="p-4">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/30 text-xs font-bold text-on-surface-variant">
