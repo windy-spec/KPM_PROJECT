@@ -24,9 +24,19 @@ router.get("/:id", quotationController.getById);
 router.put("/:id/status", quotationController.updateStatus);
 router.put("/:id/approve", quotationController.approveQuoteRequest);
 router.put(
+  "/:id/direct-confirm",
+  authenticateToken,
+  quotationController.directConfirmQuotation
+);
+router.put(
   "/:id/negotiate",
   authenticateToken,
   quotationController.userNegotiate,
+);
+router.put(
+  "/:id/contact-method",
+  authenticateToken,
+  quotationController.confirmContactMethod,
 );
 router.put(
   "/:id/final-decision",

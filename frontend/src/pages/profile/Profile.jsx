@@ -222,7 +222,7 @@ const ProfileDashboard = () => {
             {/* Tab Content */}
             <div className="mt-2">
               {activeTab === "overview" && <OverviewTab user={user} />}
-              {activeTab === "quotations" && <QuotationsTab />}
+              {activeTab === "quotations" && <QuotationsTab user={user} />}
               {activeTab === "orders" && <OrdersTab />}
               {activeTab === "favorites" && <FavoritesTab />}
               {activeTab === "ai_history" && <AIChatHistoryTab />}

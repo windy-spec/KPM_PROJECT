@@ -21,6 +21,9 @@ function StatusBadge({ status }) {
     under_review: 'bg-gray-50 text-gray-700 border-gray-200',
     admin_quoted: 'bg-sky-50 text-sky-700 border-sky-200',
     user_proposed: 'bg-purple-50 text-purple-700 border-purple-200',
+    pending_contact: 'bg-orange-50 text-orange-700 border-orange-200',
+    ready_to_negotiate: 'bg-pink-50 text-pink-700 border-pink-200',
+    negotiating: 'bg-violet-50 text-violet-700 border-violet-200',
   };
   const labelMap = {
     draft: 'Nháp',
@@ -35,6 +38,9 @@ function StatusBadge({ status }) {
     under_review: 'Xem xét',
     admin_quoted: 'Admin báo giá',
     user_proposed: 'Khách mặc cả',
+    pending_contact: 'Đợi khách phản hồi',
+    ready_to_negotiate: 'Khách muốn liên hệ',
+    negotiating: 'Đang thương lượng',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-[0.1em] border ${map[status] || 'bg-surface-container text-on-surface-variant border-outline-variant/40'}`}>

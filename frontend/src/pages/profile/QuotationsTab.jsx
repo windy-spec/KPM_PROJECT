@@ -11,13 +11,16 @@ import {
   Download,
   ExternalLink,
   Paperclip,
+  PhoneCall,
+  MessageSquare,
+  Delete,
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import { showError, showSuccess } from "../../utils/notify";
 import apiClient from "../../services/apiClient";
 import Portal from "../../components/common/Portal";
 
-const QuotationsTab = () => {
+const QuotationsTab = ({ user }) => {
   const socket = useSocket();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,11 +29,25 @@ const QuotationsTab = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [approvingId, setApprovingId] = useState(null);
 
+  const [contactModalId, setContactModalId] = useState(null);
+  const [contactMethod, setContactMethod] = useState("Zalo");
+  const [contactInfo, setContactInfo] = useState("");
+
   const [negotiatePrices, setNegotiatePrices] = useState({});
 
   useEffect(() => {
     fetchQuotations();
   }, []);
+
+  useEffect(() => {
+    if (contactModalId && user) {
+      if (contactMethod === "Zalo") {
+        setContactInfo(user.zaloNumber || user.phoneNumber || "");
+      } else {
+        setContactInfo(user.phoneNumber || "");
+      }
+    }
+  }, [contactMethod, contactModalId, user]);
 
   useEffect(() => {
     if (!socket) return;
@@ -66,6 +83,10 @@ const QuotationsTab = () => {
         "admin_quoted",
         "user_proposed",
         "admin_confirmed",
+        "pending_contact",
+        "ready_to_negotiate",
+        "negotiating",
+        "cancelled"
       ]);
       setQuotations(res.data?.data || []);
     } catch (error) {
@@ -123,6 +144,36 @@ const QuotationsTab = () => {
       fetchQuotations();
     } catch (e) {
       showError(e?.response?.data?.message || "Gửi đề xuất mặc cả thất bại");
+    }
+  };
+
+  const openContactModal = (q) => {
+    setContactModalId(q.id);
+    // setContactInfo is handled by useEffect
+  };
+
+  const handleConfirmContact = async () => {
+    if (!contactInfo) {
+      showError("Vui lòng nhập số điện thoại / Zalo!");
+      return;
+    }
+
+    const cleanPhone = contactInfo.replace(/[\s\-\+]/g, '');
+    if (!/^\d{9,11}$/.test(cleanPhone)) {
+      showError("Số điện thoại / Zalo không hợp lệ! Vui lòng nhập đúng từ 9-11 chữ số.");
+      return;
+    }
+
+    try {
+      await apiClient.put(`/quotations/${contactModalId}/contact-method`, {
+        method: contactMethod,
+        contactInfo: contactInfo,
+      });
+      showSuccess("Đã gửi thông tin liên hệ thành công!");
+      setContactModalId(null);
+      fetchQuotations();
+    } catch (e) {
+      showError(e?.response?.data?.message || "Gửi thông tin thất bại");
     }
   };
 
@@ -224,6 +275,30 @@ const QuotationsTab = () => {
         return (
           <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700">
             <CheckCircle2 className="w-3 h-3" /> Admin đã báo giá
+          </span>
+        );
+      case "pending_contact":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
+            <MessageSquare className="w-3 h-3" /> Chờ xác nhận liên hệ
+          </span>
+        );
+      case "ready_to_negotiate":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-700">
+            <PhoneCall className="w-3 h-3" /> Đợi xưởng liên hệ
+          </span>
+        );
+      case "negotiating":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700">
+            <Clock className="w-3 h-3" /> Đang thương lượng
+          </span>
+        );
+      case "cancelled":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+            <Delete className="w-3 h-3" /> Đã bị từ chối
           </span>
         );
       default:
@@ -429,6 +504,29 @@ const QuotationsTab = () => {
                       </span>
                     </div>
                   )}
+
+                  {q.status === "pending_contact" && (
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-orange-50 p-3 rounded-xl border border-orange-200 w-full">
+                      <div className="text-xs text-orange-800 font-medium">
+                        KPM muốn thương lượng trực tiếp với bạn về đơn hàng này!
+                      </div>
+                      <button
+                        onClick={() => openContactModal(q)}
+                        className="px-6 py-2 text-xs font-black uppercase tracking-widest bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors shadow-md"
+                      >
+                        Chọn cách liên hệ
+                      </button>
+                    </div>
+                  )}
+
+                  {q.status === "ready_to_negotiate" && (
+                    <div className="bg-pink-50/40 border border-pink-100 text-pink-800 p-3 rounded-xl text-xs flex items-center gap-2 italic w-full">
+                      <Clock className="w-4 h-4 shrink-0 text-pink-600" />
+                      <span>
+                        Bạn đã gửi yêu cầu thương lượng. Chuyên viên KPM sẽ sớm liên hệ với bạn qua thông tin đã chọn.
+                      </span>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -556,6 +654,96 @@ const QuotationsTab = () => {
           </div>
         </Portal>
       )}
+
+        {/* Modal Chọn phương thức liên hệ */}
+        {contactModalId && (
+          <Portal>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div
+                className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-md shadow-2xl animate-fade-in"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-on-surface">Phương thức liên hệ</h2>
+                  <button
+                    onClick={() => setContactModalId(null)}
+                    className="p-2 hover:bg-surface-container rounded-full transition-colors"
+                  >
+                    <XCircle className="w-6 h-6 text-on-surface-variant" />
+                  </button>
+                </div>
+                
+                <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+                  KPM muốn trao đổi thêm với bạn về đơn hàng. Bạn muốn chúng tôi liên hệ qua phương thức nào?
+                </p>
+
+                <div className="space-y-4 mb-8">
+                  <label className="flex items-center justify-between p-4 border rounded-xl cursor-pointer hover:bg-surface-container/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 text-blue-600 rounded-full">
+                        <MessageSquare className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold">Nhắn tin Zalo</span>
+                    </div>
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="Zalo"
+                      checked={contactMethod === "Zalo"}
+                      onChange={() => setContactMethod("Zalo")}
+                      className="w-5 h-5 text-primary focus:ring-primary"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 border rounded-xl cursor-pointer hover:bg-surface-container/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-100 text-emerald-600 rounded-full">
+                        <PhoneCall className="w-5 h-5" />
+                      </div>
+                      <span className="font-bold">Gọi điện trực tiếp</span>
+                    </div>
+                    <input
+                      type="radio"
+                      name="contactMethod"
+                      value="Phone"
+                      checked={contactMethod === "Phone"}
+                      onChange={() => setContactMethod("Phone")}
+                      className="w-5 h-5 text-primary focus:ring-primary"
+                    />
+                  </label>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-bold text-on-surface mb-2">
+                      Số điện thoại {contactMethod === 'Zalo' ? 'Zalo' : ''} của bạn:
+                    </label>
+                    <input
+                      type="text"
+                      value={contactInfo}
+                      onChange={(e) => setContactInfo(e.target.value)}
+                      placeholder="Ví dụ: 0912345678"
+                      className="w-full px-4 py-3 border border-outline-variant rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setContactModalId(null)}
+                    className="px-6 py-2.5 text-sm font-bold text-on-surface-variant hover:bg-surface-container rounded-xl transition-colors"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    onClick={handleConfirmContact}
+                    className="px-6 py-2.5 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary-container transition-colors shadow-lg shadow-primary/30"
+                  >
+                    Gửi xác nhận
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Portal>
+        )}
     </div>
   );
 };

@@ -232,6 +232,7 @@ model quotations {
   nick_name             String?                 @db.VarChar(255)
   drawing_id            String?                 @db.Uuid
   deletion_status       String?                 @db.VarChar(50)
+  contact_preference    String?                 @db.VarChar(255)
   cart_items            cart_items[]
   orders                orders?
   quotation_attachments quotation_attachments[]

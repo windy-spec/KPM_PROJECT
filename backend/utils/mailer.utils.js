@@ -627,10 +627,43 @@ const sendFeedbackThanksEmail = async (email, userName = "Quý khách") => {
   return transporter.sendMail(mailOptions);
 };
 
+const sendQuotationNegotiationEmail = async (email, userName, quotationId) => {
+  const mailOptions = {
+    from: `"KPM Materials" <${process.env.MAIL_USER}>`,
+    to: email,
+    subject: `[KPM] Đề xuất thương lượng báo giá #${quotationId}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #1e3a8a; text-align: center;">YÊU CẦU THƯƠNG LƯỢNG BÁO GIÁ</h2>
+        <p>Xin chào <strong>${userName}</strong>,</p>
+        <p>Chuyên viên của KPM Materials đã xem xét yêu cầu báo giá <strong>#${quotationId}</strong> của bạn.</p>
+        <p>Để có thể tư vấn chi tiết về vật tư và đưa ra mức giá ưu đãi nhất, chúng tôi rất muốn được trao đổi trực tiếp với bạn.</p>
+        
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; color: #334155; font-weight: bold;">Bạn muốn chúng tôi liên hệ qua phương thức nào?</p>
+          <p style="margin: 10px 0 0 0; font-size: 14px;">Vui lòng bấm vào nút bên dưới để chọn phương thức liên lạc (Gọi điện hoặc Zalo) để chuyên viên KPM có thể chủ động liên hệ với bạn.</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/profile?panel=quotations" style="display: inline-block; background-color: #f59e0b; color: #ffffff; text-decoration: none; padding: 12px 25px; font-size: 15px; font-weight: bold; border-radius: 6px; text-transform: uppercase;">
+            CHỌN PHƯƠNG THỨC LIÊN HỆ
+          </a>
+        </div>
+
+        <p style="color: #64748b; font-size: 13px; text-align: center;">Nếu nút bấm không hoạt động, bạn có thể truy cập vào mục Quản lý Báo giá trong tài khoản KPM của mình.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p>Trân trọng,<br/><strong>KPM Materials Team</strong></p>
+      </div>
+    `,
+  };
+  return transporter.sendMail(mailOptions);
+};
+
 module.exports = {
   sendVerifyEmail,
   sendQuotationEmail,
   sendOrderConfirmationEmail,
   sendDepositRequestEmail,
   sendFeedbackThanksEmail,
+  sendQuotationNegotiationEmail,
 };

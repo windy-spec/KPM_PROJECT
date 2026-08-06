@@ -17,7 +17,11 @@ import {
   Eye,
   Download,
   Package,
-  X
+  X,
+  CheckCircle2,
+  PhoneCall,
+  MessageSquare,
+  Copy
 } from "lucide-react";
 import { useSocket } from "../../context/SocketContext";
 import html2canvas from "html2canvas";
@@ -201,6 +205,26 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     }
   }
 
+  // Admin chốt giá cuối cùng và chuyển thẳng sang admin_confirmed (khi đang negotiating)
+  async function handleDirectConfirm() {
+    try {
+      if (!customPrice) {
+        showError("Vui lòng nhập giá chốt cuối cùng!");
+        return;
+      }
+      const priceToApprove = Number(customPrice);
+      await apiClient.put(`/quotations/${id}/direct-confirm`, {
+        price: priceToApprove
+      });
+      showSuccess("Đã chốt giá Zalo thành công. Đơn hàng đã được tạo!");
+      await load();
+    } catch (e) {
+      showError(
+        e?.response?.data?.message || e?.message || "Lỗi khi chốt đơn trực tiếp.",
+      );
+    }
+  }
+
   async function handleApproveAndSendEmail() {
     try {
       await apiClient.put(`/quotations/${id}/approve`, {
@@ -248,9 +272,13 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
   // Chốt yêu cầu mặc cả từ khách
   async function handleFinalDecision() {
     try {
-      await apiClient.put(`/quotations/${id}/final-decision`, {
-        status: finalStatus
-      })
+      if (finalStatus === "pending_contact") {
+        await apiClient.put(`/quotations/${id}/status`, { status: "pending_contact" });
+      } else {
+        await apiClient.put(`/quotations/${id}/final-decision`, {
+          status: finalStatus
+        });
+      }
       showSuccess("Đã chốt quyết định cho yêu cầu báo giá này!");
       await load();
     } catch (e) {
@@ -302,6 +330,17 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
     html = html.replace(/\{\{\s*MATERIAL_NAME\s*\}\}/g, materialName);
     html = html.replace(/\{\{\s*THICKNESS\s*\}\}/g, thickness);
     return html;
+  }
+
+  function getStatusLabel(status) {
+    switch (status) {
+      case "admin_quoted": return "Admin báo giá";
+      case "user_proposed": return "Khách mặc cả";
+      case "pending_contact": return "Đợi khách phản hồi";
+      case "ready_to_negotiate": return "Khách muốn liên hệ";
+      case "negotiating": return "Đang thương lượng";
+      default: return status;
+    }
   }
 
   async function handlePackageBlueprints() {
@@ -742,6 +781,96 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
           {data && !data.deletion_status && (
             <div className="space-y-3">
 
+            {/* TRẠNG THÁI YÊU CẦU KHÁCH CHỌN LIÊN HỆ */}
+            {data.status === "pending_contact" && (
+              <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 space-y-3">
+                <div className="flex items-center gap-1.5 text-orange-800 text-xs font-black uppercase tracking-wider">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Chờ Khách Chọn Kênh</span>
+                </div>
+                <div className="text-[13px] font-medium text-orange-700 italic">
+                  Đã gửi Email. Đang chờ khách hàng xác nhận số điện thoại / Zalo.
+                </div>
+              </div>
+            )}
+
+            {/* TRẠNG THÁI KHÁCH ĐÃ CHỌN KÊNH -> ADMIN CẦN GỌI/ADD ZALO */}
+            {data.status === "ready_to_negotiate" && (
+              <div className="bg-pink-50 p-4 rounded-xl border border-pink-200 shadow-sm space-y-3 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-pink-500"></div>
+                <div className="flex items-center gap-1.5 text-pink-800 text-xs font-black uppercase tracking-wider">
+                  <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
+                  <span>Yêu cầu liên hệ từ khách</span>
+                </div>
+                
+                <div className="bg-white rounded-lg border border-pink-100 p-3 font-medium text-[13px] text-on-surface flex items-center justify-between">
+                  <span>{data.contact_preference || "Không có thông tin"}</span>
+                  <button 
+                    onClick={() => {
+                      const numMatch = data.contact_preference?.match(/\\d+/g);
+                      if (numMatch) {
+                        navigator.clipboard.writeText(numMatch.join(''));
+                        showSuccess("Đã copy số điện thoại!");
+                      } else {
+                        navigator.clipboard.writeText(data.contact_preference || "");
+                        showSuccess("Đã copy thông tin!");
+                      }
+                    }}
+                    className="p-1.5 text-pink-600 hover:bg-pink-50 rounded transition-colors"
+                    title="Copy số"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => changeStatus("negotiating")}
+                  className="w-full rounded-xl bg-pink-600 hover:bg-pink-700 px-4 h-10 text-white font-bold text-xs uppercase shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Tôi đã liên hệ khách
+                </button>
+              </div>
+            )}
+
+            {/* TRẠNG THÁI ĐANG THƯƠNG LƯỢNG */}
+            {data.status === "negotiating" && (
+              <div className="bg-violet-50 p-4 rounded-xl border border-violet-200 space-y-3">
+                <div className="flex items-center gap-1.5 text-violet-800 text-xs font-black uppercase tracking-wider">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Đang Thương Lượng Zalo/Call</span>
+                </div>
+                
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    value={customPrice ? Number(customPrice).toLocaleString('vi-VN') : ''}
+                    onChange={(e) => setCustomPrice(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Chốt giá cuối cùng..."
+                    className="w-full px-3 py-2 border border-violet-300 rounded-lg text-sm font-black text-on-surface focus:outline-none focus:border-violet-500 bg-white shadow-2xs"
+                  />
+                  {customPrice && (
+                    <div className="text-[11px] text-violet-700 font-bold pl-1">
+                      Xem trước: {formatVND(customPrice)}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleDirectConfirm}
+                  className="w-full rounded-xl bg-violet-600 hover:bg-violet-700 px-4 h-10 text-white font-bold text-xs uppercase shadow-md transition-all active:scale-95"
+                >
+                  Chốt Đơn (Admin Confirmed)
+                </button>
+                <button
+                  onClick={() => changeStatus("cancelled")}
+                  className="w-full rounded-xl border border-rose-200 bg-white px-4 h-10 text-rose-600 font-bold text-xs uppercase hover:bg-rose-50 transition-colors"
+                >
+                  Thương lượng thất bại (Huỷ đơn)
+                </button>
+              </div>
+            )}
+
             {/* TRẠNG THÁI CHỜ DUYỆT ADMIN */}
             {data.status === "pending_admin" && (
               <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/80 space-y-3">
@@ -809,7 +938,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                     className="w-full px-3 py-2 border border-purple-300 rounded-lg text-sm font-bold text-on-surface focus:outline-none focus:border-purple-500 bg-white shadow-2xs"
                   >
                     <option value="admin_confirmed">Đồng ý (admin_confirmed)</option>
-                    <option value="under_review">Xem xét thêm (under_review)</option>
+                    <option value="pending_contact">Xem xét thêm (Yêu cầu thương lượng qua Mail)</option>
                     <option value="cancelled">Từ chối (cancelled)</option>
                   </select>
                 </div>
@@ -852,7 +981,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
             )}
 
             {/* CÁC TRẠNG THÁI VÒNG ĐỜI ĐÃ KHÓA */}
-            {!["draft", "pending_admin", "sent_to_customer", "customer_approved", "approved"].includes(data.status) && (
+            {!["draft", "pending_admin", "sent_to_customer", "customer_approved", "approved", "pending_contact", "ready_to_negotiate", "negotiating"].includes(data.status) && (
               <div className="bg-surface-container/30 border border-outline-variant/40 rounded-xl p-3.5 text-xs text-on-surface-variant/70 italic flex gap-2 items-center">
                 <AlertCircle className="w-4 h-4 text-on-surface-variant/60 shrink-0" />
                 <p>

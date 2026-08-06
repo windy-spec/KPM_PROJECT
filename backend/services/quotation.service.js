@@ -113,6 +113,9 @@ class QuotationService {
       "cancelled",
       "under_review",
       "favorite",
+      "pending_contact",
+      "ready_to_negotiate",
+      "negotiating",
     ];
     if (!validStatuses.includes(status)) {
       throw new Error("Trạng thái không hợp lệ!");
@@ -266,10 +269,6 @@ class QuotationService {
   async getUserQuotations(user_id, statuses = []) {
     const whereClause = { 
       user_id,
-      OR: [
-        { deletion_status: null },
-        { deletion_status: { not: "DELETED" } }
-      ]
     };
     if (statuses && statuses.length > 0) {
       whereClause.status = { in: statuses };
@@ -435,7 +434,7 @@ class QuotationService {
     return updateQuote;
   }
 
-  // 3.5 Admin chốt trạng thái cuối cùng
+  // 3.5 Admin chốt trạng thái cuối cùng (trạng thái chờ)
   async adminFinalDecision(id, final_status) {
     const allowedStatuses = [
       "processing",
@@ -454,6 +453,96 @@ class QuotationService {
       throw new Error("Chỉ có thể chốt khi đang ở trạng thái mặc cả!");
     }
     return await this.updateStatus(id, final_status);
+  }
+
+  // 3.5.1 Admin chốt đơn trực tiếp (Sau khi đã đàm phán Zalo)
+  async directConfirm(id, price) {
+    // Lưu giá cuối cùng do admin chốt (có thể dùng chung cột admin_proposed_price)
+    await prisma.quotations.update({
+      where: { id },
+      data: {
+        admin_proposed_price: parseFloat(price)
+      },
+    });
+
+    // Chuyển thẳng sang admin_confirmed (Hệ thống sẽ tự sinh order và email Order Confirmation)
+    return await this.updateStatus(id, "admin_confirmed");
+  }
+
+  // 3.6 Yêu cầu khách hàng chọn phương thức thương lượng (Admin)
+  async requestNegotiation(id) {
+    const quotation = await prisma.quotations.update({
+      where: { id },
+      data: { status: "pending_contact" },
+      include: { users: true },
+    });
+
+    if (quotation.users && quotation.users.email) {
+      const { sendQuotationNegotiationEmail } = require("../utils/mailer.utils");
+      try {
+        await sendQuotationNegotiationEmail(
+          quotation.users.email,
+          quotation.users.username || "Quý khách",
+          quotation.id
+        );
+      } catch (err) {
+        console.error("Lỗi khi gửi email yêu cầu thương lượng:", err);
+      }
+    }
+
+    if (global.io) {
+      if (quotation.user_id) {
+        global.io.to(`room_user_${quotation.user_id}`).emit("quote_updated", {
+          message: "KPM muốn thương lượng thêm về báo giá của bạn. Vui lòng kiểm tra Email!",
+          data: quotation,
+        });
+      }
+      global.io.to("room_admin").emit("quote_updated", {
+        message: "Đã gửi yêu cầu thương lượng đến khách hàng.",
+        data: quotation,
+      });
+    }
+
+    return quotation;
+  }
+
+  // 3.7 Khách hàng xác nhận phương thức liên hệ (User)
+  async confirmContactMethod(id, user_id, method, contactInfo) {
+    const quotation = await this.getQuotationById(id);
+
+    if (quotation.user_id !== user_id) {
+      throw new Error("Bạn không có quyền thực hiện thao tác này!");
+    }
+    if (quotation.status !== "pending_contact") {
+      throw new Error("Yêu cầu không hợp lệ ở trạng thái hiện tại!");
+    }
+
+    // Nếu chọn Zalo, cập nhật lại số Zalo vào profile để lưu lâu dài
+    if (method === "Zalo" && contactInfo) {
+      await prisma.user_profiles.update({
+        where: { user_id },
+        data: { zalo_number: contactInfo },
+      });
+    }
+
+    const preferenceStr = `Phương thức: ${method} - Số liên hệ: ${contactInfo}`;
+
+    const updateQuote = await prisma.quotations.update({
+      where: { id },
+      data: {
+        status: "ready_to_negotiate",
+        contact_preference: preferenceStr,
+      },
+    });
+
+    if (global.io) {
+      global.io.to("room_admin").emit("quote_updated", {
+        message: `Khách hàng đã chọn cách liên hệ: ${preferenceStr}`,
+        data: updateQuote,
+      });
+    }
+
+    return updateQuote;
   }
 
   // 4. THÊM FILE ĐÍNH KÈM (Lưu Link bản vẽ từ FE gửi xuống)

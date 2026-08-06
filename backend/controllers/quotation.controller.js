@@ -26,10 +26,35 @@ class QuotationController {
   async updateStatus(req, res) {
     try {
       const { status } = req.body;
+      
+      if (status === "pending_contact") {
+        return res.status(200).json({
+          success: true,
+          message: "Đã gửi yêu cầu thương lượng đến khách hàng!",
+          data: await quotationService.requestNegotiation(req.params.id),
+        });
+      }
+
       res.status(200).json({
         success: true,
         message: "Cập nhật trạng thái thành công!",
         data: await quotationService.updateStatus(req.params.id, status),
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
+  async confirmContactMethod(req, res) {
+    try {
+      const { method, contactInfo } = req.body;
+      const user_id = req.user?.id;
+      if (!user_id) throw new Error("Chưa đăng nhập!");
+
+      res.status(200).json({
+        success: true,
+        message: "Đã gửi xác nhận phương thức liên hệ!",
+        data: await quotationService.confirmContactMethod(req.params.id, user_id, method, contactInfo),
       });
     } catch (e) {
       res.status(400).json({ success: false, message: e.message });
@@ -154,6 +179,24 @@ class QuotationController {
       res.status(400).json({ success: false, message: e.message });
     }
   }
+
+  async directConfirmQuotation(req, res) {
+    try {
+      const { price } = req.body;
+      const result = await quotationService.directConfirm(
+        req.params.id,
+        price
+      );
+      res.status(200).json({
+        success: true,
+        message: "Đã chốt đơn thành công, hệ thống tự động sinh mã đơn hàng!",
+        data: result,
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   async userNegotiate(req, res) {
     try {
       const { price } = req.body;
