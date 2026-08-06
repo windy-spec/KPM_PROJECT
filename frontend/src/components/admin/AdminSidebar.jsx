@@ -66,6 +66,7 @@ const AdminSidebar = ({ onPanelChange = () => { } }) => {
         { label: 'Mẫu Linh Kiện', icon: Layers, panel: 'component_templates' },
         { label: 'Phê Duyệt Sản Xuất', icon: ClipboardList, panel: 'production_requests' },
         { label: 'Yêu Cầu Nhập Vật Tư', icon: ClipboardList, panel: 'material_requests' },
+        { label: 'Quản Lý Diễn Đàn', icon: FileText, panel: 'forum' },
         { label: 'Quản Lý Feedbacks', icon: ClipboardList, panel: 'feedbacks' }
       ],
     },

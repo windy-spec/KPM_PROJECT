@@ -496,3 +496,14 @@ model feedbacks {
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
+
+model forum_posts {
+  id                  String    @id @default(uuid()) @db.Uuid
+  title               String    @db.VarChar(255)
+  content             String
+  hashtags            Json?
+  status              String    @default("pending") @db.VarChar(50)
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @updatedAt @db.Timestamptz(6)
+  related_product_ids Json?
+}

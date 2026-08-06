@@ -41,6 +41,7 @@ import ManageComponentTemplates from "./ManageComponentTemplates";
 import ManageProductionRequests from "./ManageProductionRequests";
 import AdminMaterialRequestApproval from "../../components/admin/AdminMaterialRequestApproval";
 import ManageFeedbacks from "./ManageFeedbacks";
+import ForumManagement from "./ForumManagement";
 import adminService from "../../services/admin.service";
 
 
@@ -452,6 +453,12 @@ const Dashboard = () => {
             {activePanel === "feedbacks" && (
               <section>
                 <ManageFeedbacks />
+              </section>
+            )}
+
+            {activePanel === "forum" && (
+              <section>
+                <ForumManagement />
               </section>
             )}
 

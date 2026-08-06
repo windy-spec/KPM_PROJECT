@@ -9,6 +9,7 @@ const prisma = require("./models/prisma");
 require("./cron/importCleanup.cron");
 require("./cron/sessionCleanup.cron")();
 require("./cron/autoCompleteOrders.js");
+require("./cron/forumAutoGenerate.cron.js");
 const app = express();
 
 const server = http.createServer(app);
@@ -98,6 +99,7 @@ const materialRequestRoutes = require("./routes/material_request.routes.js");
 const drawingRoutes = require("./routes/drawing.routes.js");
 const favoriteRoutes = require("./routes/favorite.routes.js");
 const feedbackRoutes = require("./routes/feedback.routes.js");
+const forumRoutes = require("./routes/forum.routes.js");
 app.use(cors());
 app.use(express.json());
 
@@ -126,6 +128,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/material-requests", materialRequestRoutes);
 app.use("/api/drawings", drawingRoutes);
 app.use("/api/feedbacks", feedbackRoutes);
+app.use("/api/forum", forumRoutes);
 // Route mặc định kiểm tra trạng thái server
 app.get("/", (req, res) => {
   res.send(" KPM BACKEND IS RUNNING ");

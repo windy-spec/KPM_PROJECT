@@ -7,7 +7,8 @@ import {
   LayoutPanelLeft,
   Ruler,
   Settings,
-  Heart
+  Heart,
+  Newspaper
 } from "lucide-react";
 import { categoryService } from "../../services/category.service";
 
@@ -46,6 +47,12 @@ const NavigationMenu = () => {
       icon: Hammer,
       hasSub: false,
       to: "/warranty",
+    },
+    {
+      title: "Diễn đàn",
+      icon: Newspaper,
+      hasSub: false,
+      to: "/forum",
     },
     {
       title: "Về chúng tôi",

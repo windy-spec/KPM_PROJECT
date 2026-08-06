@@ -46,6 +46,8 @@ import WarehouseDashboard from "./pages/warehouse/WarehouseDashboard";
 import ScrollToTop from "./components/common/ScrollToTop";
 import ChatWindow from "./components/chat/ChatWindow";
 import Viewer3D from "./pages/shared/Viewer3D";
+import ForumList from "./pages/forum/ForumList";
+import ForumDetail from "./pages/forum/ForumDetail";
 
 const routeMap = [
   {
@@ -266,6 +268,26 @@ const routeMap = [
       <UserGuard>
         <MainLayout>
           <CustomQuoteForm />
+        </MainLayout>
+      </UserGuard>
+    )
+  },
+  {
+    path: "/forum",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <ForumList />
+        </MainLayout>
+      </UserGuard>
+    )
+  },
+  {
+    path: "/forum/:id",
+    element: (
+      <UserGuard>
+        <MainLayout>
+          <ForumDetail />
         </MainLayout>
       </UserGuard>
     )
