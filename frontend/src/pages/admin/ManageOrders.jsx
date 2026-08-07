@@ -65,53 +65,53 @@ export default function ManageOrders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-        const res = await orderService.getAllOrders();
-        if (res.success && res.data) {
-          const formattedOrders = res.data.map((o) => ({
-            id: o.id,
-            display_id: o.order_code,
-            customer_name:
-              o.customer_name || o.users?.username || o.quotations?.users?.username || "Khách",
-            customer_phone:
-              o.customer_phone || o.users?.phone || o.quotations?.users?.phone || "N/A",
-            created_at: o.created_at,
-            status: o.production_status || "pending",
-            shipping_address: o.shipping_address || o.quotations?.address || "Liên hệ nhận hàng",
-            notes: o.order_notes || o.quotations?.notes || "",
-            items: o.quotation_id 
-              ? [{
-                  id: o.quotations?.id || "custom-quote",
-                  product_name: o.quotations?.title || o.quotations?.nick_name || "Sản phẩm gia công theo yêu cầu",
-                  quantity: 1,
-                  area: 0,
-                  price: (parseFloat(o.total_amount) || 0) - (parseFloat(o.shipping_fee) || 0) - (parseFloat(o.installation_fee) || 0),
-                  unit: "Gói",
-                  isCustom: false,
-                }]
-              : (o.order_items?.length > 0 
-                ? o.order_items.map((i) => ({
-                    id: i.id,
-                    product_name: i.products?.product_name || "Sản phẩm",
-                    quantity: i.quantity,
-                    price: parseFloat(i.price) || 0,
-                    unit: "Cái",
-                  }))
-                : []),
-            total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
-            shipping_fee: parseFloat(o.shipping_fee) || 0,
-            installation_fee: parseFloat(o.installation_fee) || 0,
-            is_deposit_paid: o.is_deposit_paid,
-            deposit_amount: parseFloat(o.deposit_amount) || 0,
-            invoices: o.invoices || [],
-          }));
-          setOrders(formattedOrders);
-        }
-      } catch (e) {
-        console.error("Failed to load orders", e);
-      } finally {
-        setLoading(false);
+      const res = await orderService.getAllOrders();
+      if (res.success && res.data) {
+        const formattedOrders = res.data.map((o) => ({
+          id: o.id,
+          display_id: o.order_code,
+          customer_name:
+            o.customer_name || o.users?.username || o.quotations?.users?.username || "Khách",
+          customer_phone:
+            o.customer_phone || o.users?.phone || o.quotations?.users?.phone || "N/A",
+          created_at: o.created_at,
+          status: o.production_status || "pending",
+          shipping_address: o.shipping_address || o.quotations?.address || "Liên hệ nhận hàng",
+          notes: o.order_notes || o.quotations?.notes || "",
+          items: o.quotation_id
+            ? [{
+              id: o.quotations?.id || "custom-quote",
+              product_name: o.quotations?.title || o.quotations?.nick_name || "Sản phẩm gia công theo yêu cầu",
+              quantity: 1,
+              area: 0,
+              price: (parseFloat(o.total_amount) || 0) - (parseFloat(o.shipping_fee) || 0) - (parseFloat(o.installation_fee) || 0),
+              unit: "Gói",
+              isCustom: false,
+            }]
+            : (o.order_items?.length > 0
+              ? o.order_items.map((i) => ({
+                id: i.id,
+                product_name: i.products?.product_name || "Sản phẩm",
+                quantity: i.quantity,
+                price: parseFloat(i.price) || 0,
+                unit: "Cái",
+              }))
+              : []),
+          total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
+          shipping_fee: parseFloat(o.shipping_fee) || 0,
+          installation_fee: parseFloat(o.installation_fee) || 0,
+          is_deposit_paid: o.is_deposit_paid,
+          deposit_amount: parseFloat(o.deposit_amount) || 0,
+          invoices: o.invoices || [],
+        }));
+        setOrders(formattedOrders);
       }
-    };
+    } catch (e) {
+      console.error("Failed to load orders", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchOrders();
@@ -488,7 +488,7 @@ export default function ManageOrders() {
           </div>
         )}
       </div>
-{/* 5. PORTAL MODAL CHI TIẾT ĐƠN HÀNG VÀ XỬ LÝ DUYỆT NHANH */}
+      {/* 5. PORTAL MODAL CHI TIẾT ĐƠN HÀNG VÀ XỬ LÝ DUYỆT NHANH */}
       {selectedOrder && (
         <Portal>
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-fade-in print:bg-white print:p-0 print:block">
@@ -589,7 +589,7 @@ export default function ManageOrders() {
                             </td>
                             <td className="p-3 text-right font-mono font-black text-primary">
                               {item.isCustom && item.area > 0 ? (
-                                "-" 
+                                "-"
                               ) : (
                                 formatMoney.format(item.quantity * item.price)
                               )}
@@ -679,8 +679,8 @@ export default function ManageOrders() {
                             <tr key={inv.id} className="hover:bg-surface-container-low/20 transition-colors">
                               <td className="p-3 font-bold text-primary">
                                 {inv.invoice_type === 'DEPOSIT' ? 'Hóa đơn Cọc (Đợt 1)' :
-                                 inv.invoice_type === 'PHASE_2' ? 'Hóa đơn Thanh toán Đợt 2' :
-                                 inv.invoice_type === 'TOTAL' ? 'HÓA ĐƠN TỔNG (Cuối)' : 'Hóa đơn Toàn bộ'}
+                                  inv.invoice_type === 'PHASE_2' ? 'Hóa đơn Thanh toán Đợt 2' :
+                                    inv.invoice_type === 'TOTAL' ? 'HÓA ĐƠN TỔNG (Cuối)' : 'Hóa đơn Toàn bộ'}
                               </td>
                               <td className="p-3 font-mono text-on-surface-variant">{inv.id.slice(0, 8).toUpperCase()}</td>
                               <td className="p-3 text-on-surface-variant">{formatDate(inv.created_at)}</td>
@@ -717,23 +717,6 @@ export default function ManageOrders() {
                   <span className="text-xs font-bold text-on-surface-variant">
                     Cập nhật tiến độ:
                   </span>
-
-                  {selectedOrder.status === "pending_payment" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleUpdateStatus(
-                          selectedOrder.id,
-                          "pending",
-                          "Đã thanh toán",
-                          "Khách hàng đã hoàn tất thanh toán",
-                        )
-                      }
-                      className="h-9 px-3 bg-blue-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-blue-700 transition-all"
-                    >
-                      Xác nhận đã thanh toán
-                    </button>
-                  )}
 
                   {selectedOrder.status === "pending" && (
                     <>

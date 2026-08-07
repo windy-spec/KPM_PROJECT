@@ -34,6 +34,15 @@ const ProfileTab = ({
     setMessage("");
     setErrorMessage("");
     try {
+      if (user.zaloNumber) {
+        const cleanZalo = user.zaloNumber.replace(/[\s\-\+]/g, '');
+        if (!/^0\d{9}$/.test(cleanZalo)) {
+          setErrorMessage("Số Zalo không hợp lệ! Vui lòng nhập đúng 10 chữ số và bắt đầu bằng số 0.");
+          setLoading(false);
+          return;
+        }
+      }
+
       const payload = {
         firstName: user.firstName,
         middleName: user.middleName,

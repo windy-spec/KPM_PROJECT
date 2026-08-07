@@ -159,8 +159,8 @@ const QuotationsTab = ({ user }) => {
     }
 
     const cleanPhone = contactInfo.replace(/[\s\-\+]/g, '');
-    if (!/^\d{9,11}$/.test(cleanPhone)) {
-      showError("Số điện thoại / Zalo không hợp lệ! Vui lòng nhập đúng từ 9-11 chữ số.");
+    if (!/^0\d{9}$/.test(cleanPhone)) {
+      showError("Số điện thoại / Zalo không hợp lệ! Vui lòng nhập đúng 10 chữ số và bắt đầu bằng số 0.");
       return;
     }
 
