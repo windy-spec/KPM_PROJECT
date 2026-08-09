@@ -38,7 +38,7 @@ const AdminTopbar = () => {
         ...backendUser,
         ...backendProfile,
       });
-      
+
       // Lấy danh sách tồn kho thấp
       fetchLowStock();
     } catch {
@@ -66,7 +66,7 @@ const AdminTopbar = () => {
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    
+
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
@@ -138,16 +138,11 @@ const AdminTopbar = () => {
   return (
     <header className={`h-[88px] px-6 flex items-center justify-between bg-white border-b border-outline-variant/70 sticky top-0 z-40 transition-shadow ${isScrolled ? "shadow-md shadow-surface-container-low/30" : ""
       }`}>
-      <div>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-on-surface-variant/70">Thống kê kinh doanh</p>
-        <h1 className="mt-1 text-xl md:text-2xl font-black text-on-surface">Tổng quan doanh số</h1>
-      </div>
-
       <div className="flex items-center gap-3 ml-auto">
-        
+
         {/* Nút Thông báo (Low Stock) */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="p-2.5 rounded-full hover:bg-surface-container transition-colors relative text-on-surface-variant hover:text-primary"
           >
@@ -212,7 +207,7 @@ const AdminTopbar = () => {
               }}
             />
           </label>
-          
+
           {/* Dropdown Gợi ý Order */}
           {showSuggestions && searchQuery.trim() !== "" && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-outline-variant overflow-hidden z-50 animate-in fade-in zoom-in-95">
@@ -243,7 +238,7 @@ const AdminTopbar = () => {
                       </div>
                     );
                   })}
-                  <div 
+                  <div
                     className="p-3 text-center text-sm text-primary font-bold hover:bg-primary/5 cursor-pointer border-t border-outline-variant/50 transition-colors"
                     onClick={() => {
                       setShowSuggestions(false);
