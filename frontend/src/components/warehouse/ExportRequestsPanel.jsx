@@ -33,7 +33,6 @@ const ExportRequestsPanel = ({
             const allOrders = ordersRes?.data?.orders || ordersRes?.orders || ordersRes?.data || [];
 
             if (Array.isArray(allOrders)) {
-                // Theo yêu cầu: hiển thị danh sách đơn hàng đang chờ kiểm kho và đang sản xuất
                 const validStatuses = ['WAITING_WAREHOUSE', 'warehouse_received', 'out_of_stock', 'import_approved', 'production_ready', 'producing'];
                 setOrders(allOrders.filter(o => validStatuses.includes(o.production_status)));
             }

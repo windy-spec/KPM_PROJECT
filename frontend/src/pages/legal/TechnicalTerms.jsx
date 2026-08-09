@@ -104,7 +104,6 @@ const TechnicalTerms = () => {
             definition: "Công nghệ mài hoặc cắt bỏ cạnh sắc vuông góc của chi tiết phôi để tạo thành một bề mặt nghiêng (thường là góc 45 độ), đảm bảo an toàn và dễ lắp ráp.",
             category: "Thuật ngữ gia công"
         },
-        // MỚI THÊM TỪ AI KNOWLEDGE
         {
             term: "Inox 304 / Inox 201",
             definition: "Các mác thép không gỉ phổ biến. Inox 304 chứa nhiều niken hơn, chống ăn mòn cực tốt ngoài trời. Inox 201 rẻ hơn nhưng dễ rỉ sét nếu tiếp xúc ẩm ướt kéo dài.",

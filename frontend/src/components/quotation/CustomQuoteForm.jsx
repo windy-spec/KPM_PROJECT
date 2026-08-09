@@ -509,7 +509,6 @@ export default function CustomQuoteForm() {
             c.component_name,
           );
 
-          // SỬA LỖI SCOPE: Khai báo và tính toán chuẩn xác biến check sơn theo từng dòng `c`
           let isPaintAllowed = true;
           if (currentBlueprint && Array.isArray(currentBlueprint)) {
             const bpMatch = currentBlueprint.find((b) =>

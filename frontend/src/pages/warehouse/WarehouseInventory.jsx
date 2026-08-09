@@ -318,7 +318,6 @@ const WarehouseInventory = () => {
                                         <td colSpan="5" className="p-8 text-center text-slate-400 italic">Kho trống hoặc chưa có vật tư nào được khởi tạo tồn.</td>
                                     </tr>
                                 ) : (
-                                    // SỬA LỖI CHÍNH: Thay inventoryList bằng paginatedInventory để giới hạn số dòng hiển thị
                                     paginatedInventory.map((item) => (
                                         <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors ${selectedItem?.id === item.id ? 'bg-teal-50/30' : ''}`}>
                                             {/* CHECKBOX TỪNG DÒNG VẬT TƯ */}

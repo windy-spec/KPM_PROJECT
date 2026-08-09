@@ -37,7 +37,6 @@ class ImportService {
     const worksheet = workbook.worksheets[0];
     try {
       const fs = require("fs");
-      // Đã sửa: Sử dụng __dirname để định vị logo chuẩn xác từ thư mục templates
       const logoPath = path.join(__dirname, "../templates/logo.png");
 
       if (fs.existsSync(logoPath)) {

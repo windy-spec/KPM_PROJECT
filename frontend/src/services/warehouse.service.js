@@ -14,7 +14,6 @@ const warehouseService = {
      * Backend route: POST /warehouse/orders/:orderId/confirm-materials
      */
     confirmOrderMaterials(orderId) {
-        // Đã sửa lại URL khớp chính xác với route: router.post("/orders/:orderId/confirm-materials", ...) ở Backend
         return apiClient.post(`/warehouse/orders/${orderId}/confirm-materials`);
     },
 
