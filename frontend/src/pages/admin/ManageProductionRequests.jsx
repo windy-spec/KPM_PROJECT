@@ -233,7 +233,14 @@ const ManageProductionRequests = () => {
                                 <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
 
                                     {/* Mã Lệnh */}
-                                    <td className="p-4 font-bold text-slate-900">#SX_{order.id}</td>
+                                    <td className="p-4">
+                                        <p className="font-bold text-slate-900">#SX_{order.id}</p>
+                                        {order.order_code && (
+                                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                                Đơn gốc: <span className="font-mono text-primary">{order.order_code}</span>
+                                            </p>
+                                        )}
+                                    </td>
 
                                     {/* Khách hàng */}
                                     <td className="p-4">
@@ -246,8 +253,8 @@ const ManageProductionRequests = () => {
                                         <div className="space-y-1">
                                             {order.order_items && order.order_items.length > 0 ? (
                                                 order.order_items.flatMap((item, idx) => {
-                                                    const comps = typeof item.products?.components === 'string' 
-                                                        ? JSON.parse(item.products?.components || "[]") 
+                                                    const comps = typeof item.products?.components === 'string'
+                                                        ? JSON.parse(item.products?.components || "[]")
                                                         : (item.products?.components || []);
                                                     if (comps.length > 0) {
                                                         return comps.map((comp, cIdx) => (
@@ -305,9 +312,6 @@ const ManageProductionRequests = () => {
                                                 )}
                                             </button>
                                         )}
-                                        <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-500 cursor-pointer">
-                                            <Eye className="w-3.5 h-3.5" />
-                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -331,8 +335,8 @@ const ManageProductionRequests = () => {
                     onPageChange={(p) => setPage(p)}
                 />
             </div>
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 open={confirmModal.isOpen}
                 title="Xác nhận phê duyệt"
                 message={`Xác nhận phê duyệt yêu cầu #${confirmModal.orderId}? Hệ thống sẽ bóc tách cấu trúc thành phần (components) thành mật độ vật tư kỹ thuật và chuyển giao trạng thái sang bộ phận Kho.`}
