@@ -89,21 +89,7 @@ const ForumDetail = () => {
                 </span>
               ))}
             </div>
-
-            <div className="flex items-center gap-4 relative z-10 border-t border-outline-variant/30 pt-6 mt-6">
-              <button
-                className="flex items-center px-5 py-2.5 rounded-xl font-bold bg-surface-container/40 hover:bg-primary/10 hover:text-primary transition-colors text-sm text-on-surface-variant"
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert("Đã copy link bài viết!");
-                }}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Chia sẻ bài viết
-              </button>
-            </div>
           </header>
-
           {/* Content Body */}
           <div className="p-8 md:p-12 lg:p-16 prose prose-lg md:prose-xl prose-slate max-w-none text-on-surface-variant prose-headings:text-on-surface prose-headings:font-black prose-p:leading-relaxed prose-img:rounded-3xl prose-img:shadow-lg prose-img:w-full prose-img:object-cover prose-a:text-primary hover:prose-a:text-primary-container">
             <ReactMarkdown>
