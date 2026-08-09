@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 // Đọc danh sách từ khóa vi phạm 1 lần khi khởi tạo service
-const profanityFilePath = path.join(__dirname, "..", "docs", "vietnamese_profanity.txt");
+const profanityFilePath = path.join(__dirname, "vietnamese_profanity.txt");
 let profanityList = [];
 try {
   const data = fs.readFileSync(profanityFilePath, "utf8");

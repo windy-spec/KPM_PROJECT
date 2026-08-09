@@ -771,22 +771,7 @@ export default function ManageOrders() {
                     </button>
                   )}
 
-                  {selectedOrder.status === "delivering" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleUpdateStatus(
-                          selectedOrder.id,
-                          "completed",
-                          "Đã hoàn thành",
-                          "Đơn hàng đã giao thành công và hoàn tất",
-                        )
-                      }
-                      className="h-9 px-3 bg-emerald-600 text-white text-xs font-black rounded-lg shadow-sm hover:bg-emerald-700 transition-all"
-                    >
-                      Đánh dấu hoàn thành
-                    </button>
-                  )}
+                  
 
                   {(selectedOrder.status === "completed" ||
                     selectedOrder.status === "cancelled") && (

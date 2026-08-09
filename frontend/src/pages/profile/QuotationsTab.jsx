@@ -277,6 +277,12 @@ const QuotationsTab = ({ user }) => {
             <CheckCircle2 className="w-3 h-3" /> Admin đã báo giá
           </span>
         );
+        case "user_proposed":
+        return (
+          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-700">
+            <CheckCircle2 className="w-3 h-3" /> Khách hàng mặc cả
+          </span>
+        );
       case "pending_contact":
         return (
           <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
@@ -353,13 +359,16 @@ const QuotationsTab = ({ user }) => {
               <div className="flex flex-col items-end gap-2">
                 {getStatusBadge(q.status)}
                 {q.status !== "pending_admin" && (
-                  <p className="text-lg font-black text-error">
-                    {formatCurrency(
-                      q.admin_proposed_price ||
-                        q.user_proposed_price ||
-                        q.total_quoted_price,
+                  <div className="flex flex-col items-end">
+                    <p className={q.status === 'user_proposed' ? "text-sm font-bold text-on-surface-variant line-through" : "text-lg font-black text-error"}>
+                      {formatCurrency(q.admin_proposed_price || q.total_quoted_price)}
+                    </p>
+                    {q.status === "user_proposed" && q.user_proposed_price && (
+                      <p className="text-lg font-black text-primary mt-1">
+                        Mặc cả: {formatCurrency(q.user_proposed_price)}
+                      </p>
                     )}
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
