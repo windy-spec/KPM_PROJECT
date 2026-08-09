@@ -1,7 +1,6 @@
 # HƯỚNG DẪN CÀI ĐẶT VÀ KHỞI CHẠY DỰ ÁN KPM
 
-Kính gửi Thầy/Cô, dưới đây là hướng dẫn chi tiết để khởi chạy dự án KPM trên máy cá nhân.
-Dự án sử dụng kiến trúc phân tán với Backend (Node.js/Express) và Frontend (React/Vite).
+Kính gửi Thầy/Cô, dưới đây là hướng dẫn chi tiết để khởi chạy dự án KPM trên máy cá nhân. Dự án sử dụng kiến trúc phân tán với Backend (Node.js/Express) và Frontend (React/Vite).
 
 ## 1. Yêu cầu hệ thống
 - Máy tính cần cài đặt sẵn **Node.js** (Khuyến nghị phiên bản 18.x trở lên).
@@ -12,7 +11,6 @@ Dự án sử dụng kiến trúc phân tán với Backend (Node.js/Express) và
 ---
 
 ## 2. Các bước khởi chạy dự án
-
 Sau khi giải nén file `.rar`, Thầy/Cô vui lòng mở thư mục gốc của dự án `KPM` và thực hiện theo 2 bước sau:
 
 ### BƯỚC 1: Khởi chạy Backend (Server)
@@ -50,20 +48,23 @@ Sau khi giải nén file `.rar`, Thầy/Cô vui lòng mở thư mục gốc củ
 ---
 
 ## 3. Truy cập Hệ thống
-- Sau khi cả 2 Terminal đều đang chạy, Thầy/Cô mở trình duyệt (Chrome/Edge/Safari) và truy cập vào đường link Frontend:
-  👉 **http://localhost:5173**
+Sau khi cả 2 Terminal đều đang chạy, Thầy/Cô mở trình duyệt (Chrome, Edge hoặc Safari) và truy cập vào đường link Frontend:
+👉 **http://localhost:5173**
 
 ---
 
 ## 4. Tài khoản truy cập tham khảo
-*(Sinh viên tự điền thêm tài khoản Admin/Khách hàng vào đây để Giáo viên dễ test)*
 - **Tài khoản Admin:**
-  - Username: 
-  - Password: 
+  - Username: admin
+  - Password: 123456
+
+- **Tài khoản Admin_kho:**
+  - Username: toji
+  - Password: 123456
 
 - **Tài khoản Khách hàng (User):**
-  - Username: 
-  - Password: 
+  - Username: user
+  - Password: 123456
 
 ***
 

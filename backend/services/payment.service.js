@@ -466,6 +466,9 @@ class PaymentService {
             }
           }
         }
+      }, {
+        maxWait: 5000,
+        timeout: 20000
       });
       if (global.io)
         global.io.to("room_admin").emit("new_production_request", {
@@ -821,6 +824,9 @@ class PaymentService {
               }
             }
           }
+        }, {
+          maxWait: 5000,
+          timeout: 20000
         });
         if (global.io)
           global.io.to("room_admin").emit("new_production_request", {
