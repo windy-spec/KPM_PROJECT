@@ -43,7 +43,7 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
                 quantity_per_item: spec.dimensions?.quantity || 1
             }));
             setComponents(mappedComponents);
-            setFinalPrice(data.user_proposed_price || data.admin_proposed_price || data.total_quoted_price || '');
+            setFinalPrice(data.admin_proposed_price || data.user_proposed_price || data.total_quoted_price || '');
         } catch (e) {
             showError('Không lấy được chi tiết báo giá này.');
         }
@@ -185,8 +185,21 @@ export default function AdminQuoteReviewModal({ quoteId, onClose, onRefresh }) {
     async function handleHoldQuote() {
         setLoading(true);
         try {
-            await quotationService.updateStatus(quoteId, 'pending_admin', { components });
-            showSuccess('Đã lưu cấu trúc thông số hình học vừa chỉnh sửa, trạng thái: Chờ xem xét.');
+            const payload = {
+                admin_proposed_price: finalPrice ? Number(finalPrice) : undefined,
+                components: components.map(c => ({
+                    component_name: c.component_name,
+                    material_id: c.material_id,
+                    thickness_id: c.thickness_id,
+                    length: Number(c.length) || 0,
+                    width: Number(c.width) || 0,
+                    height: Number(c.height) || 0,
+                    paint_id: c.paint_id || null,
+                    quantity_per_item: Number(c.quantity_per_item) || 1
+                }))
+            };
+            await quotationService.saveDraft(quoteId, payload);
+            showSuccess('Đã lưu cấu trúc thông số hình học và giá vừa chỉnh sửa, trạng thái: Chờ xem xét.');
             loadQuoteDetail();
         } catch (e) {
             showError('Lưu thông số tạm thời thất bại.');

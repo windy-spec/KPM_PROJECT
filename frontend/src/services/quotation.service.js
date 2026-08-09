@@ -28,5 +28,8 @@ export const quotationService = {
   },
   updateStatus(id, status) {
     return apiClient.put(`/quotations/${id}/status`, { status });
+  },
+  saveDraft(id, payload) {
+    return apiClient.put(`/quotations/${id}/save-draft`, payload);
   }
 };

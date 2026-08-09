@@ -45,6 +45,18 @@ class QuotationController {
     }
   }
 
+  async saveDraft(req, res) {
+    try {
+      res.status(200).json({
+        success: true,
+        message: "Lưu nháp thành công!",
+        data: await quotationService.saveDraft(req.params.id, req.body),
+      });
+    } catch (e) {
+      res.status(400).json({ success: false, message: e.message });
+    }
+  }
+
   async confirmContactMethod(req, res) {
     try {
       const { method, contactInfo } = req.body;

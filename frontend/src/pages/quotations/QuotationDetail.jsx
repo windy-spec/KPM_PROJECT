@@ -142,7 +142,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
       const qData = res.data?.data || res.data || null;
       setData(qData);
       if (qData) {
-        setCustomPrice(qData.user_proposed_price || qData.admin_proposed_price || qData.total_quoted_price || '');
+        setCustomPrice(qData.admin_proposed_price || qData.user_proposed_price || qData.total_quoted_price || '');
       }
     } catch (e) {
       showError(
@@ -591,7 +591,7 @@ export default function QuotationDetail({ quotationIdProp, onBack }) {
                   Tổng Tiền Thanh Toán (Tạm tính)
                 </div>
                 <div className="text-xl md:text-2xl font-black text-rose-600 tracking-tight">
-                  {formatVND(data.user_proposed_price || data.admin_proposed_price || data.total_quoted_price)}
+                  {formatVND(data.admin_proposed_price || data.user_proposed_price || data.total_quoted_price)}
                 </div>
               </div>
             </div>

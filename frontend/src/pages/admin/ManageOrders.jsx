@@ -97,7 +97,7 @@ export default function ManageOrders() {
                 unit: "Cái",
               }))
               : []),
-          total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
+          total_amount: parseFloat(o.total_amount) || parseFloat(o.quotations?.admin_proposed_price) || parseFloat(o.quotations?.user_proposed_price) || parseFloat(o.quotations?.total_quoted_price) || 0,
           shipping_fee: parseFloat(o.shipping_fee) || 0,
           installation_fee: parseFloat(o.installation_fee) || 0,
           is_deposit_paid: o.is_deposit_paid,

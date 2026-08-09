@@ -355,8 +355,8 @@ const QuotationsTab = ({ user }) => {
                 {q.status !== "pending_admin" && (
                   <p className="text-lg font-black text-error">
                     {formatCurrency(
-                      q.user_proposed_price ||
-                        q.admin_proposed_price ||
+                      q.admin_proposed_price ||
+                        q.user_proposed_price ||
                         q.total_quoted_price,
                     )}
                   </p>
@@ -393,8 +393,8 @@ const QuotationsTab = ({ user }) => {
               </span>
               <span className="text-base font-black text-rose-600">
                 {formatCurrency(
-                  q.user_proposed_price ||
-                    q.admin_proposed_price ||
+                  q.admin_proposed_price ||
+                    q.user_proposed_price ||
                     q.total_quoted_price,
                 )}
               </span>

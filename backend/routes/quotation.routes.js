@@ -22,6 +22,7 @@ router.get("/user", authenticateToken, quotationController.getUserQuotations);
 // ========================================================
 router.get("/:id", quotationController.getById);
 router.put("/:id/status", quotationController.updateStatus);
+router.put("/:id/save-draft", authenticateToken, quotationController.saveDraft);
 router.put("/:id/approve", quotationController.approveQuoteRequest);
 router.put(
   "/:id/direct-confirm",

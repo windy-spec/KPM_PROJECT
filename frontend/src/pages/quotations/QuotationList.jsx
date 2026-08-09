@@ -165,7 +165,7 @@ export default function QuotationList({ onOpen }) {
                 </td>
                 {/* Nâng kích thước chữ tiền lên text-sm giúp cột giá trị bớt trống trải */}
                 <td className="p-4 font-black text-on-surface text-sm tracking-wide">
-                  {formatVND(r.user_proposed_price ?? r.admin_proposed_price ?? r.total_quoted_price ?? r.total_amount ?? r.total)}
+                  {formatVND(r.admin_proposed_price ?? r.user_proposed_price ?? r.total_quoted_price ?? r.total_amount ?? r.total)}
                 </td>
                 <td className="p-4">
                   <StatusBadge status={r.status} />

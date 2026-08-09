@@ -152,8 +152,8 @@ class QuotationService {
 
         // 2. Lấy giá trị tiền và ép kiểu an toàn về Number (tránh lỗi NaN làm sập Prisma)
         const rawAmount =
-          updatedQuotation.user_proposed_price ||
           updatedQuotation.admin_proposed_price ||
+          updatedQuotation.user_proposed_price ||
           updatedQuotation.total_quoted_price;
         const totalAmount = Number(rawAmount) || 0;
 
@@ -1063,6 +1063,50 @@ class QuotationService {
     }
     
     return updated;
+  }
+
+  // Admin lưu nháp thông số và giá
+  async saveDraft(id, data) {
+    const { admin_proposed_price, components } = data;
+    const quotation = await this.getQuotationById(id);
+    if (!quotation) throw new Error("Không tìm thấy báo giá!");
+
+    const updateQuote = await prisma.quotations.update({
+      where: { id },
+      data: {
+        admin_proposed_price: admin_proposed_price !== undefined ? Number(admin_proposed_price) : quotation.admin_proposed_price,
+        status: "pending_admin",
+      },
+    });
+
+    if (components && Array.isArray(components)) {
+      await prisma.quotation_specs.deleteMany({ where: { quotation_id: id } });
+      const specsData = components.map(c => ({
+        quotation_id: id,
+        component_name: c.component_name,
+        material_id: c.material_id || null,
+        thickness_id: c.thickness_id || null,
+        paint_id: c.paint_id || null,
+        dimensions: {
+          length: Number(c.length) || 0,
+          width: Number(c.width) || 0,
+          height: Number(c.height) || 0,
+          quantity: Number(c.quantity_per_item) || 1
+        },
+        snapshot_price: 0
+      }));
+      if(specsData.length > 0) {
+          await prisma.quotation_specs.createMany({ data: specsData });
+      }
+    }
+
+    if (global.io) {
+      global.io.to("room_admin").emit("quote_updated", {
+        message: `Đã lưu nháp cho báo giá #${id.slice(0, 8)}`,
+        data: updateQuote,
+      });
+    }
+    return updateQuote;
   }
 }
 module.exports = new QuotationService();
