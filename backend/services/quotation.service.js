@@ -452,6 +452,17 @@ class QuotationService {
     ) {
       throw new Error("Chỉ có thể chốt khi đang ở trạng thái mặc cả!");
     }
+
+    // NẾU ADMIN ĐỒNG Ý VỚI MỨC GIÁ CỦA USER, GÁN LUÔN GIÁ ĐÓ CHO ADMIN ĐỂ LÊN ĐƠN ĐÚNG GIÁ
+    if (final_status === "admin_confirmed" && quotation.status === "user_proposed" && quotation.user_proposed_price) {
+      await prisma.quotations.update({
+        where: { id },
+        data: {
+          admin_proposed_price: quotation.user_proposed_price
+        }
+      });
+    }
+
     return await this.updateStatus(id, final_status);
   }
 
