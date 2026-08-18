@@ -109,7 +109,8 @@ ${historyText}`;
              if (searchParams.product_type) {
                whereClause.OR = [
                  { product_name: { contains: searchParams.product_type, mode: "insensitive" } },
-                 { product_code: { contains: searchParams.product_type, mode: "insensitive" } }
+                 { product_code: { contains: searchParams.product_type, mode: "insensitive" } },
+                 { product_categories: { category_name: { contains: searchParams.product_type, mode: "insensitive" } } }
                ];
              }
              if (searchParams.max_price) whereClause.base_price = { ...whereClause.base_price, lte: searchParams.max_price };
