@@ -1,1 +1,0 @@
-- Khi chưa đăng nhập, vẫn có thể thêm sản phẩm vào giỏ hàng, khi nhấn mua sẽ chuyển qua trang đăng nhập -> sẽ gộp giỏ hàng đó vào giỏ hàng của user

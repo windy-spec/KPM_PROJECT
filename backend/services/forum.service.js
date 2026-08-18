@@ -72,7 +72,7 @@ Trả về định dạng JSON theo đúng schema sau (không trả về markdow
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
-        model: "llama-3.3-70b-versatile",
+        model: "qwen-3.6-27b",
         response_format: { type: "json_object" }
       });
 

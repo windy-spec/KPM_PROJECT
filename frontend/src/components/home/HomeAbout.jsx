@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlayCircle, ShieldCheck, Cpu, Award, Notebook, ListCheck } from 'lucide-react';
-import factoryVideo from '../../assets/video/intro_boy.mp4'
+import factoryVideo from '../../assets/video/Intro_boy.mp4'
 
 const HomeAbout = () => {
     return (
