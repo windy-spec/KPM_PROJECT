@@ -76,7 +76,7 @@ ${historyText}`;
                 { role: "system", content: extractPrompt },
                 { role: "user", content: userMessage }
               ],
-              model: "llama-3.1-8b-instant",
+              model: "qwen/qwen3.6-27b",
               response_format: { type: "json_object" },
               temperature: 0
             });
@@ -163,7 +163,7 @@ NHIỆM VỤ:
                 ...chatHistory,
                 { role: "user", content: userMessage }
               ],
-              model: "llama-3.1-8b-instant",
+              model: "qwen/qwen3.6-27b",
               temperature: 0.3
             });
             aiReply = aiResponse.choices[0].message.content;
@@ -274,7 +274,7 @@ NHIỆM VỤ:
               ...chatHistory,
               { role: "user", content: userMessage }
             ],
-            model: "llama-3.1-8b-instant",
+            model: "qwen/qwen3.6-27b",
             temperature: 0.1
           });
           aiReply = ksResponse.choices[0].message.content;
