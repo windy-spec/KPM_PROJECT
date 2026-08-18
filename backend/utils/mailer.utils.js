@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   maxMessages: 100,
   auth: {
     user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
+    pass: process.env.MAIL_PASS ? process.env.MAIL_PASS.replace(/"/g, "").replace(/\s/g, "") : "",
   },
 });
 
