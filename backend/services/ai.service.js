@@ -150,11 +150,11 @@ NHIỆM VỤ:
 DỮ LIỆU TÌM THẤY TRONG DATABASE XƯỞNG:
 ${dbContext}
 
-NHIỆM VỤ: 
-1. Chỉ viết ĐÚNG 1-2 câu ngắn gọn, thân thiện để mào đầu (Ví dụ: "Dạ, em gửi anh/chị tham khảo một số mẫu bên xưởng em ạ:").
+NHIỆM VỤ: 1. Chỉ viết ĐÚNG 1-2 câu ngắn gọn, thân thiện để mào đầu bằng TIẾNG VIỆT (Ví dụ: "Dạ, em gửi anh/chị tham khảo một số mẫu bên xưởng em ạ:").
 2. TUYỆT ĐỐI KHÔNG phân tích, không liệt kê lại tên, giá hay mô tả của sản phẩm vì hệ thống sẽ tự động hiển thị thông tin này qua Thẻ Sản Phẩm.
 3. BẮT BUỘC chèn đoạn tag sau vào dòng cuối cùng của câu trả lời, không được tự ý sửa đổi mã ID:
-[PRODUCT_WIDGET: [${productIds}]]`;
+[PRODUCT_WIDGET: [${productIds}]]
+4. QUAN TRỌNG: TRẢ LỜI TRỰC TIẾP LUÔN BẰNG TIẾNG VIỆT, TUYỆT ĐỐI KHÔNG in ra quá trình suy nghĩ, phân tích constraints hay bất kỳ chữ tiếng Anh nào.`;
             }
             
             const aiResponse = await groq.chat.completions.create({
@@ -167,6 +167,12 @@ NHIỆM VỤ:
               temperature: 0.3
             });
             aiReply = aiResponse.choices[0].message.content;
+            // Dọn dẹp các đoạn nháp/tư duy của model Qwen
+            aiReply = aiReply.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
+            const draftMatch = aiReply.match(/(?:Draft Response|Kết quả cuối cùng)[\s\S]*?(?::\s*)(.*)/i);
+            if (draftMatch && draftMatch[1]) aiReply = draftMatch[1].trim();
+            aiReply = aiReply.replace(/^Task constraints:[\s\S]*?Draft Response.*?:\s*/i, "").trim();
+            aiReply = aiReply.replace(/\]$/i, "").trim(); // xóa dấu ngoặc nhọn nếu nó bị thừa do draft
           }
           break;
 
@@ -266,7 +272,8 @@ NHIỆM VỤ:
 3. Nếu khách hỏi về Lắp đặt và Thi công, HÃY LUÔN chú thích thêm: "Chi phí lắp đặt và thi công thông thường sẽ rơi vào khoảng 5% - 10% tổng giá trị sản phẩm."
 4. Nếu câu hỏi thuộc chuyên môn cơ khí nhưng DỮ LIỆU CỦA XƯỞNG không có, bạn được phép dùng kiến thức cơ khí của bạn để tư vấn khái quát, nhưng nhớ dặn dò khách liên hệ trực tiếp xưởng.
 5. Nếu câu hỏi hoàn toàn không liên quan đến cơ khí/xây dựng, BẮT BUỘC từ chối khéo: "Dạ vấn đề này nằm ngoài chuyên môn cơ khí của KPM, em không thể hỗ trợ ạ."
-6. Hãy sử dụng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày cho dễ đọc.`;
+6. Hãy sử dụng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày cho dễ đọc.
+7. QUAN TRỌNG: TRẢ LỜI TRỰC TIẾP LUÔN BẰNG TIẾNG VIỆT, TUYỆT ĐỐI KHÔNG in ra quá trình suy nghĩ, phân tích constraints hay bất kỳ chữ tiếng Anh nào.`;
 
           const ksResponse = await groq.chat.completions.create({
             messages: [
@@ -278,6 +285,11 @@ NHIỆM VỤ:
             temperature: 0.1
           });
           aiReply = ksResponse.choices[0].message.content;
+          aiReply = aiReply.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
+          const draftMatch2 = aiReply.match(/(?:Draft Response|Kết quả cuối cùng)[\s\S]*?(?::\s*)(.*)/i);
+          if (draftMatch2 && draftMatch2[1]) aiReply = draftMatch2[1].trim();
+          aiReply = aiReply.replace(/^Task constraints:[\s\S]*?Draft Response.*?:\s*/i, "").trim();
+          aiReply = aiReply.replace(/\]$/i, "").trim();
           
           // Tự động gài nút chọn lại mảng tư vấn cho khách dễ bấm nếu AI chưa có gợi ý nào
           if (!aiReply.includes("[OPTIONS:")) {
