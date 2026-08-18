@@ -810,6 +810,23 @@ class QuotationService {
       ? parseFloat(product.price_adjustment)
       : 0;
 
+    // --- TỐI ƯU HÓA TỐC ĐỘ: Lấy toàn bộ ID của Vật liệu, Độ dày, Loại sơn ---
+    const materialIds = [...new Set(components.map(c => c.material_id).filter(Boolean))];
+    const thicknessIds = [...new Set(components.map(c => c.thickness_id).filter(Boolean))];
+    const paintIds = [...new Set(components.map(c => c.paint_id).filter(Boolean))];
+
+    // Truy vấn tất cả bằng 3 query duy nhất (Giải quyết triệt để lỗi N+1 Query làm chậm luồng báo giá)
+    const [materialsArray, thicknessesArray, paintsArray] = await Promise.all([
+      materialIds.length > 0 ? prisma.materials.findMany({ where: { id: { in: materialIds } } }) : [],
+      thicknessIds.length > 0 ? prisma.material_thickness.findMany({ where: { id: { in: thicknessIds } } }) : [],
+      paintIds.length > 0 ? prisma.paint_types.findMany({ where: { id: { in: paintIds } } }) : []
+    ]);
+
+    const materialMap = Object.fromEntries(materialsArray.map(m => [m.id, m]));
+    const thicknessMap = Object.fromEntries(thicknessesArray.map(t => [t.id, t]));
+    const paintMap = Object.fromEntries(paintsArray.map(p => [p.id, p]));
+    // --- KẾT THÚC TỐI ƯU HÓA ---
+
     let total_area = 0;
     let total_material_price = 0;
     let total_paint_price = 0;
@@ -841,19 +858,10 @@ class QuotationService {
 
       total_area += area;
 
-      const [material, thickness, paint] = await Promise.all([
-        material_id
-          ? prisma.materials.findUnique({ where: { id: material_id } })
-          : null,
-        thickness_id
-          ? prisma.material_thickness.findUnique({
-              where: { id: thickness_id },
-            })
-          : null,
-        paint_id
-          ? prisma.paint_types.findUnique({ where: { id: paint_id } })
-          : null,
-      ]);
+      // Tra cứu từ RAM (đã lấy sẵn ở trên) thay vì gọi Database
+      const material = material_id ? materialMap[material_id] : null;
+      const thickness = thickness_id ? thicknessMap[thickness_id] : null;
+      const paint = paint_id ? paintMap[paint_id] : null;
 
       if (!material) {
         throw new Error(
