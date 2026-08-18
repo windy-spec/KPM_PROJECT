@@ -168,12 +168,8 @@ NHIỆM VỤ: 1. Chỉ viết ĐÚNG 1-2 câu ngắn gọn, thân thiện để 
               temperature: 0.3
             });
             aiReply = aiResponse.choices[0].message.content;
-            // Dọn dẹp các đoạn nháp/tư duy của model Qwen
+            // Dọn dẹp các thẻ <think> nếu có
             aiReply = aiReply.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
-            const draftMatch = aiReply.match(/(?:Draft Response|Kết quả cuối cùng)[\s\S]*?(?::\s*)(.*)/i);
-            if (draftMatch && draftMatch[1]) aiReply = draftMatch[1].trim();
-            aiReply = aiReply.replace(/^Task constraints:[\s\S]*?Draft Response.*?:\s*/i, "").trim();
-            aiReply = aiReply.replace(/\]$/i, "").trim(); // xóa dấu ngoặc nhọn nếu nó bị thừa do draft
           }
           break;
 
@@ -287,10 +283,6 @@ NHIỆM VỤ:
           });
           aiReply = ksResponse.choices[0].message.content;
           aiReply = aiReply.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, "").trim();
-          const draftMatch2 = aiReply.match(/(?:Draft Response|Kết quả cuối cùng)[\s\S]*?(?::\s*)(.*)/i);
-          if (draftMatch2 && draftMatch2[1]) aiReply = draftMatch2[1].trim();
-          aiReply = aiReply.replace(/^Task constraints:[\s\S]*?Draft Response.*?:\s*/i, "").trim();
-          aiReply = aiReply.replace(/\]$/i, "").trim();
           
           // Tự động gài nút chọn lại mảng tư vấn cho khách dễ bấm nếu AI chưa có gợi ý nào
           if (!aiReply.includes("[OPTIONS:")) {
