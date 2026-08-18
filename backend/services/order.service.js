@@ -197,6 +197,37 @@ class OrderService {
     const materials = await prisma.materials.findMany({
       include: { material_thickness: true }
     });
+    const allProductIds = [...new Set(orders.flatMap(o => 
+      o.quotations?.quotation_specs?.map(s => s.dimensions?.product_id).filter(Boolean) || []
+    ))];
+
+    let drawingsMap = {};
+    let imagesMap = {};
+
+    if (allProductIds.length > 0) {
+      const [allDrawings, allImages] = await Promise.all([
+        prisma.product_drawings.findMany({
+          where: { product_id: { in: allProductIds }, is_active: true },
+          include: { drawing_parts: true },
+        }),
+        prisma.product_images.findMany({
+          where: { product_id: { in: allProductIds }, is_primary: true },
+        })
+      ]);
+
+      drawingsMap = allDrawings.reduce((acc, dwg) => {
+        if (!acc[dwg.product_id]) acc[dwg.product_id] = [];
+        acc[dwg.product_id].push(dwg);
+        return acc;
+      }, {});
+
+      imagesMap = allImages.reduce((acc, img) => {
+        if (!acc[img.product_id]) acc[img.product_id] = [];
+        acc[img.product_id].push(img);
+        return acc;
+      }, {});
+    }
+
     const materialMap = {};
     materials.forEach(m => {
       materialMap[m.id] = m;
@@ -209,17 +240,8 @@ class OrderService {
           .filter(Boolean);
 
         if (productIds.length > 0) {
-          const [drawings, images] = await Promise.all([
-            prisma.product_drawings.findMany({
-              where: { product_id: { in: productIds }, is_active: true },
-              include: { drawing_parts: true },
-            }),
-            prisma.product_images.findMany({
-              where: { product_id: { in: productIds }, is_primary: true },
-            })
-          ]);
-          order.quotations.product_drawings = drawings;
-          order.quotations.product_images = images;
+          order.quotations.product_drawings = productIds.flatMap(id => drawingsMap[id] || []);
+          order.quotations.product_images = productIds.flatMap(id => imagesMap[id] || []);
         } else {
           order.quotations.product_drawings = [];
           order.quotations.product_images = [];
