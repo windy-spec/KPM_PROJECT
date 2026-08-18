@@ -177,11 +177,11 @@ class QuotationService {
 
         // 5. Gửi email xác nhận
         if (updatedQuotation.users && updatedQuotation.users.email) {
-          await sendOrderConfirmationEmail(
+          sendOrderConfirmationEmail(
             updatedQuotation.users.email,
             newOrder,
             updatedQuotation,
-          );
+          ).catch(err => console.error(err));
         }
       } catch (err) {
         console.error("Lỗi khi tạo Đơn hàng hoặc gửi email:", err);
@@ -362,11 +362,9 @@ class QuotationService {
 
     // 5. GỬI EMAIL VÀ SOCKET
     if (updateQuote.users && updateQuote.users.email) {
-      try {
-        await sendQuotationEmail(updateQuote.users.email, updateQuote);
-      } catch (err) {
+      sendQuotationEmail(updateQuote.users.email, updateQuote).catch(err => {
         console.error("Lỗi khi gửi email báo giá:", err);
-      }
+      });
     }
 
     if (global.io) {
@@ -490,15 +488,13 @@ class QuotationService {
 
     if (quotation.users && quotation.users.email) {
       const { sendQuotationNegotiationEmail } = require("../utils/mailer.utils");
-      try {
-        await sendQuotationNegotiationEmail(
-          quotation.users.email,
-          quotation.users.username || "Quý khách",
-          quotation.id
-        );
-      } catch (err) {
+      sendQuotationNegotiationEmail(
+        quotation.users.email,
+        quotation.users.username || "Quý khách",
+        quotation.id
+      ).catch(err => {
         console.error("Lỗi khi gửi email yêu cầu thương lượng:", err);
-      }
+      });
     }
 
     if (global.io) {
