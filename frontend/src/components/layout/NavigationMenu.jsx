@@ -42,12 +42,7 @@ const NavigationMenu = () => {
       hasSub: true,
       to: "/products",
     },
-    {
-      title: "Chính sách bảo hành",
-      icon: Hammer,
-      hasSub: false,
-      to: "/warranty",
-    },
+
     {
       title: "Diễn đàn",
       icon: Newspaper,
@@ -77,6 +72,7 @@ const NavigationMenu = () => {
       icon: Heart,
       hasSub: true,
       subItems: [
+        { title: "Chính sách bảo hành", to: "/warranty" },
         { title: "Điều khoản dịch vụ", to: "/terms-of-service" },
         { title: "Chính sách bảo mật", to: "/privacy-policy" },
         { title: "Các câu hỏi thường gặp", to: "/faq" },
