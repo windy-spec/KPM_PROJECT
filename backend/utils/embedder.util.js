@@ -1,13 +1,17 @@
-const { pipeline } = require("@xenova/transformers");
-
 class EmbedderService {
   constructor() {
     this.extractor = null;
+    this.pipeline = null;
   }
 
   async init() {
+    if (!this.pipeline) {
+      const transformers = await import("@xenova/transformers");
+      this.pipeline = transformers.pipeline;
+    }
+
     if (!this.extractor) {
-      this.extractor = await pipeline(
+      this.extractor = await this.pipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
         { quantized: true },
