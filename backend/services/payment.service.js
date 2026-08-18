@@ -618,8 +618,8 @@ class PaymentService {
     let returnUrl = vnpayConfig.vnp_ReturnUrl;
 
     let date = new Date();
-    let createDate = moment(date).format("YYYYMMDDHHmmss");
-    let expireDate = moment(date).add(15, "minutes").format("YYYYMMDDHHmmss");
+    let createDate = moment(date).utcOffset(7).format("YYYYMMDDHHmmss");
+    let expireDate = moment(date).utcOffset(7).add(15, "minutes").format("YYYYMMDDHHmmss");
 
     let vnp_Params = {};
     vnp_Params["vnp_Version"] = "2.1.0";
